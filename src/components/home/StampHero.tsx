@@ -81,7 +81,18 @@ export function StampHero() {
       // Mobile: the headline sits over the top of the stage and fades out as
       // the stamp slides up to the centre and takes over the screen.
       const intro = mobile ? seg(p, 0.015, 0.09) : 1;
-      scene.setFraming(mobile ? 0.3 - 0.3 * intro : 0, mobile ? 0.52 + 0.2 * intro : 1);
+      if (mobile) {
+        // Fit the closed stamp into the space actually left under the headline
+        // and buttons (headline height varies with screen width and font).
+        const h = canvas.clientHeight || 1;
+        const introEl = introRef.current;
+        const canvasTop = canvas.parentElement?.offsetTop ?? 64;
+        const freeTop = introEl ? Math.max(0, introEl.offsetTop + introEl.offsetHeight - canvasTop + 28) : h * 0.5;
+        const freeH = Math.max(120, h - freeTop - 16);
+        const startShift = (freeTop + freeH / 2 - h / 2) / h;
+        const startZoom = Math.min(0.62, Math.max(0.3, (freeH / h) * 1.35));
+        scene.setFraming(startShift * (1 - intro), startZoom + (0.72 - startZoom) * intro);
+      } else scene.setFraming(0, 1);
       scene.setProgress(p);
       const introEl = introRef.current;
       if (introEl) {
@@ -168,12 +179,12 @@ export function StampHero() {
         <div className={`container-x relative grid w-full gap-6 lg:h-auto lg:grid-cols-2 lg:items-center lg:pt-20 ${animated ? 'h-full content-start pt-20' : 'pt-24 pb-10'}`}>
           <div ref={introRef} className="relative z-10 max-w-xl will-change-transform">
             <p className="eyebrow animate-fade-up">חותמות בהתאמה אישית · מוכנות תוך 2 דקות</p>
-            <h1 className="mt-2 animate-fade-up text-[2.15rem] leading-[1.1] font-extrabold sm:mt-3 sm:text-5xl lg:text-6xl lg:leading-[1.08]">
+            <h1 className="mt-2 animate-fade-up text-[2.15rem] leading-[1.1] max-[390px]:text-[1.9rem] font-extrabold sm:mt-3 sm:text-5xl lg:text-6xl lg:leading-[1.08]">
               מעצבים חותמת אונליין.
               <br />
               <span className="grad-text">אנחנו הופכים אותה למוצר אמיתי.</span>
             </h1>
-            <p className="mt-3 animate-fade-up text-base leading-7 text-muted sm:mt-5 sm:text-lg sm:leading-8">
+            <p className="mt-3 animate-fade-up text-base leading-7 text-muted max-[390px]:text-[15px] max-[390px]:leading-6 sm:mt-5 sm:text-lg sm:leading-8">
               בחרו חותמת, הוסיפו טקסט או לוגו, ראו את התוצאה בזמן אמת והזמינו ישירות לייצור.
             </p>
             <div className="mt-5 flex animate-fade-up gap-2.5 sm:mt-8 sm:flex-wrap sm:gap-3">
