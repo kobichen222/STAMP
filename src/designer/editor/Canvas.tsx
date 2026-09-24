@@ -409,7 +409,11 @@ export function Canvas({ design, render, selection, actions, view, onZoom, autoF
               return it.kind === 'path' ? (
                 <path {...common} d={toSvgD(it.path)} fillRule={it.fillRule} opacity={editing === it.id ? 0.25 : 1} />
               ) : (
-                <image {...common} href={it.href} width={1} height={1} preserveAspectRatio="none" transform={`matrix(${it.matrix.join(' ')})`} />
+                // The pop animation's transform-origin would also re-centre the image's own
+                // matrix (CSS applies it to the transform attribute) – keep them on separate nodes.
+                <g {...common}>
+                  <image href={it.href} width={1} height={1} preserveAspectRatio="none" transform={`matrix(${it.matrix.join(' ')})`} />
+                </g>
               );
             })}
             {/* Transparent hit areas for thin/small elements */}
