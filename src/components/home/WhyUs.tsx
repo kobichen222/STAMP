@@ -2,114 +2,71 @@ import Link from 'next/link';
 import { FaqList } from '@/components/site/FaqList';
 import { Icon } from '@/components/ui/Icon';
 import { SITE } from '@/lib/config';
-import type { FaqItem } from '@/lib/faq';
+import { WHY_FAQ } from '@/lib/faq';
 
-/** "Why only here" – the studio's story, split into questions and answers. */
-export const WHY_FAQ: FaqItem[] = [
-  {
-    q: 'למה רק אצלנו החותמת מוכנה תוך 2 דקות?',
-    a: 'כי מכונת הלייזר החכמה והחזקה ביותר בעולם נחתה סוף סוף ברמת גן, אחרי מאמצים רבים שהשקענו. יצרן המכונה הבטיח שזמן הייצור יימשך לכל היותר 20 שניות – ולא האמנו לו עד שראינו את המכונה בפעולה. היום, עם הטכנולוגיה הזו, אנחנו חוסכים לכם את כל כאב הראש שהיה כרוך בהכנת חותמת.',
-  },
-  {
-    q: 'איך הכינו חותמות לפני טכנולוגיית הלייזר?',
-    a: 'התהליך היה ארוך ומסורבל: קודם היה צריך לייצר גלופה מפולימר נוזלי – תהליך שנמשך שעה ויותר. לכן לא השתלם לייצר חותמת אחת, ואיחדו כמה הזמנות יחד. הלקוח היה צריך להגיע פעמיים כדי לקבל את ההזמנה – ואם נפלה טעות, גם פעם שלישית.',
-  },
-  {
-    q: 'צריך להזמין מראש? אני צריך חותמת דחופה',
-    a: 'הכנת חותמת דחופה היא כבר נחלת העבר – אצלנו כל החותמות "דחופות", כי כולן מיוצרות במקום תוך 2 דקות מרגע ההזמנה. לא משנה איך תקראו לזה: חותמת דחופה, חותמת מהירה או חותמת אקספרס – אין צורך להזמין מראש ולחכות כמה ימים.',
-  },
-  {
-    q: 'המהירות מייקרת את החותמת?',
-    a: 'לא. אצלנו מהירות היא סטנדרט עבודה קבוע, לא תוספת. להפך – עם הטכנולוגיה שלנו אתם מקבלים את החותמות הטובות ביותר בעולם במחיר רגיל. המחיר נקבע לפי גודל ודגם החותמת: חותמת גדולה וחותמת כיס קטנה אינן זהות בגודלן, ולכן גם המחיר שונה.',
-  },
-  {
-    q: 'מה ההבדל בין חותמת לייזר לחותמת מפולימר?',
-    a: 'חותמות לייזר כמו שלנו מצטיינות ברמת שחיקה כמעט אפסית. לחותמות מפולימר יש רמת שחיקה גבוהה מאוד – ולכן גם אורך החיים שלהן קצר בהרבה.',
-  },
-  {
-    q: 'מאיפה מגיעות החותמות והדיו?',
-    a: 'אנחנו לא מחזיקים חותמות תוצרת סין ולא מוכנים להתפשר על האיכות. כל החותמות שלנו מיוצרות באוסטריה על ידי חברת COLOP ועומדות בתקנים האירופיים המחמירים. גם הדיו – החלק החשוב ביותר – מיוצר במפעל המוביל באירופה, ללא פשרות על בטיחות השימוש. אצלנו תמצאו גם כריות דיו חלופיות לכל סוגי החותמות.',
-  },
-  {
-    q: 'אפשר להזמין חותמת אחת בלבד?',
-    a: 'בהחלט. אפשר להזמין כל כמות – גם חותמת אישית אחת. עורכי דין שסיימו עכשיו את ההסמכה יכולים לקבל את החותמת מיד, בלי זמן המתנה ובאיכות הגבוהה ביותר.',
-  },
-  {
-    q: 'לא בטוחים מה לכתוב או איך לעצב?',
-    a: 'כל חותמת מקבלת אצלנו יחס אישי, כולל ייעוץ לגבי התוכן הנדרש. אפשר לעצב לבד באתר, או לשלוח לנו את התוכן – נעצב לפי הדרישות שלכם, נשלח סקיצה לתיקונים, ורק כשתהיו מרוצים נבצע את ההזמנה. החותמת מוכנה תוך דקות מרגע האישור. חותמת עם כתובת העסק חוסכת המון זמן כתיבה ונותנת תוצאה אסתטית על כל מסמך.',
-  },
-  {
-    q: 'אתם מייצרים חותמת חתימה?',
-    a: 'כן. חותמת עם חתימה ידנית חוסכת זמן כשצריך לחתום על מסמכים רבים, או כשרוצים להשאיר את החתימה במשרד.',
-  },
-  {
-    q: 'אפשר לראות את מכונת הלייזר בפעולה?',
-    a: `אנחנו מזמינים אתכם לראות ולחוות את תהליך הייצור – משלב עימוד הגרפיקה ועד המוצר הסופי. זכרו: 2 דקות בלבד. הסטודיו נמצא ב${SITE.address}.`,
-  },
-  {
-    q: 'איך מקבלים את החותמת?',
-    a: `איסוף עצמי מ${SITE.address}. משלוח בגוש דן מגיע תוך שעות ספורות, ומחוץ לגוש דן – שליח עד הבית תוך יום או יומיים. מחפשים חותמות בתל אביב או במרכז? אנחנו היחידים שמספקים חותמת תוך 2 דקות.`,
-  },
-];
 
-/** Animated laser engraving a rubber plate (pure SVG + CSS, no JS). */
+/** Animated laser engraving a stamp plate (pure SVG + CSS, no JS) – in the site palette. */
 function LaserArt() {
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-ink to-[#15213d] p-6 text-white shadow-lift sm:p-8">
+    <div className="relative overflow-hidden rounded-3xl border border-line bg-gradient-to-b from-white to-blue-50 p-5 shadow-soft sm:p-6">
       <style>{`
         @keyframes laser-x { 0%,100% { transform: translateX(0) } 50% { transform: translateX(-236px) } }
         @keyframes laser-reveal { 0% { clip-path: inset(0 0 0 100%) } 70%,100% { clip-path: inset(0 0 0 0) } }
-        @keyframes laser-spark { 0%,100% { opacity: .2 } 50% { opacity: 1 } }
+        @keyframes laser-spark { 0%,100% { opacity: .35 } 50% { opacity: 1 } }
         .laser-head { animation: laser-x 4s ease-in-out infinite }
         .laser-text { animation: laser-reveal 4s linear infinite }
         .laser-spark { animation: laser-spark .18s linear infinite }
         @media (prefers-reduced-motion: reduce) { .laser-head, .laser-text, .laser-spark { animation: none } }
       `}</style>
-      <div className="flex items-center justify-between text-xs text-white/60">
+      <div className="flex items-center justify-between text-xs font-medium text-muted">
         <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-[#ff4d4d]" /> חריטת לייזר · בזמן אמת
+          <span className="h-2 w-2 animate-pulse rounded-full bg-blue" /> חריטת לייזר · בזמן אמת
         </span>
-        <span className="tabular-nums">00:20</span>
+        <span className="rounded-full bg-white px-2 py-0.5 tabular-nums ring-1 ring-line">00:20</span>
       </div>
-      <svg viewBox="0 0 320 170" className="mt-4 w-full" aria-hidden>
+      <svg viewBox="0 0 320 160" className="mt-3 w-full" aria-hidden>
+        <defs>
+          <linearGradient id="beam" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor="#2457ff" stopOpacity=".05" />
+            <stop offset="1" stopColor="#2457ff" stopOpacity=".85" />
+          </linearGradient>
+          <linearGradient id="plate" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor="#1c2a44" />
+            <stop offset="1" stopColor="#0b1426" />
+          </linearGradient>
+        </defs>
         {/* gantry */}
-        <rect x="20" y="16" width="280" height="8" rx="4" fill="#2a3a5e" />
+        <rect x="20" y="14" width="280" height="7" rx="3.5" fill="#dfe6f2" />
         <g className="laser-head" style={{ transformBox: 'view-box' }}>
-          <rect x="262" y="10" width="30" height="26" rx="5" fill="#dfe6f2" />
-          <rect x="272" y="36" width="10" height="10" rx="2" fill="#9aa8c2" />
-          <path d="M277 46 L271 118 L283 118 Z" fill="url(#beam)" />
-          <circle cx="277" cy="118" r="5" fill="#ff6b6b" className="laser-spark" />
-          <circle cx="277" cy="118" r="12" fill="#ff4d4d" opacity=".25" className="laser-spark" />
+          <rect x="262" y="8" width="30" height="24" rx="6" fill="#0b1426" />
+          <rect x="268" y="13" width="18" height="4" rx="2" fill="#2457ff" />
+          <rect x="272" y="32" width="10" height="9" rx="2" fill="#5b6678" />
+          <path d="M277 41 L272 108 L282 108 Z" fill="url(#beam)" />
+          <circle cx="277" cy="108" r="11" fill="#2457ff" opacity=".2" className="laser-spark" />
+          <circle cx="277" cy="108" r="4" fill="#fff" stroke="#2457ff" strokeWidth="2" className="laser-spark" />
         </g>
-        {/* rubber plate */}
-        <rect x="40" y="94" width="240" height="56" rx="6" fill="#6f2923" />
-        <rect x="46" y="100" width="228" height="44" rx="3" fill="#7e2f29" />
+        {/* plate */}
+        <rect x="40" y="86" width="240" height="58" rx="8" fill="url(#plate)" />
         <g className="laser-text">
-          <rect x="52" y="105" width="216" height="34" rx="2" fill="none" stroke="#e7b7a8" strokeWidth="2.5" />
-          <text x="160" y="122" textAnchor="middle" fontSize="15" fontWeight="800" fill="#e7b7a8" style={{ fontFamily: 'Heebo, Arial' }}>
+          <rect x="50" y="94" width="220" height="42" rx="3" fill="none" stroke="#fff" strokeWidth="2.5" />
+          <text x="160" y="114" textAnchor="middle" fontSize="15" fontWeight="800" fill="#fff" style={{ fontFamily: 'Heebo, Arial' }}>
             ישראל ישראלי
           </text>
-          <text x="160" y="135" textAnchor="middle" fontSize="9" fill="#e7b7a8" style={{ fontFamily: 'Heebo, Arial' }}>
+          <text x="160" y="128" textAnchor="middle" fontSize="9" fill="#c7d4ff" style={{ fontFamily: 'Heebo, Arial' }}>
             עורך דין ונוטריון · מ.ר. 12345
           </text>
         </g>
-        <defs>
-          <linearGradient id="beam" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="#ff4d4d" stopOpacity=".1" />
-            <stop offset="1" stopColor="#ff4d4d" stopOpacity=".9" />
-          </linearGradient>
-        </defs>
       </svg>
-      <p className="mt-3 text-center text-sm text-white/70">הגומי נחרט ישירות מהקובץ – בלי גלופה, בלי המתנה.</p>
-      <div className="mt-6 grid grid-cols-3 gap-2 text-center">
+      <p className="mt-2 text-center text-sm text-muted">הגומי נחרט ישירות מהקובץ – בלי גלופה, בלי המתנה.</p>
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
         {[
           ['20', 'שניות ייצור'],
           ['2', 'דקות עד חותמת ביד'],
           ['100%', 'תוצרת אוסטריה'],
         ].map(([n, l]) => (
-          <div key={l} className="rounded-2xl bg-white/5 px-2 py-3 ring-1 ring-white/10">
-            <p className="text-3xl font-extrabold tabular-nums">{n}</p>
-            <p className="mt-0.5 text-[11px] leading-4 text-white/60">{l}</p>
+          <div key={l} className="rounded-2xl bg-white px-2 py-3 ring-1 ring-line">
+            <p className="text-2xl font-extrabold text-blue tabular-nums sm:text-3xl">{n}</p>
+            <p className="mt-0.5 text-[11px] leading-4 text-muted">{l}</p>
           </div>
         ))}
       </div>
@@ -152,7 +109,17 @@ export function WhyUs() {
           </div>
         </div>
         <div className="self-start">
-          <FaqList items={WHY_FAQ} schema={false} openFirst />
+          <FaqList items={WHY_FAQ.slice(0, 5)} schema={false} openFirst compact />
+          <details className="group/more mt-3">
+            <summary className="flex cursor-pointer list-none items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold text-blue marker:hidden hover:bg-blue-50">
+              <span className="group-open/more:hidden">עוד {WHY_FAQ.length - 5} שאלות</span>
+              <span className="hidden group-open/more:inline">פחות שאלות</span>
+              <Icon name="chevronDown" size={16} className="transition group-open/more:rotate-180" />
+            </summary>
+            <div className="mt-2">
+              <FaqList items={WHY_FAQ.slice(5)} schema={false} compact />
+            </div>
+          </details>
         </div>
       </div>
     </section>

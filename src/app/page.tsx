@@ -5,11 +5,11 @@ import { AboutSection } from '@/components/home/AboutSection';
 import { HowItWorks } from '@/components/home/HowItWorks';
 import { StampHero } from '@/components/home/StampHero';
 import { TemplateStrip } from '@/components/home/TemplateStrip';
-import { WHY_FAQ, WhyUs } from '@/components/home/WhyUs';
+import { WhyUs } from '@/components/home/WhyUs';
 import { FaqList } from '@/components/site/FaqList';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES, categoryCard } from '@/lib/catalog';
-import { FAQ, faqJsonLd } from '@/lib/faq';
+import { FAQ, faqJsonLd, WHY_FAQ } from '@/lib/faq';
 
 export const metadata: Metadata = { alternates: { canonical: '/' } };
 
@@ -17,7 +17,9 @@ const HOME_CATEGORIES = ['business', 'personal', 'doctors', 'lawyers', 'company'
 
 export default function HomePage() {
   const cats = HOME_CATEGORIES.map((s) => CATEGORIES.find((c) => c.slug === s)!).map(categoryCard);
-  const faq = FAQ.flatMap((f) => f.items.slice(0, 1)).slice(0, 6);
+  const faq = FAQ.filter((f) => f.id !== 'why')
+    .flatMap((f) => f.items.slice(0, 1))
+    .slice(0, 6);
   return (
     <>
       <StampHero />
