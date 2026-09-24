@@ -1,0 +1,101 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: var(--font-heebo), 'Heebo', system-ui, sans-serif;
+  --color-ink: #0b1426;
+  --color-ink-2: #1c2a44;
+  --color-muted: #5b6678;
+  --color-line: #e3e8ef;
+  --color-surface: #f5f7fa;
+  --color-blue: #2457ff;
+  --color-blue-600: #1a44d6;
+  --color-blue-50: #eef3ff;
+  --color-violet: #7b4dff;
+  --color-ok: #12a150;
+  --color-warn: #d98a00;
+  --color-bad: #d6283b;
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
+  --shadow-soft: 0 1px 2px rgb(11 20 38 / 0.04), 0 8px 24px rgb(11 20 38 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(11 20 38 / 0.06), 0 18px 48px rgb(11 20 38 / 0.12);
+  --animate-pop: pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  --animate-fade-up: fade-up 0.5s ease both;
+  @keyframes pop {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  @keyframes fade-up {
+    from { transform: translateY(12px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+}
+
+@layer base {
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body { @apply bg-white text-ink antialiased; font-feature-settings: 'kern'; }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-blue; }
+  h1, h2, h3 { @apply tracking-tight text-balance; }
+  ::selection { @apply bg-blue/15; }
+}
+
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+@utility container-x {
+  @apply mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[15px] font-medium transition duration-200 select-none disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98];
+}
+@utility btn-primary {
+  @apply btn bg-blue text-white shadow-[0_6px_20px_-6px_rgb(36_87_255/0.6)] hover:bg-blue-600;
+}
+@utility btn-dark {
+  @apply btn bg-ink text-white hover:bg-ink-2;
+}
+@utility btn-ghost {
+  @apply btn text-ink hover:bg-surface;
+}
+@utility btn-outline {
+  @apply btn border border-line bg-white text-ink hover:border-ink/30;
+}
+@utility btn-lg {
+  @apply px-7! py-3.5! text-base!;
+}
+@utility btn-sm {
+  @apply px-3.5! py-1.5! text-sm!;
+}
+@utility card {
+  @apply rounded-2xl border border-line bg-white;
+}
+@utility eyebrow {
+  @apply text-[13px] font-semibold tracking-wide text-blue;
+}
+@utility input {
+  @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-[15px] outline-none transition placeholder:text-muted/70 focus:border-blue focus:ring-4 focus:ring-blue/10;
+}
+@utility label {
+  @apply mb-1.5 block text-sm font-medium text-ink-2;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-sm transition hover:border-ink/30;
+}
+@utility chip-on {
+  @apply border-ink bg-ink text-white hover:border-ink;
+}
+@utility prose-he {
+  @apply text-[16.5px] leading-8 text-ink-2;
+  & p { @apply my-4; }
+  & a { @apply text-blue underline underline-offset-4; }
+  & h2 { @apply mt-10 mb-3 text-2xl font-bold text-ink; }
+  & h3 { @apply mt-8 mb-2 text-xl font-bold text-ink; }
+  & ul { @apply my-4 list-disc ps-6; }
+  & ol { @apply my-4 list-decimal ps-6; }
+  & img { @apply my-6 rounded-xl; }
+  & strong { @apply font-semibold text-ink; }
+}
+@utility grad-text {
+  @apply bg-gradient-to-l from-blue to-violet bg-clip-text text-transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

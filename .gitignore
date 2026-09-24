@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+.vercel
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+# Raw WordPress export (contains user e-mails) – keep it out of git
+wordpress-export/
+# Media downloaded from the old site is large; commit it only if you want it versioned
+# public/wp-content/

@@ -1,0 +1,54 @@
+{
+  "name": "stamp2go",
+  "version": "1.0.0",
+  "description": "Stamp2Go – אתר חותמות ומערכת לעיצוב חותמות אונליין",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "import:wp": "node scripts/import-wordpress.mjs",
+    "media:download": "node scripts/download-media.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kobichen222/STAMP.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kobichen222/STAMP/issues"
+  },
+  "homepage": "https://github.com/kobichen222/STAMP#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.1",
+    "imagetracerjs": "^1.2.6",
+    "next": "^15.5.26",
+    "opentype.js": "^2.0.0",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "@fontsource/alef": "^5.3.0",
+    "@fontsource/assistant": "^5.3.0",
+    "@fontsource/david-libre": "^5.3.0",
+    "@fontsource/frank-ruhl-libre": "^5.3.0",
+    "@fontsource/heebo": "^5.3.0",
+    "@fontsource/rubik": "^5.3.0",
+    "@fontsource/secular-one": "^5.3.0",
+    "@fontsource/suez-one": "^5.3.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.6.2",
+    "@types/opentype.js": "^1.3.10",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "fast-xml-parser": "^5.11.1",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.1"
+  },
+  "private": true
+}
