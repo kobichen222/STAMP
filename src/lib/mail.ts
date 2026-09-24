@@ -14,6 +14,8 @@ export interface Attachment {
 }
 
 export interface Mail {
+  /** Defaults to the studio inbox (ORDERS_EMAIL_TO). */
+  to?: string[];
   subject: string;
   html: string;
   replyTo?: string;
@@ -24,7 +26,7 @@ export class MailNotConfiguredError extends Error {}
 
 export async function sendMail(mail: Mail): Promise<void> {
   const key = process.env.RESEND_API_KEY;
-  const to = (process.env.ORDERS_EMAIL_TO || 'mira@stamp2go.co.il').split(',').map((s) => s.trim());
+  const to = mail.to ?? (process.env.ORDERS_EMAIL_TO || 'mira@stamp2go.co.il').split(',').map((s) => s.trim());
   const from = process.env.MAIL_FROM || 'Stamp2Go <onboarding@resend.dev>';
 
   if (!key) {

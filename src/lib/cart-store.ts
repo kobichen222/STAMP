@@ -15,6 +15,7 @@ export interface CartItem {
   ink: InkColor;
   bodyColor?: string;
   quantity: number;
+  /** Base list price per unit; quantity tiers are applied by the pricing engine. */
   unitPrice: number | null;
   /** Id of the design in "my designs", if saved. */
   designId?: string;

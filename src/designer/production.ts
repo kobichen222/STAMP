@@ -52,13 +52,19 @@ export interface ProductionMeta {
   createdAt?: string;
 }
 
-/** ORD-1824_KOBI-COHEN_58x22_BLACK */
+const HEB: Record<string, string> = {
+  א: 'A', ב: 'B', ג: 'G', ד: 'D', ה: 'H', ו: 'V', ז: 'Z', ח: 'CH', ט: 'T', י: 'Y', כ: 'K', ך: 'K', ל: 'L', מ: 'M', ם: 'M',
+  נ: 'N', ן: 'N', ס: 'S', ע: 'E', פ: 'P', ף: 'F', צ: 'TZ', ץ: 'TZ', ק: 'K', ר: 'R', ש: 'SH', ת: 'T',
+};
+
+/** ORD-1824_KOBI-COHEN_58x22_BLACK – ASCII only, so it survives any OS / CorelDRAW / machine software. */
 export function productionBaseName(meta: Pick<ProductionMeta, 'orderId' | 'customer' | 'width' | 'height' | 'ink'>): string {
   const clean = (s: string) =>
     s
       .normalize('NFKD')
-      .replace(/[֑-ׇ]/g, '')
-      .replace(/[^\p{L}\p{N}]+/gu, '-')
+      .replace(/[\u0591-\u05C7]/g, '')
+      .replace(/[\u05D0-\u05EA]/g, (c) => HEB[c] ?? '')
+      .replace(/[^A-Za-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .toUpperCase()
       .slice(0, 30);

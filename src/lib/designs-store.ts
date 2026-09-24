@@ -11,6 +11,7 @@ export interface SavedDesign {
   size: string;
   design: Design;
   previewSvg: string;
+  price?: number | null;
   updatedAt: string;
   versions: { at: string; design: Design }[];
 }

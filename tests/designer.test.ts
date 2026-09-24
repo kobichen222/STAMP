@@ -130,3 +130,9 @@ describe('production files', () => {
     );
   });
 });
+
+describe('file naming', () => {
+  it('transliterates Hebrew customer names', () => {
+    expect(productionBaseName({ orderId: 'ORD-260924-AB12', customer: 'קובי כהן', width: 58, height: 22, ink: 'blue' })).toBe('ORD-260924-AB12_KVBY-KHN_58x22_BLUE');
+  });
+});

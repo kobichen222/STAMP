@@ -86,7 +86,7 @@ export function Header() {
         <div className="ms-auto flex items-center gap-1.5">
           <Link href="/account/" className="btn-ghost hidden !px-3 sm:inline-flex" aria-label="האזור שלי">
             <Icon name="user" size={19} />
-            <span className="hidden xl:inline">האזור שלי</span>
+            <span className="hidden 2xl:inline">האזור שלי</span>
           </Link>
           <Link href="/cart/" className="btn-ghost relative !px-3" aria-label={`סל קניות (${cartCount})`}>
             <Icon name="cart" size={20} />

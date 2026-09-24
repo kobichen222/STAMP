@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   poweredByHeader: false,
   images: { unoptimized: true },
+  // The server-side production engine reads the stamp fonts from disk.
+  outputFileTracingIncludes: {
+    '/api/orders': ['./public/fonts/stamp/**'],
+    '/admin/orders/[id]': ['./public/fonts/stamp/**'],
+  },
   async redirects() {
     return [
       // WooCommerce account area → new personal area.

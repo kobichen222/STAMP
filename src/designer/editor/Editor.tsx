@@ -159,6 +159,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
           size: formatSize(model),
           design,
           previewSvg: render ? toProductionSvg(render) : '',
+          price: product.price,
         },
         snapshot,
       );
@@ -285,7 +286,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
           ink: d.inkColor,
           bodyColor,
           quantity: 1,
-          unitPrice: quote.onRequest ? null : quoteLine({ basePrice: product.price, quantity: 1, ink: d.inkColor, body: bodyColor, hasLogo }).unitPrice,
+          unitPrice: product.price,
         });
       }
       router.push('/cart/?added=' + list.length);
@@ -308,7 +309,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
       ink: design.inkColor,
       bodyColor,
       quantity: qty,
-      unitPrice: quote.onRequest ? null : quote.unitPrice,
+      unitPrice: product.price,
       designId,
     });
     router.push('/cart/?added=1');
