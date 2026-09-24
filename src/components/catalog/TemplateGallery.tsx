@@ -71,5 +71,5 @@ export function TemplateGallery({ items, filters, cta = 'החל תבנית' }: {
   );
 }
 
-export const TEMPLATE_ITEMS: GalleryItem[] = TEMPLATES.filter((t) => !t.withLogo).map((t) => ({ id: t.id, template: t, label: t.name, tags: [t.category] }));
+export const TEMPLATE_ITEMS: GalleryItem[] = TEMPLATES.filter((t) => !t.withLogo || t.content.logo).map((t) => ({ id: t.id, template: t, label: t.name, tags: [t.category] }));
 export { TEMPLATE_CATEGORIES };

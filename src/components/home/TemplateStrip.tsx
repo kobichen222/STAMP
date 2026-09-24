@@ -9,8 +9,7 @@ import type { StampModel } from '@/designer/types';
 
 const RECT: StampModel = { id: 'print-40', name: 'PRINT 40', shape: 'rect', width: 58, height: 22 };
 const ROUND: StampModel = { id: 'print-r-540', name: 'R 540', shape: 'round', width: 40, height: 40 };
-// Logo-only templates are empty until a logo is uploaded – not useful as a preview.
-const LIST = TEMPLATES.filter((t) => t.content.lines.length || t.content.arcTop);
+const LIST = TEMPLATES.filter((t) => t.content.lines.length || t.content.arcTop || t.content.logo);
 const CATS = TEMPLATE_CATEGORIES.filter((c) => LIST.some((t) => t.category === c.id));
 const AUTOPLAY_MS = 3200;
 

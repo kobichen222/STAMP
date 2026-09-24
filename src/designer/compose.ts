@@ -136,8 +136,11 @@ export function composeLayout(model: StampModel, content: LayoutContent, style: 
     const c = W / 2;
     d.border = { style: style === 'classic' ? 'double' : style === 'minimal' ? 'minimal' : 'circle', thickness: 0.7, inset: 0.3, gap: 0.5 };
     const borderW = d.border.style === 'double' ? 0.3 + 0.7 + 0.5 + 0.42 : 0.3 + 0.7;
-    const ring = W * 0.16;
-    const ringSizeMm = ring * 0.62;
+    // Arc text never goes below the production minimum: on small stamps the
+    // ring grows instead (unchanged from ~22mm up).
+    const minTextMm = MIN_FONT_PT * PT_TO_MM;
+    const ringSizeMm = Math.max(W * 0.16 * 0.62, minTextMm);
+    const ring = ringSizeMm / 0.62;
     const arcTop = content.arcTop ?? (lines.length > 2 ? lines.shift() : undefined);
     const arcBottom = content.arcBottom ?? (lines.length > 2 ? lines.pop() : undefined);
     const capApprox = ringSizeMm * 0.72;
@@ -153,7 +156,7 @@ export function composeLayout(model: StampModel, content: LayoutContent, style: 
     }
     if (arcBottom) {
       els.push({
-        ...newText(d, arcBottom, { font, size: round1((ringSizeMm * 0.9) / PT_TO_MM) }),
+        ...newText(d, arcBottom, { font, size: round1(Math.max(ringSizeMm * 0.9, minTextMm) / PT_TO_MM) }),
         x: c,
         y: c,
         maxWidth: 0,
@@ -189,12 +192,15 @@ export function composeLayout(model: StampModel, content: LayoutContent, style: 
     let box = { x: pad, y: pad, w: W - 2 * pad, h: H - 2 * pad };
 
     if (content.logo) {
-      const lsize = box.h;
+      // Date stamps keep the middle window free: the logo sits beside the top text block only.
+      const bandH = model.dateBand ? Math.max(5, H * 0.26) : 0;
+      const lsize = model.dateBand ? (box.h - bandH) / 2 - 0.4 : box.h;
       const aspect = content.logo.height / content.logo.width;
       const lw = Math.min(lsize / aspect, W * 0.35);
       // RTL reading: logo on the right for classic, on the left for modern.
       const lx = style === 'modern' ? box.x + lw / 2 : box.x + box.w - lw / 2;
-      els.push({ ...content.logo, width: round1(lw), height: round1(lw * aspect), x: round1(lx), y: H / 2 });
+      const ly = model.dateBand ? box.y + lsize / 2 : H / 2;
+      els.push({ ...content.logo, width: round1(lw), height: round1(lw * aspect), x: round1(lx), y: round1(ly) });
       box = style === 'modern' ? { ...box, x: box.x + lw + 1.2, w: box.w - lw - 1.2 } : { ...box, w: box.w - lw - 1.2 };
     }
 

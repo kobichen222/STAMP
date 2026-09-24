@@ -40,7 +40,8 @@ export function TemplatesPanel() {
 
   const apply = (t: StampTemplate) => {
     const logo = design.elements.find((e): e is ImageElement => e.type === 'image') ?? null;
-    const { design: next, dropped } = composeForProduction(model, { ...t.content, logo: t.withLogo ? logo : null }, t.style, resolveFace, profile);
+    // The customer's own logo wins; otherwise the template's sample logo is used.
+    const { design: next, dropped } = composeForProduction(model, { ...t.content, logo: t.withLogo ? (logo ?? t.content.logo ?? null) : null }, t.style, resolveFace, profile);
     actions.set({
       ...next,
       inkColor: design.inkColor,
@@ -48,7 +49,7 @@ export function TemplatesPanel() {
     });
     toast(
       t.withLogo && !logo
-        ? 'התבנית הוחלה – העלו לוגו בלשונית "לוגו"'
+        ? 'התבנית הוחלה עם לוגו לדוגמה – החליפו אותו בלשונית "לוגו"'
         : dropped.length
           ? `התבנית הותאמה לגודל החותמת (${dropped.length === 1 ? 'שורה אחת הוסרה' : `${dropped.length} שורות הוסרו`})`
           : 'התבנית הוחלה · אפשר לבטל עם Undo',
