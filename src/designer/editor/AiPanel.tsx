@@ -10,7 +10,7 @@ import { isProductionReady, validateDesign } from '../validate';
 import { Section } from './controls';
 import { useEditor } from './context';
 
-const KIND_LABEL: Record<RequiredItem['kind'], string> = { name: 'שם', phone: 'טלפון', email: 'מייל', url: 'אתר', number: 'מספר', address: 'כתובת', quote: 'טקסט' };
+const KIND_LABEL: Record<RequiredItem['kind'], string> = { name: 'שם', phone: 'טלפון', email: 'מייל', url: 'אתר', number: 'מספר', address: 'כתובת', quote: 'טקסט', text: 'טקסט' };
 
 function SuggestionCard({ s, required, onApply }: { s: Suggestion; required: RequiredItem[]; onApply: () => void }) {
   const { model, resolveFace, design, profile } = useEditor();

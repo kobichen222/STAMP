@@ -11,52 +11,107 @@ export interface Suggestion {
 // stamp exactly (names, numbers, phones, e-mail, website, address, quotes).
 // --------------------------------------------------------------------------
 
-export type RequiredKind = 'name' | 'phone' | 'email' | 'url' | 'number' | 'address' | 'quote';
+export type RequiredKind = 'name' | 'phone' | 'email' | 'url' | 'number' | 'address' | 'quote' | 'text';
 export interface RequiredItem {
   kind: RequiredKind;
   /** Exact text as the customer wrote it. */
   value: string;
-  /** Conventional prefix for numbers ("מ.ר.", "ח.פ." …) when the customer gave one. */
+  /** Prefix the customer asked for ("מ.ר.", "ח.פ.", "טל׳" …) – never invented. */
   label?: string;
 }
 
-const HEB_WORD = '[\\u0590-\\u05FF"׳״\'-]+';
-const NAME_STOP = /^(?:עם|ו?טלפון|ו?נייד|ו?מספר|ו?כתובת|ו?ברחוב|ו?רחוב|ו?מייל|ו?אתר|ו?רישיון|ו?ח\.?פ|ו?ע\.?מ|ו?ת\.?ז|ו?מ\.?ר|שהוא|שהיא|בתל|ברמת|בירושלים|בחיפה|ב?עיר|לחותמת|ל?עסק|עגולה|מלבנית|ו)$/;
+const HEB_WORD = '[֐-׿"׳״\'-]+';
+const NAME_STOP = /^(?:עם|ו?טלפון|ו?נייד|ו?מספר|ו?כתובת|ו?ברחוב|ו?רחוב|ו?מייל|ו?אתר|ו?רישיון|ו?ח\.?פ|ו?ע\.?מ|ו?ת\.?ז|ו?מ\.?ר|שהוא|שהיא|לחותמת|עגולה|מלבנית|ו)$/;
 const NUMBER_LABELS: [RegExp, string][] = [
-  [/(?:ח\.?\s?פ\.?|חברה\s+פרטית|מספר\s+חברה)\s*:?\s*$/, 'ח.פ.'],
+  [/(?:ח\.?\s?פ\.?|מספר\s+חברה)\s*:?\s*$/, 'ח.פ.'],
   [/(?:ע\.?\s?מ\.?|עוסק\s+מורשה)\s*:?\s*$/, 'ע.מ.'],
+  [/(?:ע["״]ר)\s*:?\s*$/, 'ע״ר'],
   [/(?:ת\.?\s?ז\.?|תעודת\s+זהות)\s*:?\s*$/, 'ת.ז.'],
-  [/(?:מ\.?\s?ר\.?|רישיון|מספר\s+רישיון|רשיון)\s*:?\s*$/, 'מ.ר.'],
+  [/(?:מ\.?\s?ר\.?|מספר\s+רישיון|רישיון|רשיון)\s*:?\s*$/, 'מ.ר.'],
 ];
+const PHONE_WORDS: [RegExp, string][] = [
+  [/(?:פקס)\s*:?\s*$/, 'פקס'],
+  [/(?:טלפון|טל[׳'.]?|נייד|פלאפון|סלולרי|וואטסאפ)\s*:?\s*$/, 'טל׳'],
+];
+/** Request words – how people ask for a stamp, not text to print. */
+const STOP = new Set(
+  'אני צריך צריכה רוצה מבקש מבקשת להזמין ליצור לעצב חותמת חותמות עגולה מלבנית קטנה גדולה עבור עבורי של בשם עם גם וגם שיהיה יהיה שכתוב כתוב עליה בה לי את בבקשה תודה טלפון נייד מספר רישיון כתובת מייל אתר פקס חברה לחברה עסק לעסק פרטים הפרטים שלי כמו דוגמה הבאים הבא הזה הזו זה זו כיתוב הכיתוב טקסט הטקסט תוכן התוכן שורה שורות ובה'.split(' '),
+);
+const isStop = (w: string) => {
+  const bare = w.replace(/[:,.]+$/, '');
+  return STOP.has(bare) || STOP.has(bare.replace(/^ו/, '')) || /^[-–—:.,;!?'"״׳()]+$/.test(w);
+};
 
 /** Normalise for comparison: ignore spaces, dashes, dots, quotes/geresh and case. */
 export const normalize = (s: string) => s.replace(/[\s\-–—.,:;"'`״׳()/\\]/g, '').toLowerCase();
 const digits = (s: string) => s.replace(/\D/g, '');
+const MASK = '\u0001';
 
+/**
+ * Every concrete thing the customer wrote, in their order: recognised details
+ * (numbers with their label, phones, e-mail, website, address, quotes, name)
+ * and – so nothing is ever lost – any remaining words that aren't request
+ * words ("אני צריך חותמת…") as free text.
+ */
 export function extractRequired(prompt: string): RequiredItem[] {
-  let text = ` ${prompt.replace(/\s+/g, ' ').trim()} `;
-  const out: RequiredItem[] = [];
-  const take = (re: RegExp, kind: RequiredKind, group = 0) => {
-    text = text.replace(re, (...m) => {
-      const v = String(m[group]).trim();
-      if (v && !out.some((o) => normalize(o.value) === normalize(v))) out.push({ kind, value: v });
-      return ' ';
-    });
+  const src = prompt.replace(/\s+/g, ' ').trim();
+  let text = src; // consumed characters are masked, so offsets stay stable
+  const items: (RequiredItem & { at: number })[] = [];
+  const mask = (start: number, len: number) => (text = text.slice(0, start) + MASK.repeat(len) + text.slice(start + len));
+  const push = (item: RequiredItem, at: number) => {
+    if (!items.some((o) => normalize(o.value) === normalize(item.value))) items.push({ ...item, at });
   };
+  const each = (re: RegExp, fn: (m: RegExpMatchArray) => void) => [...text.matchAll(re)].forEach(fn);
+  /** Label right before `at` (e.g. "מ.ר", "טלפון:"): returns it and masks it. */
+  const labelBefore = (at: number, table: [RegExp, string][]) => {
+    const from = Math.max(0, at - 24);
+    const before = text.slice(from, at);
+    for (const [re, label] of table) {
+      const m = re.exec(before);
+      if (m) {
+        mask(from + m.index, m[0].length);
+        return label;
+      }
+    }
+    return undefined;
+  };
+
   // Quoted text – but not the geresh of abbreviations like עו"ד (quote must follow a space).
-  take(/(?<=^|[\s:(])["“]([^"“”]{2,80}?)["”](?=$|[\s,.;:)!?])/g, 'quote', 1);
-  take(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, 'email');
-  take(/(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:co\.il|org\.il|gov\.il|ac\.il|com|org|net|il|co|io)(?:\/[^\s]*)?/gi, 'url');
-  take(/\+?972[-\s]?\d{1,2}[-\s]?\d{3}[-\s]?\d{4}|0\d{1,2}[-\s]?\d{3}[-\s]?\d{4}|0\d{1,2}-?\d{7}|\*\d{4}/g, 'phone');
-  take(/(?:ב?כתובת|ב?רחוב|רח[׳'])\s*:?\s*([^,.\n]{2,40}?\d{1,4}(?:\s*,\s*[֐-׿ ]{2,20}?)?)(?=$|[\s,.;])/g, 'address', 1);
-  // Numbers (IDs, licences) with their conventional label when given.
-  text = text.replace(/\d{2,}(?:[-/]\d+)+|\d{3,}/g, (num, offset: number) => {
-    const before = text.slice(Math.max(0, offset - 22), offset);
-    const label = NUMBER_LABELS.find(([re]) => re.test(before))?.[1];
-    if (!out.some((o) => digits(o.value) === digits(num))) out.push({ kind: 'number', value: num, label });
-    return ' ';
+  each(/(?<=^|[\s:(])["“]([^"“”]{2,80}?)["”](?=$|[\s,.;:)!?])/g, (m) => {
+    push({ kind: 'quote', value: m[1].trim() }, m.index!);
+    mask(m.index!, m[0].length);
   });
-  // A name: "בשם X Y", "של X Y", "עבור X Y" (up to 3 words, stops at connector words).
+  each(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, (m) => {
+    push({ kind: 'email', value: m[0] }, m.index!);
+    mask(m.index!, m[0].length);
+  });
+  each(/(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:co\.il|org\.il|gov\.il|ac\.il|com|org|net|il|co|io)(?:\/[^\s,]*)?/gi, (m) => {
+    push({ kind: 'url', value: m[0] }, m.index!);
+    mask(m.index!, m[0].length);
+  });
+  each(/(?:ב?כתובת|ב?רחוב|רח[׳'])\s*:?\s*([^,.\n\u0001]{2,40}?\d{1,4}(?:\s*,\s*[֐-׿ ]{2,20}?)?)(?=$|[\s,.;])/g, (m) => {
+    push({ kind: 'address', value: m[1].trim() }, m.index!);
+    mask(m.index!, m[0].length);
+  });
+  // Phones – unless the number carries an ID/licence label (then it's a number).
+  each(/\+?972[-\s]?\d{1,2}[-\s]?\d{3}[-\s]?\d{4}|0\d{1,2}[-\s]?\d{3}[-\s]?\d{4}|0\d{1,2}-?\d{7}|\*\d{4}/g, (m) => {
+    const at = m.index!;
+    const ctx = text.slice(Math.max(0, at - 24), at);
+    if (NUMBER_LABELS.some(([re]) => re.test(ctx))) return;
+    const label = labelBefore(at, PHONE_WORDS);
+    // An unlabelled 9-digit number that isn't formatted like a phone stays a plain number.
+    if (!label && !/[-\s]/.test(m[0]) && digits(m[0]).length < 10) return;
+    push({ kind: 'phone', value: m[0], label }, at);
+    mask(at, m[0].length);
+  });
+  // Numbers (IDs, licences, dates…) with the label the customer wrote.
+  each(/\d{2,}(?:[-/]\d+)+|\d{3,}/g, (m) => {
+    const at = m.index!;
+    const label = labelBefore(at, NUMBER_LABELS) ?? labelBefore(at, PHONE_WORDS);
+    push({ kind: label === 'טל׳' || label === 'פקס' ? 'phone' : 'number', value: m[0], label }, at);
+    mask(at, m[0].length);
+  });
+  // A name after "בשם / של / עבור" (up to 3 words, stops at connector words).
   const nameMatch = new RegExp(`(?:בשם|של|עבור|שם:)\\s+((?:${HEB_WORD}\\s*){1,4})`).exec(text);
   if (nameMatch) {
     const words: string[] = [];
@@ -65,9 +120,23 @@ export function extractRequired(prompt: string): RequiredItem[] {
       words.push(w.replace(/[,.]$/, ''));
     }
     const name = words.join(' ');
-    if (name.length >= 2 && !out.some((o) => normalize(o.value) === normalize(name))) out.unshift({ kind: 'name', value: name });
+    if (name.length >= 2) {
+      push({ kind: 'name', value: name }, nameMatch.index);
+      mask(nameMatch.index, nameMatch[0].indexOf(words[0]) + name.length);
+    }
   }
-  return out;
+  // Everything else the customer wrote: free text, in order (never dropped).
+  const segRe = /[^\u0001,;|\n]+/g;
+  for (const m of text.matchAll(segRe)) {
+    const words = m[0].trim().split(/\s+/).filter(Boolean);
+    while (words.length && isStop(words[0])) words.shift();
+    while (words.length && isStop(words[words.length - 1])) words.pop();
+    // "לעורך דין" → "עורך דין"
+    if (words.length && /^ל(?:עור[כך]|רופא|רוא|מהנדס|פסיכולוג|מורה|נוטריון|גנן|מספר[הת]|מאפי|סטודיו|מוסך|משרד)/.test(words[0])) words[0] = words[0].slice(1);
+    const value = words.join(' ').replace(/^[-–:.,]+|[-–:,]+$/g, '').trim();
+    if (value.length >= 2 && /[א-תa-z]/i.test(value)) push({ kind: 'text', value }, m.index!);
+  }
+  return items.sort((x, y) => x.at - y.at).map(({ at: _at, ...r }) => r);
 }
 
 /** All text on a layout, one entry per line/arc. */
@@ -89,9 +158,7 @@ export const missingRequired = (c: LayoutContent, required: RequiredItem[]) => r
 
 /** Line text for a required item that has to be added. */
 export function requiredLine(item: RequiredItem) {
-  if (item.kind === 'phone') return `טל׳ ${item.value}`;
-  if (item.kind === 'number' && item.label) return `${item.label} ${item.value}`;
-  return item.value;
+  return item.label ? `${item.label} ${item.value}` : item.value;
 }
 
 /** Adds any required item that is missing (as its own line) – nothing the customer asked for is lost. */
@@ -135,16 +202,6 @@ export function exactSuggestion(prompt: string, round = false): Suggestion | nul
 // Rule-based fallback (works offline / without an API key)
 // --------------------------------------------------------------------------
 
-// Only titles the customer actually wrote (no invented "מומחה" etc.).
-const PROFESSIONS: { match: RegExp; title: (m: string) => string; prefix?: string }[] = [
-  { match: /עורכ?ת\s*דין/, title: () => 'עורכת דין', prefix: 'עו״ד' },
-  { match: /עורך\s*דין/, title: () => 'עורך דין', prefix: 'עו״ד' },
-  { match: /נוטריון/, title: () => 'נוטריון' },
-  { match: /רופא(?:ת|ה)?(?:\s+[\u0590-\u05FF]+)?/, title: (m) => m.replace(/^ל/, ''), prefix: 'ד״ר' },
-  { match: /רואה\s*חשבון|רו["״]ח/, title: () => 'רואה חשבון' },
-  { match: /מהנדס(?:ת)?(?:\s+[\u0590-\u05FF]+)?/, title: (m) => m },
-];
-// ("חברה" / "עסק" describe the kind of stamp, not text to print – never added.)
 
 /**
  * Pulls every concrete detail out of a free-text request and lays it out in
@@ -162,21 +219,14 @@ export function suggestLocally(prompt: string): Suggestion[] {
 
   const text = prompt.replace(/\s+/g, ' ').trim();
   const required = extractRequired(text);
-  const profMatch = PROFESSIONS.map((p) => ({ p, m: p.match.exec(text)?.[0] })).find((x) => x.m);
-  const profTitle = profMatch ? profMatch.p.title(profMatch.m!).trim() : null;
-  const name = required.find((r) => r.kind === 'name')?.value;
-  const details = required.filter((r) => r.kind !== 'name').map(requiredLine);
-  const lines = [...(name ? [name] : []), ...(profTitle ? [profTitle] : []), ...details];
+  // Exactly what the customer wrote, in their order – styles differ, text doesn't.
+  const lines = required.map(requiredLine);
   if (!lines.length) lines.push(text.slice(0, 40));
-
   const base: LayoutContent = { lines };
   const roundContent: LayoutContent = lines.length > 1 ? { arcTop: lines[0], arcBottom: lines[1], lines: lines.slice(2) } : base;
-  const prefix = profMatch?.p.prefix;
-  const modernFirst = name && prefix && !/^(?:עו|ד)["״]/.test(name) ? `${prefix} ${name}` : null;
-  const modern: LayoutContent = modernFirst ? { lines: [modernFirst, ...lines.slice(profTitle ? 2 : 1)] } : base;
   return [
     { style: 'minimal', title: 'Minimal', content: base },
     { style: 'classic', title: 'Classic', content: round ? roundContent : base },
-    { style: 'modern', title: 'Modern', content: ensureRequired(modern, required) },
+    { style: 'modern', title: 'Modern', content: base },
   ];
 }

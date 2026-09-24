@@ -5,7 +5,7 @@ const pick = (p: string) => extractRequired(p).map((r) => `${r.kind}:${r.label ?
 
 describe('extractRequired – every concrete detail the customer wrote', () => {
   it('lawyer with name, licence and phone', () => {
-    expect(pick('אני צריך חותמת לעורך דין בשם יעקב כהן, מ.ר. 54321, טלפון 052-1234567')).toEqual(['name:יעקב כהן', 'phone:052-1234567', 'number:מ.ר. 54321']);
+    expect(pick('אני צריך חותמת לעורך דין בשם יעקב כהן, מ.ר. 54321, טלפון 052-1234567')).toEqual(['text:עורך דין', 'name:יעקב כהן', 'number:מ.ר. 54321', 'phone:טל׳ 052-1234567']);
   });
   it('company: quoted name, ח.פ., address, e-mail, website', () => {
     const r = pick('חותמת לחברה "אלפא שיווק בע״מ" ח.פ. 514567890, כתובת: הרצל 12, חולון, info@alpha.co.il, www.alpha.co.il');
@@ -15,8 +15,20 @@ describe('extractRequired – every concrete detail the customer wrote', () => {
     expect(r).toContain('email:info@alpha.co.il');
     expect(r).toContain('url:www.alpha.co.il');
   });
-  it('abbreviation quotes (עו"ד) are not treated as quoted text', () => {
-    expect(pick('חותמת עו"ד בשם דנה לוי')).toEqual(['name:דנה לוי']);
+  it('abbreviation quotes (עו"ד) are kept as text, not as a quote', () => {
+    expect(pick('חותמת עו"ד בשם דנה לוי')).toEqual(['text:עו"ד', 'name:דנה לוי']);
+  });
+  it('no keyword, no lost words: "קובי חן מ.ר 038038394"', () => {
+    // Customer report: the name was dropped and the licence became a phone with an invented "טל׳".
+    expect(pick('קובי חן מ.ר 038038394')).toEqual(['text:קובי חן', 'number:מ.ר. 038038394']);
+    for (const s of suggestLocally('קובי חן מ.ר 038038394')) expect(s.content.lines).toEqual(['קובי חן', 'מ.ר. 038038394']);
+  });
+  it('a phone gets "טל׳" only when the customer said phone', () => {
+    expect(pick('יוסי לוי 052-1234567')).toEqual(['text:יוסי לוי', 'phone:052-1234567']);
+    expect(pick('יוסי לוי נייד 052-1234567')).toEqual(['text:יוסי לוי', 'phone:טל׳ 052-1234567']);
+  });
+  it('free text in order, request words removed', () => {
+    expect(pick('אני צריך חותמת עם הכיתוב: מאושר לתשלום, מחלקת כספים')).toEqual(['text:מאושר לתשלום', 'text:מחלקת כספים']);
   });
 });
 
