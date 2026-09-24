@@ -3,20 +3,31 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { composeForProduction } from '../autofix';
-import { composeLayout } from '../compose';
 import { renderDesign } from '../render';
 import { StampSvg } from '../StampSvg';
-import type { Suggestion } from '../suggest';
+import { missingRequired, requiredLine, type RequiredItem, type Suggestion } from '../suggest';
+import { isProductionReady, validateDesign } from '../validate';
 import { Section } from './controls';
 import { useEditor } from './context';
 
-function SuggestionCard({ s, onApply }: { s: Suggestion; onApply: () => void }) {
-  const { model, resolveFace, design } = useEditor();
-  const r = useMemo(() => renderDesign(composeLayout(model, s.content, s.style), resolveFace), [model, s, resolveFace]);
+const KIND_LABEL: Record<RequiredItem['kind'], string> = { name: 'שם', phone: 'טלפון', email: 'מייל', url: 'אתר', number: 'מספר', address: 'כתובת', quote: 'טקסט' };
+
+function SuggestionCard({ s, required, onApply }: { s: Suggestion; required: RequiredItem[]; onApply: () => void }) {
+  const { model, resolveFace, design, profile } = useEditor();
+  // Preview exactly what applying produces – strict: never drops customer text.
+  const r = useMemo(() => renderDesign(composeForProduction(model, s.content, s.style, resolveFace, profile, { strict: true }).design, resolveFace), [model, s, resolveFace, profile]);
+  const missing = missingRequired(s.content, required);
   return (
     <div className="rounded-xl border border-line bg-white p-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">{s.title}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="min-w-0 text-sm font-semibold">
+          {s.title}
+          {required.length > 0 && (
+            <span className={`ms-2 text-[11px] font-medium ${missing.length ? 'text-bad' : 'text-ok'}`}>
+              {missing.length ? `חסר: ${missing.map((m) => m.value).join(', ')}` : `✓ כל ${required.length} הפרטים`}
+            </span>
+          )}
+        </span>
         <button type="button" className="btn-primary btn-sm" onClick={onApply}>
           החל את העיצוב
         </button>
@@ -33,6 +44,7 @@ export function AiPanel() {
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<Suggestion[] | null>(null);
+  const [required, setRequired] = useState<RequiredItem[]>([]);
   const [error, setError] = useState('');
 
   const run = async () => {
@@ -47,6 +59,7 @@ export function AiPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setItems(data.suggestions);
+      setRequired(data.required ?? []);
     } catch (e) {
       setError(e instanceof Error && e.message ? e.message : 'משהו השתבש, נסו שוב');
     } finally {
@@ -74,14 +87,32 @@ export function AiPanel() {
       </Section>
       {items && (
         <div className="space-y-3 p-4 pt-0">
+          {required.length > 0 && (
+            <div className="rounded-xl bg-surface p-3">
+              <p className="text-xs font-semibold text-ink-2">הפרטים שביקשתם – יופיעו בדיוק כך:</p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {required.map((r) => (
+                  <li key={r.value} className="flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs ring-1 ring-line">
+                    <Icon name="check" size={12} className="text-ok" />
+                    <span className="text-muted">{KIND_LABEL[r.kind]}:</span>
+                    <bdi className="font-medium">{requiredLine(r)}</bdi>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {items.map((s) => (
             <SuggestionCard
               key={s.style}
               s={s}
+              required={required}
               onApply={() => {
                 const logo = design.elements.find((e) => e.type === 'image');
-                actions.set({ ...composeForProduction(model, { ...s.content, logo: logo && logo.type === 'image' ? logo : null }, s.style, resolveFace, profile).design, inkColor: design.inkColor, modelId: design.modelId });
-                toast('ההצעה הוחלה – אפשר להמשיך לערוך');
+                // Strict: every word the customer asked for stays on the stamp.
+                const next = composeForProduction(model, { ...s.content, logo: logo && logo.type === 'image' ? logo : null }, s.style, resolveFace, profile, { strict: true }).design;
+                actions.set({ ...next, inkColor: design.inkColor, modelId: design.modelId });
+                const ready = isProductionReady(validateDesign(next, renderDesign(next, resolveFace), profile));
+                toast(ready ? 'ההצעה הוחלה – כל הפרטים על החותמת' : 'כל הפרטים על החותמת, אבל הטקסט צפוף – מומלץ דגם גדול יותר');
               }}
             />
           ))}

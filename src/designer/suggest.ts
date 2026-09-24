@@ -6,39 +6,137 @@ export interface Suggestion {
   content: LayoutContent;
 }
 
-const PROFESSIONS: { match: RegExp; title: string; extra: string[] }[] = [
-  { match: /עורכ?ת?\s*דין|עו"?״?ד|נוטריון/, title: 'עורך דין', extra: ['מ.ר. 00000'] },
-  { match: /רופא|ד"?״?ר|רפוא/, title: 'רופא מומחה', extra: ['מ.ר. 00000'] },
-  { match: /רו"?״?ח|רואה חשבון/, title: 'רואה חשבון', extra: ['מ.ר. 00000'] },
-  { match: /מהנדס/, title: 'מהנדס', extra: ['מ.ר. 00000'] },
-  { match: /חבר[הת]|בע"?״?מ/, title: 'חברה בע״מ', extra: ['ח.פ. 500000000'] },
-  { match: /עסק|עוסק/, title: 'עוסק מורשה', extra: ['ע.מ. 000000000'] },
+// --------------------------------------------------------------------------
+// Required details: everything concrete the customer wrote must appear on the
+// stamp exactly (names, numbers, phones, e-mail, website, address, quotes).
+// --------------------------------------------------------------------------
+
+export type RequiredKind = 'name' | 'phone' | 'email' | 'url' | 'number' | 'address' | 'quote';
+export interface RequiredItem {
+  kind: RequiredKind;
+  /** Exact text as the customer wrote it. */
+  value: string;
+  /** Conventional prefix for numbers ("מ.ר.", "ח.פ." …) when the customer gave one. */
+  label?: string;
+}
+
+const HEB_WORD = '[\\u0590-\\u05FF"׳״\'-]+';
+const NAME_STOP = /^(?:עם|ו?טלפון|ו?נייד|ו?מספר|ו?כתובת|ו?ברחוב|ו?רחוב|ו?מייל|ו?אתר|ו?רישיון|ו?ח\.?פ|ו?ע\.?מ|ו?ת\.?ז|ו?מ\.?ר|שהוא|שהיא|בתל|ברמת|בירושלים|בחיפה|ב?עיר|לחותמת|ל?עסק|עגולה|מלבנית|ו)$/;
+const NUMBER_LABELS: [RegExp, string][] = [
+  [/(?:ח\.?\s?פ\.?|חברה\s+פרטית|מספר\s+חברה)\s*:?\s*$/, 'ח.פ.'],
+  [/(?:ע\.?\s?מ\.?|עוסק\s+מורשה)\s*:?\s*$/, 'ע.מ.'],
+  [/(?:ת\.?\s?ז\.?|תעודת\s+זהות)\s*:?\s*$/, 'ת.ז.'],
+  [/(?:מ\.?\s?ר\.?|רישיון|מספר\s+רישיון|רשיון)\s*:?\s*$/, 'מ.ר.'],
 ];
 
+/** Normalise for comparison: ignore spaces, dashes, dots, quotes/geresh and case. */
+export const normalize = (s: string) => s.replace(/[\s\-–—.,:;"'`״׳()/\\]/g, '').toLowerCase();
+const digits = (s: string) => s.replace(/\D/g, '');
+
+export function extractRequired(prompt: string): RequiredItem[] {
+  let text = ` ${prompt.replace(/\s+/g, ' ').trim()} `;
+  const out: RequiredItem[] = [];
+  const take = (re: RegExp, kind: RequiredKind, group = 0) => {
+    text = text.replace(re, (...m) => {
+      const v = String(m[group]).trim();
+      if (v && !out.some((o) => normalize(o.value) === normalize(v))) out.push({ kind, value: v });
+      return ' ';
+    });
+  };
+  // Quoted text – but not the geresh of abbreviations like עו"ד (quote must follow a space).
+  take(/(?<=^|[\s:(])["“]([^"“”]{2,80}?)["”](?=$|[\s,.;:)!?])/g, 'quote', 1);
+  take(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, 'email');
+  take(/(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:co\.il|org\.il|gov\.il|ac\.il|com|org|net|il|co|io)(?:\/[^\s]*)?/gi, 'url');
+  take(/\+?972[-\s]?\d{1,2}[-\s]?\d{3}[-\s]?\d{4}|0\d{1,2}[-\s]?\d{3}[-\s]?\d{4}|0\d{1,2}-?\d{7}|\*\d{4}/g, 'phone');
+  take(/(?:ב?כתובת|ב?רחוב|רח[׳'])\s*:?\s*([^,.\n]{2,40}?\d{1,4}(?:\s*,\s*[֐-׿ ]{2,20}?)?)(?=$|[\s,.;])/g, 'address', 1);
+  // Numbers (IDs, licences) with their conventional label when given.
+  text = text.replace(/\d{3,}(?:[-/]\d+)*/g, (num, offset: number) => {
+    const before = text.slice(Math.max(0, offset - 22), offset);
+    const label = NUMBER_LABELS.find(([re]) => re.test(before))?.[1];
+    if (!out.some((o) => digits(o.value) === digits(num))) out.push({ kind: 'number', value: num, label });
+    return ' ';
+  });
+  // A name: "בשם X Y", "של X Y", "עבור X Y" (up to 3 words, stops at connector words).
+  const nameMatch = new RegExp(`(?:בשם|של|עבור|שם:)\\s+((?:${HEB_WORD}\\s*){1,4})`).exec(text);
+  if (nameMatch) {
+    const words: string[] = [];
+    for (const w of nameMatch[1].trim().split(/\s+/)) {
+      if (NAME_STOP.test(w) || words.length === 3) break;
+      words.push(w.replace(/[,.]$/, ''));
+    }
+    const name = words.join(' ');
+    if (name.length >= 2 && !out.some((o) => normalize(o.value) === normalize(name))) out.unshift({ kind: 'name', value: name });
+  }
+  return out;
+}
+
+/** All text on a layout, one entry per line/arc. */
+export const contentLines = (c: LayoutContent) => [c.arcTop ?? '', ...c.lines, c.arcBottom ?? ''].filter(Boolean);
+
+/** Is this required item present on the layout (exactly, ignoring spacing/punctuation)? */
+export function isPresent(item: RequiredItem, c: LayoutContent) {
+  const lines = contentLines(c);
+  if (item.kind === 'phone' || item.kind === 'number') {
+    const d = digits(item.value);
+    return lines.some((l) => digits(l).includes(d));
+  }
+  const all = normalize(lines.join(' '));
+  if (item.kind === 'name') return item.value.split(/\s+/).every((w) => all.includes(normalize(w)));
+  return all.includes(normalize(item.value));
+}
+
+export const missingRequired = (c: LayoutContent, required: RequiredItem[]) => required.filter((r) => !isPresent(r, c));
+
+/** Line text for a required item that has to be added. */
+export function requiredLine(item: RequiredItem) {
+  if (item.kind === 'phone') return `טל׳ ${item.value}`;
+  if (item.kind === 'number' && item.label) return `${item.label} ${item.value}`;
+  return item.value;
+}
+
+/** Adds any required item that is missing (as its own line) – nothing the customer asked for is lost. */
+export function ensureRequired(c: LayoutContent, required: RequiredItem[]): LayoutContent {
+  const missing = missingRequired(c, required);
+  if (!missing.length) return c;
+  const names = missing.filter((m) => m.kind === 'name').map(requiredLine);
+  const rest = missing.filter((m) => m.kind !== 'name').map(requiredLine);
+  return { ...c, lines: [...names, ...c.lines, ...rest] };
+}
+
+// --------------------------------------------------------------------------
+// Rule-based fallback (works offline / without an API key)
+// --------------------------------------------------------------------------
+
+const PROFESSIONS: { match: RegExp; title: string; prefix?: string }[] = [
+  { match: /עורכ?ת?\s*דין|עו["״]?ד|נוטריון/, title: 'עורך דין', prefix: 'עו״ד' },
+  { match: /רופא|ד["״]?ר|רפוא/, title: 'רופא מומחה', prefix: 'ד״ר' },
+  { match: /רו["״]?ח|רואה חשבון/, title: 'רואה חשבון' },
+  { match: /מהנדס/, title: 'מהנדס' },
+];
+// ("חברה" / "עסק" describe the kind of stamp, not text to print – never added.)
+
 /**
- * Rule-based fallback for the AI assistant (works offline / without an API key):
- * pulls a name, profession, phone and ID numbers out of a free-text request.
+ * Pulls every concrete detail out of a free-text request and lays it out in
+ * three styles. Only details the customer actually wrote are used – no
+ * invented placeholders.
  */
 export function suggestLocally(prompt: string): Suggestion[] {
   const text = prompt.replace(/\s+/g, ' ').trim();
-  const name = /(?:בשם|של|עבור)\s+([֐-׿'"״׳-]+(?:\s+[֐-׿'"״׳-]+){0,2})/.exec(text)?.[1]?.replace(/[,.]$/, '') ?? 'ישראל ישראלי';
+  const required = extractRequired(text);
   const prof = PROFESSIONS.find((p) => p.match.test(text));
-  const phone = /0\d{1,2}[-\s]?\d{7}|0\d{1,2}-\d{3}-\d{4}/.exec(text)?.[0];
-  const license = /(?:רישיון|מ\.?ר\.?|מספר)\s*(\d{3,9})/.exec(text)?.[1];
-  const wantsPhone = /טלפון|נייד|phone/.test(text) || !!phone;
-  const wantsLicense = /רישיון|מ\.ר|מספר רישיון/.test(text) || !!license;
+  const name = required.find((r) => r.kind === 'name')?.value;
+  const details = required.filter((r) => r.kind !== 'name').map(requiredLine);
+  const lines = [...(name ? [name] : []), ...(prof ? [prof.title] : []), ...details];
+  if (!lines.length) lines.push(text.slice(0, 40));
   const round = /עגול/.test(text);
 
-  const lines = [name];
-  if (prof) lines.push(prof.title);
-  if (wantsLicense || prof?.extra) lines.push(license ? `מ.ר. ${license}` : (prof?.extra[0] ?? 'מ.ר. 00000'));
-  if (wantsPhone) lines.push(phone ? `טל׳ ${phone}` : 'טל׳ 050-0000000');
-
   const base: LayoutContent = { lines };
-  const roundContent: LayoutContent = { arcTop: name, arcBottom: prof?.title ?? lines[lines.length - 1], lines: lines.slice(2, 4) };
+  const roundContent: LayoutContent = lines.length > 1 ? { arcTop: lines[0], arcBottom: lines[1], lines: lines.slice(2) } : base;
+  const modernFirst = name && prof?.prefix && !name.startsWith(prof.prefix) ? `${prof.prefix} ${name}` : null;
+  const modern: LayoutContent = modernFirst ? { lines: [modernFirst, ...lines.slice(prof ? 2 : 1)] } : base;
   return [
     { style: 'minimal', title: 'Minimal', content: base },
     { style: 'classic', title: 'Classic', content: round ? roundContent : base },
-    { style: 'modern', title: 'Modern', content: { lines: prof ? [`${prof.title === 'עורך דין' ? 'עו״ד ' : prof.title === 'רופא מומחה' ? 'ד״ר ' : ''}${name}`, ...lines.slice(2)] : lines } },
+    { style: 'modern', title: 'Modern', content: ensureRequired(modern, required) },
   ];
 }
