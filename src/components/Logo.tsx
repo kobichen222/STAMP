@@ -53,10 +53,10 @@ export function Logo({ className = '', size = 'md', markOnly = false }: { classN
     <span className={`inline-flex items-center gap-1 select-none ${className}`} dir="ltr" aria-label="חותמות 2 דקות">
       <LogoMark size={Math.round(h * 1.25)} className="-me-1" />
       {!markOnly && (
-        <span className="relative inline-flex flex-col leading-none">
-          <span dir="rtl" className={`${text} font-black tracking-tight text-ink italic`} style={{ fontStyle: 'italic' }}>
+        <span className="relative inline-flex flex-col overflow-visible leading-none">
+          <span dir="rtl" className={`${text} px-[0.12em] pt-[0.12em] font-black tracking-tight text-ink italic`} style={{ fontStyle: 'italic' }}>
             חותמות
-            <span className="mx-[0.04em] inline-block bg-gradient-to-b from-[#3b82f6] to-[#1d3fbf] bg-clip-text align-[-0.06em] text-[1.35em] text-transparent">2</span>
+            <span className="-mx-[0.1em] -my-[0.15em] inline-block bg-gradient-to-b from-[#3b82f6] to-[#1d3fbf] bg-clip-text px-[0.16em] py-[0.15em] align-[-0.06em] text-[1.35em] leading-none text-transparent [-webkit-box-decoration-break:clone]">2</span>
             דקות
           </span>
           <svg viewBox="0 0 200 8" preserveAspectRatio="none" className="-mt-[0.1em] h-[0.3em] w-full" aria-hidden>
