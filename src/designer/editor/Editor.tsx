@@ -585,33 +585,36 @@ export function Editor({ product, products, initialDesign, designId, templateId,
                 <p className="animate-pulse text-sm text-muted">טוען גופנים…</p>
               </div>
             )}
-            <Canvas
-              design={design}
-              render={render}
-              selection={state.selection}
-              actions={actions}
-              view={view}
-              onZoom={(z, source) => {
-                if (source === 'user') setAutoFit(false);
-                setView((v) => ({ ...v, zoom: z }));
-              }}
-              autoFit={autoFit}
-              onTap={(id) => {
-                if (!isMobile) return;
-                dismissDragTip();
-                const el = design.elements.find((e) => e.id === id);
-                if (!el) return;
-                const p: PanelId = el.type === 'text' ? 'text' : el.type === 'image' ? 'logo' : 'elements';
-                setPanel(p);
-                if (sheet === 'closed') setSheet('half');
-                if (el.type === 'text') setFocusTextId(id);
-              }}
-              ink={design.inkColor}
-              safeMargin={profile.safeMargin}
-              issuesById={issuesById}
-              fitSignal={fitSignal}
-              onFirstDrag={dismissDragTip}
-            />
+            {/* Mobile: a fixed strip under the stamp for the editing bar, so it never covers the design (and nothing jumps on select). */}
+            <div className="h-full bg-[#F5F7FA] max-lg:pb-14">
+              <Canvas
+                design={design}
+                render={render}
+                selection={state.selection}
+                actions={actions}
+                view={view}
+                onZoom={(z, source) => {
+                  if (source === 'user') setAutoFit(false);
+                  setView((v) => ({ ...v, zoom: z }));
+                }}
+                autoFit={autoFit}
+                onTap={(id) => {
+                  if (!isMobile) return;
+                  dismissDragTip();
+                  const el = design.elements.find((e) => e.id === id);
+                  if (!el) return;
+                  const p: PanelId = el.type === 'text' ? 'text' : el.type === 'image' ? 'logo' : 'elements';
+                  setPanel(p);
+                  if (sheet === 'closed') setSheet('half');
+                  if (el.type === 'text') setFocusTextId(id);
+                }}
+                ink={design.inkColor}
+                safeMargin={profile.safeMargin}
+                issuesById={issuesById}
+                fitSignal={fitSignal}
+                onFirstDrag={dismissDragTip}
+              />
+            </div>
             {selected.length > 0 && (isMobile ? <MobileEditBar /> : <FloatingToolbar />)}
             {resumeBar && (
               <div role="status" className="absolute inset-x-3 top-16 z-30 mx-auto flex w-fit max-w-full animate-fade-up items-center gap-2 rounded-2xl border border-blue/20 bg-white/95 py-1.5 ps-3 pe-1.5 text-sm shadow-lift backdrop-blur lg:top-3">
