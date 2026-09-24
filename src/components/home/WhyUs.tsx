@@ -6,7 +6,7 @@ import { WHY_FAQ } from '@/lib/faq';
 
 
 /** Animated laser engraving a stamp plate (pure SVG + CSS, no JS) – in the site palette. */
-function LaserArt() {
+export function LaserArt() {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-line bg-gradient-to-b from-white to-blue-50 p-5 shadow-soft sm:p-6">
       <style>{`

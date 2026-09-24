@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 
 const STEPS = [
-  { n: 1, title: 'בחרו חותמת', text: 'מלבנית, עגולה, כיס או תאריכון – כל דגם במידות האמיתיות שלו.', art: 'pick' },
-  { n: 2, title: 'עצבו אונליין', text: 'תבנית מוכנה או עיצוב מאפס: טקסט, לוגו, מסגרות ואייקונים.', art: 'design' },
-  { n: 3, title: 'צפו בתוצאה', text: 'תצוגת הטבעה אמיתית ובדיקת ייצור אוטומטית לפני ההזמנה.', art: 'preview' },
-  { n: 4, title: 'הזמינו וקבלו', text: 'הקובץ עובר ישר לייצור. איסוף מרמת גן או משלוח עד הבית.', art: 'ship' },
+  { n: 1, title: 'בחרו חותמת', text: 'מלבנית, עגולה, כיס או תאריכון – גופי COLOP מאוסטריה, במידות האמיתיות.', art: 'pick' },
+  { n: 2, title: 'עצבו – או שנעצב לכם', text: 'תבנית מוכנה או עיצוב מאפס. אפשר גם לשלוח תוכן ולקבל סקיצה לאישור.', art: 'design' },
+  { n: 3, title: 'צפו ואשרו', text: 'תצוגת הטבעה אמיתית ובדיקת ייצור אוטומטית לפני ההזמנה.', art: 'preview' },
+  { n: 4, title: 'חריטת לייזר וקבלה', text: 'הגומי נחרט תוך 20 שניות. איסוף ברמת גן, או משלוח בגוש דן תוך שעות.', art: 'ship' },
 ] as const;
+
+const MOBILE_ICON: Record<(typeof STEPS)[number]['art'], string> = { pick: 'grid', design: 'text', preview: 'eye', ship: 'truck' };
 
 /** Small stamp silhouette (handle + body + base), used in the "pick" art. */
 function StampIcon({ w, active }: { w: number; active?: boolean }) {
@@ -112,7 +114,7 @@ export function HowItWorks({ compact }: { compact?: boolean }) {
         <div className="max-w-xl">
           <p className="eyebrow">איך זה עובד</p>
           <h2 className="mt-2 text-3xl font-extrabold sm:text-4xl">ארבעה צעדים. בלי גרפיקאי.</h2>
-          <p className="mt-3 text-muted">מבחירת הדגם ועד חותמת ביד – בלי קבצים, בלי המתנה ובלי הפתעות.</p>
+          <p className="mt-3 text-muted">מבחירת הדגם ועד חותמת ביד – בלי גלופות, בלי הזמנה מראש ובלי לחזור פעמיים.</p>
         </div>
         {!compact && (
           <Link href="/how-it-works/" className="inline-flex items-center gap-1 text-sm font-medium text-blue hover:underline">
@@ -121,25 +123,28 @@ export function HowItWorks({ compact }: { compact?: boolean }) {
         )}
       </div>
 
-      <ol className="relative mt-12 grid gap-5 lg:grid-cols-4 lg:gap-6">
+      <ol className="relative mt-8 grid gap-3 sm:mt-12 sm:gap-5 lg:grid-cols-4 lg:gap-6">
         {/* Connector behind the step numbers (desktop) */}
         <span aria-hidden className="absolute inset-x-[12%] top-5 hidden border-t-2 border-dashed border-blue/25 lg:block" />
         {STEPS.map((s, i) => (
-          <li key={s.n} className="group relative grid grid-cols-[2.5rem_1fr] gap-x-4 lg:block">
+          <li key={s.n} className="group relative grid grid-cols-[2rem_1fr] gap-x-3 sm:grid-cols-[2.5rem_1fr] sm:gap-x-4 lg:block">
             {/* Number + vertical line (mobile timeline) */}
             <div className="relative flex flex-col items-center lg:mb-4 lg:items-start">
-              <span className="relative z-10 grid h-10 w-10 place-items-center rounded-full bg-blue text-base font-extrabold text-white shadow-[0_6px_16px_-6px_rgba(36,87,255,.7)] ring-4 ring-white transition group-hover:scale-110">
+              <span className="relative z-10 grid h-8 w-8 place-items-center rounded-full bg-blue text-sm font-extrabold sm:h-10 sm:w-10 sm:text-base text-white shadow-[0_6px_16px_-6px_rgba(36,87,255,.7)] ring-4 ring-white transition group-hover:scale-110">
                 {s.n}
               </span>
               {i < STEPS.length - 1 && <span aria-hidden className="mt-1 w-0.5 flex-1 rounded-full bg-gradient-to-b from-blue/30 to-blue/5 lg:hidden" />}
             </div>
-            <div tabIndex={0} className="card mb-2 overflow-hidden outline-none transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lift focus-visible:shadow-lift lg:mb-0">
-              <div className="h-32 bg-gradient-to-b from-blue-50 to-surface sm:h-36">
+            <div tabIndex={0} className="card mb-1 flex overflow-hidden sm:mb-2 sm:block outline-none transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lift focus-visible:shadow-lift lg:mb-0">
+              <div className="hidden h-36 bg-gradient-to-b from-blue-50 to-surface sm:block">
                 <StepArt kind={s.art} />
               </div>
-              <div className="p-5">
-                <h3 className="text-lg font-bold sm:text-xl">{s.title}</h3>
-                <p className="mt-1.5 text-[15px] leading-7 text-muted">{s.text}</p>
+              <span className="mt-4 ms-4 grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-b from-blue-50 to-surface text-blue ring-1 ring-blue/10 sm:hidden">
+                <Icon name={MOBILE_ICON[s.art]} size={22} />
+              </span>
+              <div className="p-4 sm:p-5">
+                <h3 className="text-[17px] font-bold sm:text-xl">{s.title}</h3>
+                <p className="mt-1 text-[14.5px] leading-6 text-muted sm:mt-1.5 sm:text-[15px] sm:leading-7">{s.text}</p>
               </div>
             </div>
           </li>

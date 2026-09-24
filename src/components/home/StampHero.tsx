@@ -173,7 +173,7 @@ export function StampHero() {
 
   const animated = !staticMode;
   return (
-    <section ref={sectionRef} className={`relative ${animated ? 'h-[420vh] max-lg:h-[340vh]' : ''}`} aria-label="החותמת שלכם, מבפנים">
+    <section ref={sectionRef} className={`relative overflow-x-clip ${animated ? 'h-[420vh] max-lg:h-[340vh]' : ''}`} aria-label="החותמת שלכם, מבפנים">
       <div className={`${animated ? 'sticky top-0 h-svh max-lg:min-h-[560px] lg:min-h-dvh lg:h-auto' : 'min-h-dvh'} flex items-center overflow-hidden bg-gradient-to-b from-white via-white to-surface`}>
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
         <div className={`container-x relative grid w-full gap-6 lg:h-auto lg:grid-cols-2 lg:items-center lg:pt-20 ${animated ? 'h-full content-start pt-20' : 'pt-24 pb-10'}`}>

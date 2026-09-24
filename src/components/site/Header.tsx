@@ -48,9 +48,6 @@ export function Header() {
         </Link>
 
         <nav aria-label="תפריט ראשי" className="hidden flex-1 items-center gap-0.5 xl:flex">
-          <Link href="/" className="rounded-full px-2.5 py-2 text-[14.5px] text-ink-2 hover:text-ink">
-            ראשי
-          </Link>
           <div className="relative" onMouseEnter={() => setMega(true)} onMouseLeave={() => setMega(false)}>
             <button
               type="button"
@@ -75,11 +72,12 @@ export function Header() {
               </div>
             )}
           </div>
-          {MAIN_NAV.map((m) => (
+          {MAIN_NAV.map((m, i) => (
             <Link
               key={m.href}
               href={m.href}
-              className={`rounded-full px-2.5 py-2 text-[14.5px] whitespace-nowrap hover:text-ink ${pathname.startsWith(m.href) ? 'text-ink font-medium' : 'text-ink-2'}`}
+              // The two category shortcuts also live in the "חותמות" menu – only shown when there is room.
+              className={`rounded-full px-2.5 py-2 text-[14.5px] whitespace-nowrap hover:text-ink ${i < 2 ? 'hidden 2xl:inline-block' : ''} ${pathname.startsWith(m.href) ? 'text-ink font-medium' : 'text-ink-2'}`}
             >
               {m.label}
             </Link>
