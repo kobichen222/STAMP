@@ -75,9 +75,9 @@ export function AiPanel() {
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            rows={4}
+            rows={5}
             className="input text-sm"
-            placeholder="לדוגמה: אני צריך חותמת לעורך דין בשם יעקב כהן, עם טלפון ומספר רישיון"
+            placeholder={"לדוגמה: חותמת לעורך דין בשם יעקב כהן, מ.ר. 54321, טלפון 052-1234567\n\nאו כתבו כל שורה בשורה נפרדת – והיא תופיע בדיוק כך."}
           />
         </label>
         <button type="button" className="btn-primary mt-3 w-full" disabled={busy || prompt.trim().length < 4} onClick={run}>
@@ -103,7 +103,7 @@ export function AiPanel() {
           )}
           {items.map((s) => (
             <SuggestionCard
-              key={s.style}
+              key={s.title}
               s={s}
               required={required}
               onApply={() => {

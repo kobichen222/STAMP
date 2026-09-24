@@ -42,5 +42,5 @@ describe('templates are production-ready on every model', () => {
       }
     }
     expect(failures).toEqual([]);
-  });
+  }, 60_000); // every template × every catalog model
 });

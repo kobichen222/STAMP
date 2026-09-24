@@ -5,6 +5,7 @@
  * Drawn in a 24×24 box and normalised to width 1 (like traced logos).
  */
 import { parseSvgPath, scale, toSvgD, transformPath } from './geometry';
+import { iconById } from './icons';
 import type { ImageElement } from './types';
 
 const circle = (cx: number, cy: number, r: number) => `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0z`;
@@ -103,6 +104,21 @@ const RAW: Record<string, { label: string; d: string }> = {
   },
   medical: { label: 'צלב רפואי', d: circle(12, 12, 11) + circle(12, 12, 9.4) + 'M9.8 5h4.4v4.8H19v4.4h-4.8V19H9.8v-4.8H5V9.8h4.8z' },
   'star-badge': { label: 'כוכב', d: circle(12, 12, 11) + circle(12, 12, 9.3) + star(12, 12.4, 7.2, 3) },
+  scissors: {
+    label: 'מספריים',
+    d: circle(6, 17.5, 3.4) + circle(6, 17.5, 1.9) + circle(18, 17.5, 3.4) + circle(18, 17.5, 1.9) + 'M8.2 15 18.1 2.4l1.5 1.1-8.4 11.9zM15.8 15 5.9 2.4 4.4 3.5l8.4 11.9z',
+  },
+  camera: { label: 'מצלמה', d: 'M2.5 7.2h4.2l1.6-2.7h7.4l1.6 2.7h4.2v12.3h-19z' + circle(12, 13.3, 4.4) + circle(12, 13.3, 2.7) },
+  key: { label: 'מפתח', d: circle(6.8, 12, 4.6) + circle(6.8, 12, 2.1) + 'M11.6 11h10v2.1h-1.8v3.2h-2.1v-3.2h-1.6v2.2H14v-2.2h-2.4z' },
+  heart: { label: 'לב', d: iconById('heart')?.d ?? circle(12, 12, 10) },
+  shield: { label: 'מגן', d: 'M12 1.8 3.6 5v6.1c0 5.2 3.5 9.8 8.4 11.1 4.9-1.3 8.4-5.9 8.4-11.1V5zM10.6 15.3l-3.3-3.3 1.4-1.4 1.9 1.9 4.9-4.9 1.4 1.4z' },
+  tree: { label: 'עץ', d: circle(12, 9, 7.2) + 'M10.9 16.1h2.2v6.4h-2.2z' },
+  wrench: { label: 'מפתח ברגים', d: 'M21.2 6.4a5.3 5.3 0 0 1-7 5l-8.1 8.3a2.1 2.1 0 0 1-3-3l8.3-8.1a5.3 5.3 0 0 1 5-7l-3.1 3.1.6 3.2 3.2.6z' },
+  plane: { label: 'מטוס', d: 'M21.5 16v-2.1l-8.2-5.1V3.6a1.5 1.5 0 0 0-3 0v5.2L2.1 13.9V16l8.2-2.6v5.4l-2.1 1.6V22l3.6-1 3.6 1v-1.6l-2.1-1.6v-5.4z' },
+  note: { label: 'תו מוזיקה', d: 'M11 3v10.5a3.6 3.6 0 1 0 2.2 3.3V7.4h5.3V3z' },
+  cake: { label: 'עוגה', d: 'M3.5 13h17v8.5h-17zM6 9h12v4H6zM7.9 4.2h1.2V9H7.9zM11.4 4.2h1.2V9h-1.2zM14.9 4.2h1.2V9h-1.2z' + circle(8.5, 3, 0.9) + circle(12, 3, 0.9) + circle(15.5, 3, 0.9) },
+  dumbbell: { label: 'משקולת', d: 'M1.5 10h2.3V7.5H7v9H3.8V14H1.5zM22.5 10h-2.3V7.5H17v9h3.2V14h2.3zM7 11h10v2H7z' },
+  cap: { label: 'כובע סיום', d: 'M12 3 .8 8.3 12 13.6l9.1-4.3v5.9h1.9V8.3zM5.4 11.7v4c0 1.8 3 3.6 6.6 3.6s6.6-1.8 6.6-3.6v-4L12 14.8z' },
 };
 
 export const SAMPLE_LOGOS = Object.keys(RAW);

@@ -50,7 +50,7 @@ export function extractRequired(prompt: string): RequiredItem[] {
   take(/\+?972[-\s]?\d{1,2}[-\s]?\d{3}[-\s]?\d{4}|0\d{1,2}[-\s]?\d{3}[-\s]?\d{4}|0\d{1,2}-?\d{7}|\*\d{4}/g, 'phone');
   take(/(?:ב?כתובת|ב?רחוב|רח[׳'])\s*:?\s*([^,.\n]{2,40}?\d{1,4}(?:\s*,\s*[֐-׿ ]{2,20}?)?)(?=$|[\s,.;])/g, 'address', 1);
   // Numbers (IDs, licences) with their conventional label when given.
-  text = text.replace(/\d{3,}(?:[-/]\d+)*/g, (num, offset: number) => {
+  text = text.replace(/\d{2,}(?:[-/]\d+)+|\d{3,}/g, (num, offset: number) => {
     const before = text.slice(Math.max(0, offset - 22), offset);
     const label = NUMBER_LABELS.find(([re]) => re.test(before))?.[1];
     if (!out.some((o) => digits(o.value) === digits(num))) out.push({ kind: 'number', value: num, label });
@@ -103,15 +103,46 @@ export function ensureRequired(c: LayoutContent, required: RequiredItem[]): Layo
   return { ...c, lines: [...names, ...c.lines, ...rest] };
 }
 
+/**
+ * Lines the customer typed explicitly – one per line, or separated by "/" "|".
+ * Bullets and "שורה 1:" prefixes are stripped; the words themselves are kept
+ * exactly. Returns null when the request is free prose.
+ */
+export function explicitLines(prompt: string): string[] | null {
+  const raw = prompt.includes('\n') ? prompt.split(/\n+/) : prompt.split(/\s[|/]\s|\s*\|\s*/);
+  const lines = raw
+    .map((l) =>
+      l
+        .replace(/^\s*(?:[-–•*·]|\d+[.)]|שורה\s*(?:\d+|ראשונה|שנייה|שניה|שלישית|רביעית|חמישית)\s*:?)\s*/, '')
+        .trim(),
+    )
+    .filter(Boolean);
+  if (lines.length < 2) return null;
+  // A first line that only describes the request ("אני צריך חותמת:") is not stamp text.
+  if (/^(?:אני\s+)?(?:צריך|צריכה|רוצה|מבקש|מבקשת)?\s*חותמת\b.*:$/.test(lines[0]) || /:$/.test(lines[0])) lines.shift();
+  return lines.length >= 1 && lines.every((l) => l.length <= 60) ? lines : null;
+}
+
+/** The customer's own lines, verbatim – offered first when they typed lines. */
+export function exactSuggestion(prompt: string, round = false): Suggestion | null {
+  const lines = explicitLines(prompt);
+  if (!lines) return null;
+  const content: LayoutContent = round && lines.length >= 2 ? { arcTop: lines[0], arcBottom: lines[lines.length - 1], lines: lines.slice(1, -1) } : { lines };
+  return { style: 'classic', title: 'בדיוק כפי שכתבתם', content };
+}
+
 // --------------------------------------------------------------------------
 // Rule-based fallback (works offline / without an API key)
 // --------------------------------------------------------------------------
 
-const PROFESSIONS: { match: RegExp; title: string; prefix?: string }[] = [
-  { match: /עורכ?ת?\s*דין|עו["״]?ד|נוטריון/, title: 'עורך דין', prefix: 'עו״ד' },
-  { match: /רופא|ד["״]?ר|רפוא/, title: 'רופא מומחה', prefix: 'ד״ר' },
-  { match: /רו["״]?ח|רואה חשבון/, title: 'רואה חשבון' },
-  { match: /מהנדס/, title: 'מהנדס' },
+// Only titles the customer actually wrote (no invented "מומחה" etc.).
+const PROFESSIONS: { match: RegExp; title: (m: string) => string; prefix?: string }[] = [
+  { match: /עורכ?ת\s*דין/, title: () => 'עורכת דין', prefix: 'עו״ד' },
+  { match: /עורך\s*דין/, title: () => 'עורך דין', prefix: 'עו״ד' },
+  { match: /נוטריון/, title: () => 'נוטריון' },
+  { match: /רופא(?:ת|ה)?(?:\s+[\u0590-\u05FF]+)?/, title: (m) => m.replace(/^ל/, ''), prefix: 'ד״ר' },
+  { match: /רואה\s*חשבון|רו["״]ח/, title: () => 'רואה חשבון' },
+  { match: /מהנדס(?:ת)?(?:\s+[\u0590-\u05FF]+)?/, title: (m) => m },
 ];
 // ("חברה" / "עסק" describe the kind of stamp, not text to print – never added.)
 
@@ -121,19 +152,28 @@ const PROFESSIONS: { match: RegExp; title: string; prefix?: string }[] = [
  * invented placeholders.
  */
 export function suggestLocally(prompt: string): Suggestion[] {
+  const round = /עגול/.test(prompt);
+  // The customer typed their lines: every suggestion uses exactly those lines.
+  const exact = exactSuggestion(prompt, round);
+  if (exact) {
+    const lines = explicitLines(prompt)!;
+    return [exact, { style: 'minimal', title: 'Minimal', content: { lines } }, { style: 'modern', title: 'Modern', content: { lines } }];
+  }
+
   const text = prompt.replace(/\s+/g, ' ').trim();
   const required = extractRequired(text);
-  const prof = PROFESSIONS.find((p) => p.match.test(text));
+  const profMatch = PROFESSIONS.map((p) => ({ p, m: p.match.exec(text)?.[0] })).find((x) => x.m);
+  const profTitle = profMatch ? profMatch.p.title(profMatch.m!).trim() : null;
   const name = required.find((r) => r.kind === 'name')?.value;
   const details = required.filter((r) => r.kind !== 'name').map(requiredLine);
-  const lines = [...(name ? [name] : []), ...(prof ? [prof.title] : []), ...details];
+  const lines = [...(name ? [name] : []), ...(profTitle ? [profTitle] : []), ...details];
   if (!lines.length) lines.push(text.slice(0, 40));
-  const round = /עגול/.test(text);
 
   const base: LayoutContent = { lines };
   const roundContent: LayoutContent = lines.length > 1 ? { arcTop: lines[0], arcBottom: lines[1], lines: lines.slice(2) } : base;
-  const modernFirst = name && prof?.prefix && !name.startsWith(prof.prefix) ? `${prof.prefix} ${name}` : null;
-  const modern: LayoutContent = modernFirst ? { lines: [modernFirst, ...lines.slice(prof ? 2 : 1)] } : base;
+  const prefix = profMatch?.p.prefix;
+  const modernFirst = name && prefix && !/^(?:עו|ד)["״]/.test(name) ? `${prefix} ${name}` : null;
+  const modern: LayoutContent = modernFirst ? { lines: [modernFirst, ...lines.slice(profTitle ? 2 : 1)] } : base;
   return [
     { style: 'minimal', title: 'Minimal', content: base },
     { style: 'classic', title: 'Classic', content: round ? roundContent : base },

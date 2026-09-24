@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { ensureRequired, extractRequired, missingRequired, requiredLine, suggestLocally, type RequiredItem } from '@/designer/suggest';
+import { ensureRequired, exactSuggestion, explicitLines, extractRequired, missingRequired, requiredLine, suggestLocally, type RequiredItem } from '@/designer/suggest';
 import { rateLimit } from '@/server/rate-limit';
 
 const Suggestion = z.object({
@@ -22,6 +22,7 @@ const SYSTEM = `אתה מעצב חותמות גומי בסטודיו ישראל�
 - מותר רק להוסיף תווית מקובלת לפני מספר (טל׳, מ.ר., ח.פ., ע.מ., ת.ז.) ולסדר את הפרטים בשורות.
 - אל תוסיף פרטים שהלקוח לא כתב. מציין מקום (כמו "טל׳ 050-0000000") רק אם הלקוח ביקש במפורש שדה ולא נתן לו ערך.
 - אם יש הרבה פרטים – פצל לשורות נוספות. אסור להשמיט פרט כדי שייכנס.
+- אם הלקוח כתב את החותמת שורה-שורה – השתמש בשורות שלו בדיוק, באותו סדר ובאותו ניסוח, בכל ההצעות. שנה רק את הסגנון והסידור, לא את הטקסט, ואל תוסיף שורות (כמו תואר או מקצוע) שלא כתב.
 
 עיצוב:
 - עברית תקנית, שורות קצרות שמתאימות לחותמת. השורה הראשונה היא הפרט החשוב ביותר (בדרך כלל השם).
@@ -40,6 +41,9 @@ export async function POST(req: Request) {
 
   const required = extractRequired(prompt);
   const stamp = body?.shape === 'round' ? `עגולה בקוטר ${body?.width} מ"מ` : `מלבנית ${body?.width}×${body?.height} מ"מ`;
+  const lines = explicitLines(prompt);
+  const exact = exactSuggestion(prompt, body?.shape === 'round');
+  const linesNote = lines ? `\n\nהשורות שהלקוח כתב (להשתמש בהן בדיוק, באותו סדר):\n${lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}` : '';
   const checklist = required.length ? `\n\nפרטים שחייבים להופיע בדיוק כפי שנכתבו, בכל הצעה:\n${required.map((r) => `- ${requiredLine(r)}`).join('\n')}` : '';
 
   try {
@@ -50,7 +54,7 @@ export async function POST(req: Request) {
         max_tokens: 4000,
         output_config: { effort: 'low', format: zodOutputFormat(Output) },
         system: SYSTEM,
-        messages: [{ role: 'user', content: `סוג החותמת: ${stamp}\n\nבקשת הלקוח:\n${prompt}${checklist}${extra}` }],
+        messages: [{ role: 'user', content: `סוג החותמת: ${stamp}\n\nבקשת הלקוח:\n${prompt}${linesNote}${checklist}${extra}` }],
       });
       return response.stop_reason === 'refusal' ? null : response.parsed_output;
     };
@@ -74,7 +78,11 @@ export async function POST(req: Request) {
       source: 'ai',
       required,
       // Safety net: anything still missing is added as its own line.
-      suggestions: out.suggestions.slice(0, 3).map((s) => ({ style: s.style, title: titles[s.style], content: ensureRequired(toContent(s), required) })),
+      suggestions: [
+        // The customer's own lines, untouched, always come first when they typed lines.
+        ...(exact ? [exact] : []),
+        ...out.suggestions.slice(0, 3).map((s) => ({ style: s.style, title: titles[s.style], content: ensureRequired(toContent(s), required) })),
+      ],
     });
   } catch (e) {
     if (e instanceof Anthropic.RateLimitError) console.warn('[ai-design] rate limited');

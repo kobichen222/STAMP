@@ -38,6 +38,20 @@ it('never adds text the customer did not write for a company request', () => {
   expect(minimal.content.lines).toEqual(['אלפא שיווק בע״מ', 'ח.פ. 514567890']);
 });
 
+it('numbers with a dash are kept whole (27-54321)', () => {
+  expect(extractRequired('מ.ר. 27-54321').map((r) => r.value)).toEqual(['27-54321']);
+});
+
+it('typed lines: every suggestion keeps exactly those lines', () => {
+  const p = 'ד"ר מיכל אברהם\nרופאת ילדים\nמ.ר. 27-54321';
+  for (const s of suggestLocally(p)) expect(s.content.lines).toEqual(['ד"ר מיכל אברהם', 'רופאת ילדים', 'מ.ר. 27-54321']);
+});
+
+it('no invented titles', () => {
+  const [s] = suggestLocally('חותמת בשם ד"ר מיכל אברהם, מ.ר. 12345');
+  expect(s.content.lines.join(' ')).not.toMatch(/מומחה|רופא/);
+});
+
 describe('ensureRequired', () => {
   it('adds what the AI left out, as lines', () => {
     const req = extractRequired('בשם יעקב כהן, טלפון 052-1234567, ח.פ. 514567890');
@@ -45,5 +59,26 @@ describe('ensureRequired', () => {
     expect(missingRequired(fixed, req)).toEqual([]);
     expect(fixed.lines).toContain('טל׳ 052-1234567');
     expect(fixed.lines).toContain('ח.פ. 514567890');
+  });
+});
+
+describe('explicit lines – "exactly as I wrote it"', () => {
+  it('one line per row, verbatim and in order', async () => {
+    const { explicitLines, suggestLocally: s } = await import('@/designer/suggest');
+    const p = 'ישראל ישראלי\nעורך דין ונוטריון\nמ.ר. 12345';
+    expect(explicitLines(p)).toEqual(['ישראל ישראלי', 'עורך דין ונוטריון', 'מ.ר. 12345']);
+    const [first] = s(p);
+    expect(first.title).toBe('בדיוק כפי שכתבתם');
+    expect(first.content.lines).toEqual(['ישראל ישראלי', 'עורך דין ונוטריון', 'מ.ר. 12345']);
+  });
+  it('strips bullets and an intro line', async () => {
+    const { explicitLines } = await import('@/designer/suggest');
+    expect(explicitLines('אני צריך חותמת:\n- יעקב כהן\n- 052-1234567')).toEqual(['יעקב כהן', '052-1234567']);
+    expect(explicitLines('שורה 1: שם העסק\nשורה 2: טל׳ 03-1234567')).toEqual(['שם העסק', 'טל׳ 03-1234567']);
+  });
+  it('separators and prose', async () => {
+    const { explicitLines } = await import('@/designer/suggest');
+    expect(explicitLines('שם העסק | טל׳ 03-1234567')).toEqual(['שם העסק', 'טל׳ 03-1234567']);
+    expect(explicitLines('חותמת לעורך דין בשם יעקב כהן, אתר www.a.co.il/x')).toBeNull();
   });
 });
