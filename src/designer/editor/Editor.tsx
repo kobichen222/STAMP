@@ -1,0 +1,633 @@
+'use client';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Logo } from '@/components/Logo';
+import { Icon } from '@/components/ui/Icon';
+import { addToCart } from '@/lib/cart-store';
+import { saveDesign } from '@/lib/designs-store';
+import { formatPrice } from '@/lib/format';
+import { quoteLine } from '@/lib/pricing';
+import { autoFix } from '../autofix';
+import { composeLayout, improveLayout, newDesign } from '../compose';
+import { formatSize } from '../models';
+import { profileForModel } from '../profiles';
+import { renderDesign } from '../render';
+import { toProductionSvg } from '../production';
+import { TEMPLATES } from '../templates';
+import type { Design, DesignElement, InkColor, StampModel, TextElement } from '../types';
+import { isProductionReady, validateDesign } from '../validate';
+import { useFaces } from '../useFaces';
+import { Canvas, type ViewSettings } from './Canvas';
+import { EditorContext, type EditorContextValue, type PanelId } from './context';
+import { IconButton } from './controls';
+import { AddToCartModal } from './AddToCartModal';
+import { AiPanel } from './AiPanel';
+import { EmptyState } from './EmptyState';
+import { FloatingToolbar } from './FloatingToolbar';
+import { Onboarding } from './Onboarding';
+import { PreflightBadge } from './PreflightBadge';
+import { PreviewMode } from './PreviewMode';
+import { SettingsPanel } from './SettingsPanel';
+import { FramesPanel, IconsPanel, LayersPanel, LogoPanel, ShapesPanel, TemplatesPanel, TextPanel } from './panels';
+import { useEditorStore } from './store';
+
+export interface DesignerProduct {
+  slug: string;
+  title: string;
+  price: number | null;
+  image: string | null;
+  model: StampModel;
+}
+
+const PANELS: { id: PanelId; label: string; icon: string; advanced?: boolean }[] = [
+  { id: 'templates', label: 'תבניות', icon: 'template' },
+  { id: 'text', label: 'טקסט', icon: 'text' },
+  { id: 'logo', label: 'לוגו', icon: 'image' },
+  { id: 'icons', label: 'אייקונים', icon: 'star' },
+  { id: 'shapes', label: 'צורות', icon: 'shapes', advanced: true },
+  { id: 'frames', label: 'מסגרות', icon: 'frame' },
+  { id: 'layers', label: 'שכבות', icon: 'layers', advanced: true },
+  { id: 'ai', label: 'עיצוב עם AI', icon: 'sparkles' },
+  { id: 'settings', label: 'הגדרות', icon: 'settings' },
+];
+
+const MOBILE_TABS: PanelId[] = ['templates', 'text', 'logo', 'icons'];
+
+let clipboard: DesignElement[] = [];
+
+function PanelBody({ id, readyFile }: { id: PanelId; readyFile: boolean }) {
+  switch (id) {
+    case 'templates':
+      return <TemplatesPanel />;
+    case 'text':
+      return <TextPanel />;
+    case 'logo':
+      return <LogoPanel readyFile={readyFile} />;
+    case 'icons':
+      return <IconsPanel />;
+    case 'shapes':
+      return <ShapesPanel />;
+    case 'frames':
+      return <FramesPanel />;
+    case 'layers':
+      return <LayersPanel />;
+    case 'ai':
+      return <AiPanel />;
+    case 'settings':
+      return <SettingsPanel />;
+  }
+}
+
+export interface EditorProps {
+  product: DesignerProduct;
+  products: DesignerProduct[];
+  initialDesign?: Design | null;
+  designId: string;
+  templateId?: string | null;
+  initialInk?: InkColor;
+  initialQty?: number;
+  bodyColor?: string;
+  startWithUpload?: boolean;
+}
+
+export function Editor({ product, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload }: EditorProps) {
+  const router = useRouter();
+  const model = product.model;
+  const profile = useMemo(() => profileForModel(model), [model]);
+
+  const initial = useMemo<Design>(() => {
+    if (initialDesign) return initialDesign;
+    const t = templateId ? TEMPLATES.find((x) => x.id === templateId) : null;
+    const d = t ? composeLayout(model, t.content, t.style) : newDesign(model);
+    return { ...d, inkColor: initialInk ?? 'black' };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const { state, actions, selected, canUndo, canRedo } = useEditorStore(initial);
+  const design = state.design;
+  const [panel, setPanel] = useState<PanelId | null>(initialDesign || templateId ? 'text' : startWithUpload ? 'logo' : 'templates');
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [sheet, setSheet] = useState<'closed' | 'half' | 'full'>('closed');
+  const [advanced, setAdvanced] = useState(false);
+  const [view, setView] = useState<ViewSettings>({ zoom: 3, grid: false, safeArea: true, snap: true });
+  const [fitSignal, setFitSignal] = useState(0);
+  const [preview, setPreview] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [qty, setQty] = useState(initialQty);
+  const [saveState, setSaveState] = useState<'saved' | 'saving' | 'offline'>('saved');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [showEmpty, setShowEmpty] = useState(!initialDesign && !templateId && !startWithUpload);
+  const [readyFile, setReadyFile] = useState(!!startWithUpload);
+  const [exitAsk, setExitAsk] = useState(false);
+  const [firstDragDone, setFirstDragDone] = useState(true);
+  const lastVersion = useRef(0);
+
+  const { resolve, ready, version } = useFaces([design]);
+  const render = useMemo(() => (ready ? renderDesign(design, resolve) : null), [design, resolve, ready, version]);
+  const issues = useMemo(() => (render ? validateDesign(design, render, profile) : []), [design, render, profile]);
+  const productionReady = isProductionReady(issues);
+  const issuesById = useMemo(() => {
+    const m: Record<string, 'error' | 'warning'> = {};
+    for (const i of issues) if (i.elementId && i.severity !== 'info') m[i.elementId] = m[i.elementId] === 'error' ? 'error' : (i.severity as 'error' | 'warning');
+    return m;
+  }, [issues]);
+
+  const hasLogo = design.elements.some((e) => e.type === 'image');
+  const quote = quoteLine({ basePrice: product.price, quantity: qty, ink: design.inkColor, body: bodyColor, hasLogo });
+
+  const toast = useCallback((msg: string) => {
+    setToastMsg(msg);
+    window.setTimeout(() => setToastMsg((m) => (m === msg ? null : m)), 2600);
+  }, []);
+
+  // ---------------------------------------------------------------- autosave (local draft + versions)
+  useEffect(() => {
+    if (!state.revision) return;
+    setSaveState('saving');
+    const t = window.setTimeout(() => {
+      const snapshot = Date.now() - lastVersion.current > 60_000;
+      if (snapshot) lastVersion.current = Date.now();
+      const firstText = design.elements.find((e): e is TextElement => e.type === 'text')?.text.split('\n')[0];
+      saveDesign(
+        {
+          id: designId,
+          name: firstText || product.title,
+          productSlug: product.slug,
+          productName: product.title,
+          size: formatSize(model),
+          design,
+          previewSvg: render ? toProductionSvg(render) : '',
+        },
+        snapshot,
+      );
+      setSaveState(typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'saved');
+    }, 700);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.revision]);
+
+  // ---------------------------------------------------------------- keyboard
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('input, textarea, select, [contenteditable]')) return;
+      const mod = e.metaKey || e.ctrlKey;
+      const sel = state.selection;
+      if (mod && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) actions.redo();
+        else actions.undo();
+      } else if (mod && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        actions.redo();
+      } else if (mod && e.key.toLowerCase() === 'c' && sel.length) {
+        clipboard = design.elements.filter((x) => sel.includes(x.id));
+      } else if (mod && e.key.toLowerCase() === 'v' && clipboard.length) {
+        e.preventDefault();
+        actions.add(...clipboard.map((c) => ({ ...c, id: `${c.type}-${Math.random().toString(36).slice(2, 9)}`, x: c.x + 1.5, y: c.y + 1.5, locked: false })));
+      } else if (mod && e.key.toLowerCase() === 'd' && sel.length) {
+        e.preventDefault();
+        actions.duplicate(sel);
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && sel.length) {
+        e.preventDefault();
+        actions.remove(sel);
+      } else if (e.key === 'Escape') {
+        actions.select([]);
+      } else if (e.key === 'Tab' && design.elements.length) {
+        e.preventDefault();
+        const idx = design.elements.findIndex((x) => x.id === sel[0]);
+        const next = design.elements[(idx + (e.shiftKey ? -1 : 1) + design.elements.length) % design.elements.length];
+        actions.select([next.id]);
+      } else if (e.key.startsWith('Arrow') && sel.length) {
+        e.preventDefault();
+        const step = e.shiftKey ? 1 : 0.1;
+        const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+        const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+        actions.patch(
+          sel.filter((id) => !design.elements.find((x) => x.id === id)?.locked),
+          (el) => ({ x: Math.round((el.x + dx) * 100) / 100, y: Math.round((el.y + dy) * 100) / 100 }),
+        );
+      } else if (e.key === '+' || e.key === '=') {
+        setView((v) => ({ ...v, zoom: Math.min(20, v.zoom * 1.2) }));
+      } else if (e.key === '-') {
+        setView((v) => ({ ...v, zoom: Math.max(0.3, v.zoom / 1.2) }));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [actions, design.elements, state.selection]);
+
+  // Open the relevant panel when selecting an element.
+  useEffect(() => {
+    if (selected.length !== 1) return;
+    const t = selected[0].type;
+    setPanel((p) => {
+      if (t === 'text') return 'text';
+      if (t === 'image') return 'logo';
+      if (t === 'shape') return (selected[0] as { kind: string }).kind === 'icon' ? 'icons' : 'shapes';
+      return p;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.selection.join(',')]);
+
+  useEffect(() => {
+    try {
+      setFirstDragDone(!!localStorage.getItem('s2g-drag-tip'));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const openPanel = useCallback((p: PanelId) => {
+    setPanel(p);
+    setPanelOpen(true);
+    setSheet('half');
+  }, []);
+
+  const fixAll = () => {
+    actions.set(autoFix(design, resolve, profile));
+    toast('תיקנו את מה שאפשר אוטומטית');
+  };
+
+  const changeProduct = (slug: string) => {
+    router.push(`/designer/${slug}/?ink=${design.inkColor}&qty=${qty}`);
+  };
+
+  const ctx: EditorContextValue = {
+    design,
+    render,
+    selection: state.selection,
+    selected,
+    actions,
+    model,
+    profile,
+    advanced,
+    resolveFace: resolve,
+    issues,
+    openPanel,
+    toast,
+    view,
+    setView,
+    setAdvanced,
+    designId,
+    addVariants: (list) => {
+      for (const d of list) {
+        const r = renderDesign(d, resolve);
+        addToCart({
+          productSlug: product.slug,
+          productName: product.title,
+          modelId: model.id,
+          size: formatSize(model),
+          design: d,
+          previewSvg: toProductionSvg(r),
+          ink: d.inkColor,
+          bodyColor,
+          quantity: 1,
+          unitPrice: quote.onRequest ? null : quoteLine({ basePrice: product.price, quantity: 1, ink: d.inkColor, body: bodyColor, hasLogo }).unitPrice,
+        });
+      }
+      router.push('/cart/?added=' + list.length);
+    },
+    improve: (style) => {
+      actions.set(improveLayout(design, model, style));
+      toast('הסידור שופר · אפשר לבטל עם Undo');
+    },
+  };
+
+  const confirmAdd = () => {
+    if (!render) return;
+    addToCart({
+      productSlug: product.slug,
+      productName: product.title,
+      modelId: model.id,
+      size: formatSize(model),
+      design,
+      previewSvg: toProductionSvg(render),
+      ink: design.inkColor,
+      bodyColor,
+      quantity: qty,
+      unitPrice: quote.onRequest ? null : quote.unitPrice,
+      designId,
+    });
+    router.push('/cart/?added=1');
+  };
+
+  const visiblePanels = PANELS.filter((p) => advanced || !p.advanced);
+  const activePanel = PANELS.find((p) => p.id === panel);
+  const elementsCount = design.elements.filter((e) => !e.hidden).length;
+
+  return (
+    <EditorContext.Provider value={ctx}>
+      <div className="fixed inset-0 z-40 flex flex-col bg-white text-ink" dir="rtl">
+        {/* ------------------------------------------------ header */}
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-2 sm:px-3">
+          <button type="button" onClick={() => setExitAsk(true)} className="hidden items-center sm:flex" aria-label="יציאה מהעורך">
+            <Logo className="scale-90" />
+          </button>
+          <IconButton icon="arrowRight" label="חזרה" onClick={() => setExitAsk(true)} className="sm:hidden" />
+          <span className="mx-1 hidden h-6 w-px bg-line sm:block" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{product.title}</p>
+            <p className="text-xs text-muted">{formatSize(model)}</p>
+          </div>
+          <span className="ms-2 hidden items-center gap-1 text-xs text-muted md:flex" aria-live="polite">
+            {saveState === 'saving' ? (
+              <>
+                <span className="h-2 w-2 animate-pulse rounded-full bg-warn" /> שומר…
+              </>
+            ) : saveState === 'offline' ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-warn" /> השינויים נשמרו מקומית
+              </>
+            ) : (
+              <>
+                <Icon name="check" size={14} className="text-ok" /> נשמר
+              </>
+            )}
+          </span>
+          <div className="ms-auto flex items-center gap-0.5">
+            <IconButton icon="undo" label="בטל (Ctrl+Z)" onClick={actions.undo} disabled={!canUndo} />
+            <IconButton icon="redo" label="בצע שוב (Ctrl+Shift+Z)" onClick={actions.redo} disabled={!canRedo} />
+            <span className="mx-1 hidden h-6 w-px bg-line md:block" />
+            <div className="hidden items-center md:flex">
+              <IconButton icon="zoomOut" label="הקטן" onClick={() => setView((v) => ({ ...v, zoom: Math.max(0.3, v.zoom / 1.25) }))} />
+              <button type="button" className="w-14 rounded-md py-1 text-center text-xs tabular-nums hover:bg-surface" onClick={() => setView((v) => ({ ...v, zoom: 1 }))} title="100% = גודל אמיתי">
+                {Math.round(view.zoom * 100)}%
+              </button>
+              <IconButton icon="zoomIn" label="הגדל" onClick={() => setView((v) => ({ ...v, zoom: Math.min(20, v.zoom * 1.25) }))} />
+              <IconButton icon="fit" label="התאם למסך" onClick={() => setFitSignal((s) => s + 1)} />
+            </div>
+            <span className="mx-1 hidden h-6 w-px bg-line md:block" />
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setPreview(true)}>
+              <Icon name="eye" size={17} /> <span className="hidden sm:inline">תצוגה מקדימה</span>
+            </button>
+            <Link href="/faq/#design" target="_blank" className="hidden md:block" aria-label="עזרה">
+              <IconButton icon="help" label="עזרה" />
+            </Link>
+            <IconButton icon="close" label="יציאה מהעורך" onClick={() => setExitAsk(true)} className="hidden sm:grid" />
+          </div>
+        </header>
+
+        <div className="relative flex min-h-0 flex-1">
+          {/* ------------------------------------------------ desktop rail + panel (right side in RTL) */}
+          <nav className="hidden w-[76px] shrink-0 flex-col items-stretch gap-1 border-l border-line bg-white py-2 lg:flex" aria-label="כלים">
+            {visiblePanels.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  if (panel === p.id && panelOpen) setPanelOpen(false);
+                  else {
+                    setPanel(p.id);
+                    setPanelOpen(true);
+                  }
+                }}
+                aria-pressed={panel === p.id && panelOpen}
+                className={`mx-1.5 flex flex-col items-center gap-1 rounded-xl py-2.5 text-[11px] transition ${panel === p.id && panelOpen ? 'bg-blue-50 text-blue' : 'text-ink-2 hover:bg-surface'}`}
+              >
+                <Icon name={p.icon} size={21} />
+                {p.label}
+              </button>
+            ))}
+            <div className="mt-auto px-2 pb-1">
+              <button
+                type="button"
+                onClick={() => setAdvanced((a) => !a)}
+                className="w-full rounded-lg border border-line py-1.5 text-[10px] font-medium text-ink-2 hover:border-ink/30"
+                aria-pressed={advanced}
+                title="מצב מתקדם: מיקום, שכבות, צורות, רשת"
+              >
+                {advanced ? 'מתקדם' : 'פשוט'}
+              </button>
+            </div>
+          </nav>
+
+          {panelOpen && panel && (
+            <aside className="hidden w-[320px] shrink-0 flex-col border-l border-line bg-white lg:flex" aria-label={activePanel?.label}>
+              <div className="flex h-12 items-center justify-between border-b border-line px-4">
+                <h2 className="text-sm font-semibold">{activePanel?.label}</h2>
+                <IconButton icon="chevronLeft" label="סגירת הפאנל" onClick={() => setPanelOpen(false)} />
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <PanelBody id={panel} readyFile={readyFile} />
+              </div>
+            </aside>
+          )}
+
+          {/* ------------------------------------------------ canvas */}
+          <div className="relative min-w-0 flex-1">
+            {!ready && (
+              <div className="absolute inset-0 z-10 grid place-items-center bg-[#F5F7FA]">
+                <p className="animate-pulse text-sm text-muted">טוען גופנים…</p>
+              </div>
+            )}
+            <Canvas
+              design={design}
+              render={render}
+              selection={state.selection}
+              actions={actions}
+              view={view}
+              onZoom={(z) => setView((v) => ({ ...v, zoom: z }))}
+              ink={design.inkColor}
+              safeMargin={profile.safeMargin}
+              issuesById={issuesById}
+              fitSignal={fitSignal}
+              onFirstDrag={() => {
+                if (firstDragDone) return;
+                setFirstDragDone(true);
+                try {
+                  localStorage.setItem('s2g-drag-tip', '1');
+                } catch {
+                  /* ignore */
+                }
+              }}
+            />
+            {selected.length > 0 && <FloatingToolbar />}
+            <div className="pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-2">
+              <div className="pointer-events-auto">
+                <PreflightBadge issues={issues} onFix={fixAll} onSelect={(id) => actions.select([id])} />
+              </div>
+            </div>
+            {!firstDragDone && design.elements.length > 0 && (
+              <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-sm text-white shadow-lift">
+                גררו אלמנטים כדי למקם אותם · לחיצה כפולה לעריכת טקסט
+              </div>
+            )}
+            {showEmpty && design.elements.length === 0 && (
+              <EmptyState
+                onTemplates={() => {
+                  setShowEmpty(false);
+                  openPanel('templates');
+                }}
+                onBlank={() => {
+                  setShowEmpty(false);
+                  openPanel('text');
+                }}
+                onUpload={() => {
+                  setShowEmpty(false);
+                  setReadyFile(true);
+                  openPanel('logo');
+                }}
+              />
+            )}
+            {product.image && (
+              <div className="pointer-events-none absolute right-3 bottom-3 hidden w-44 rounded-xl border border-line bg-white/90 p-2 shadow-soft backdrop-blur 2xl:block">
+                <img src={encodeURI(product.image)} alt="" className="mx-auto h-24 object-contain mix-blend-multiply" />
+                <p className="mt-1 truncate text-center text-[11px] text-muted">{product.title}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ------------------------------------------------ desktop status bar */}
+        <footer className="hidden h-14 shrink-0 items-center gap-4 border-t border-line bg-white px-4 lg:flex">
+          <span className="text-xs text-muted tabular-nums">
+            {formatSize(model)} · {elementsCount} אלמנטים · {Math.round(view.zoom * 100)}%
+          </span>
+          <span className={`flex items-center gap-1.5 text-xs font-medium ${productionReady ? 'text-ok' : 'text-bad'}`}>
+            <span className={`h-2 w-2 rounded-full ${productionReady ? 'bg-ok' : 'bg-bad'}`} />
+            {productionReady ? 'הקובץ תקין' : 'נדרשים תיקונים'}
+          </span>
+          <div className="ms-auto flex items-center gap-4">
+            <div className="flex items-center rounded-full border border-line">
+              <IconButton icon="minus" label="הפחת כמות" onClick={() => setQty((q) => Math.max(1, q - 1))} className="!h-8 !w-8 rounded-full" size={15} />
+              <span className="w-8 text-center text-sm font-semibold tabular-nums" aria-label="כמות">
+                {qty}
+              </span>
+              <IconButton icon="plus" label="הוסף כמות" onClick={() => setQty((q) => q + 1)} className="!h-8 !w-8 rounded-full" size={15} />
+            </div>
+            <div className="text-left leading-tight">
+              <p className="text-lg font-bold tabular-nums">{quote.onRequest ? 'לפי הצעה' : formatPrice(quote.total)}</p>
+              <p className="text-[11px] text-muted">{qty > 1 && !quote.onRequest ? `${formatPrice(quote.unitPrice)} ליח׳ · ` : ''}כולל החותמת והעיצוב · משלוח בקופה</p>
+            </div>
+            <button type="button" className="btn-primary" onClick={() => setCartOpen(true)} disabled={!render}>
+              המשך להזמנה <Icon name="arrowLeft" size={17} />
+            </button>
+          </div>
+        </footer>
+
+        {/* ------------------------------------------------ mobile bottom toolbar */}
+        <div className="shrink-0 border-t border-line bg-white lg:hidden">
+          <div className="flex items-center justify-between gap-2 px-3 py-2">
+            <div className="leading-tight">
+              <p className="font-bold tabular-nums">{quote.onRequest ? 'לפי הצעה' : formatPrice(quote.total)}</p>
+              <p className={`text-[11px] ${productionReady ? 'text-ok' : 'text-bad'}`}>{productionReady ? '✓ מוכן לייצור' : 'נדרשים תיקונים'}</p>
+            </div>
+            <button type="button" className="btn-primary" onClick={() => setCartOpen(true)} disabled={!render}>
+              המשך
+            </button>
+          </div>
+          <nav className="grid grid-cols-5 border-t border-line pb-[env(safe-area-inset-bottom)]" aria-label="כלים">
+            {[...MOBILE_TABS.map((id) => PANELS.find((p) => p.id === id)!), { id: 'settings' as PanelId, label: 'עוד', icon: 'menu' }].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setPanel(p.id);
+                  setSheet(sheet !== 'closed' && panel === p.id ? 'closed' : 'half');
+                }}
+                className={`flex flex-col items-center gap-0.5 py-2 text-[11px] ${sheet !== 'closed' && panel === p.id ? 'text-blue' : 'text-ink-2'}`}
+              >
+                <Icon name={p.icon} size={21} />
+                {p.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* ------------------------------------------------ mobile bottom sheet */}
+        {sheet !== 'closed' && panel && (
+          <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden" role="dialog" aria-label={activePanel?.label}>
+            <div className="absolute inset-x-0 bottom-0 -top-[100dvh] bg-ink/10" onClick={() => setSheet('closed')} />
+            <div className={`relative flex animate-fade-up flex-col rounded-t-3xl bg-white shadow-lift transition-[height] duration-300 ${sheet === 'full' ? 'h-[85dvh]' : 'h-[48dvh]'}`}>
+              <button type="button" className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-line" aria-label={sheet === 'full' ? 'הקטנה' : 'הרחבה'} onClick={() => setSheet((s) => (s === 'full' ? 'half' : 'full'))} />
+              <div className="flex items-center justify-between px-4 pt-1">
+                <h2 className="text-sm font-semibold">{activePanel?.label}</h2>
+                <div className="flex items-center gap-1">
+                  {panel === 'settings' && (
+                    <div className="flex gap-1">
+                      {PANELS.filter((p) => !MOBILE_TABS.includes(p.id) && p.id !== 'settings').map((p) => (
+                        <button key={p.id} type="button" className="chip !px-2 !py-1 !text-xs" onClick={() => setPanel(p.id)}>
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <IconButton icon="close" label="סגירה" onClick={() => setSheet('closed')} />
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                <PanelBody id={panel} readyFile={readyFile} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {toastMsg && (
+          <div role="status" className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-sm text-white shadow-lift lg:bottom-20">
+            {toastMsg}
+          </div>
+        )}
+
+        {preview && render && <PreviewMode render={render} ink={design.inkColor} onInk={(ink) => actions.set({ ...design, inkColor: ink })} productImage={product.image} onClose={() => setPreview(false)} />}
+        {cartOpen && render && (
+          <AddToCartModal
+            render={render}
+            product={product}
+            issues={issues}
+            qty={qty}
+            onQty={setQty}
+            ink={design.inkColor}
+            onInk={(ink) => actions.set({ ...design, inkColor: ink })}
+            total={quote.total}
+            onRequest={quote.onRequest}
+            onFix={fixAll}
+            onConfirm={confirmAdd}
+            onClose={() => setCartOpen(false)}
+          />
+        )}
+        {exitAsk && (
+          <div className="fixed inset-0 z-[70] grid place-items-center bg-ink/30 p-4" role="dialog" aria-modal="true" aria-labelledby="exit-title">
+            <div className="card w-full max-w-sm animate-pop p-6 shadow-lift">
+              <h2 id="exit-title" className="text-lg font-bold">
+                לצאת מהעורך?
+              </h2>
+              <p className="mt-2 text-sm text-muted">העיצוב נשמר אוטומטית ב״העיצובים שלי״ במכשיר הזה, ותוכלו לחזור אליו בכל רגע.</p>
+              <div className="mt-5 grid gap-2">
+                <Link href="/account/#designs" className="btn-primary">
+                  שמירה ומעבר לעיצובים שלי
+                </Link>
+                <button type="button" className="btn-outline" onClick={() => router.push(`/stamp/${product.slug}/`)}>
+                  יציאה
+                </button>
+                <button type="button" className="btn-ghost" onClick={() => setExitAsk(false)}>
+                  להמשיך לעצב
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <Onboarding />
+        <ProductSwitcherHost products={products} current={product.slug} onChange={changeProduct} />
+      </div>
+    </EditorContext.Provider>
+  );
+}
+
+/** Registers the product list for the settings panel (kept out of context to avoid re-renders). */
+function ProductSwitcherHost({ products, current, onChange }: { products: DesignerProduct[]; current: string; onChange: (slug: string) => void }) {
+  useEffect(() => {
+    productSwitcher.products = products;
+    productSwitcher.current = current;
+    productSwitcher.onChange = onChange;
+  }, [products, current, onChange]);
+  return null;
+}
+
+export const productSwitcher: { products: DesignerProduct[]; current: string; onChange: (slug: string) => void } = {
+  products: [],
+  current: '',
+  onChange: () => undefined,
+};

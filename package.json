@@ -20,14 +20,18 @@
   },
   "homepage": "https://github.com/kobichen222/STAMP#readme",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@supabase/supabase-js": "^2.117.1",
     "imagetracerjs": "^1.2.6",
     "next": "^15.5.26",
     "opentype.js": "^2.0.0",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.3.289",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "three": "^0.186.0"
+    "server-only": "^0.0.1",
+    "three": "^0.186.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@fontsource/alef": "^5.3.0",
