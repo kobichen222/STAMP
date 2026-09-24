@@ -229,17 +229,32 @@ export function composeLayout(model: StampModel, content: LayoutContent, style: 
 }
 
 /** Keeps the user's text and logo but recomputes a clean layout ("שפר את הסידור"). */
-export function improveLayout(design: Design, model: StampModel, style: LayoutStyle = 'classic'): Design {
+/** The customer's content (text, arcs, logo, font) pulled out of a design. */
+function contentOf(design: Design): LayoutContent {
   const texts = design.elements
     .filter((e): e is TextElement => e.type === 'text' && !e.hidden && !!e.text.trim())
     .sort((a, b) => a.y - b.y);
-  const arcTop = texts.find((t) => t.curve?.position === 'top')?.text;
-  const arcBottom = texts.find((t) => t.curve?.position === 'bottom')?.text;
-  const lines = texts.filter((t) => !t.curve).flatMap((t) => t.text.split('\n'));
-  const logo = design.elements.find((e): e is ImageElement => e.type === 'image') ?? null;
-  const font = texts[0]?.font;
-  const next = composeLayout({ ...model, width: design.width, height: design.height, shape: design.shape }, { lines, arcTop, arcBottom, logo, font }, style);
+  return {
+    arcTop: texts.find((t) => t.curve?.position === 'top')?.text,
+    arcBottom: texts.find((t) => t.curve?.position === 'bottom')?.text,
+    lines: texts.filter((t) => !t.curve).flatMap((t) => t.text.split('\n')),
+    logo: design.elements.find((e): e is ImageElement => e.type === 'image') ?? null,
+    font: texts[0]?.font,
+  };
+}
+
+export function improveLayout(design: Design, model: StampModel, style: LayoutStyle = 'classic'): Design {
+  const next = composeLayout({ ...model, width: design.width, height: design.height, shape: design.shape }, contentOf(design), style);
   return { ...next, inkColor: design.inkColor, modelId: design.modelId };
+}
+
+/**
+ * Carries a design over to another stamp model (size/shape change): keeps the
+ * customer's text and logo, re-lays them out for the new model.
+ */
+export function adaptToModel(design: Design, model: StampModel): Design {
+  const style: LayoutStyle = design.border.style === 'none' ? 'modern' : design.border.style === 'minimal' ? 'minimal' : 'classic';
+  return { ...composeLayout(model, contentOf(design), style), inkColor: design.inkColor };
 }
 
 /** Replaces {{field}} placeholders – used by the bulk (CSV) generator. */

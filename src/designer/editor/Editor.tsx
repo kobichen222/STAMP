@@ -141,9 +141,11 @@ export interface EditorProps {
   initialQty?: number;
   bodyColor?: string;
   startWithUpload?: boolean;
+  /** One-time message on open (e.g. design carried over to another product). */
+  notice?: string;
 }
 
-export function Editor({ product, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload }: EditorProps) {
+export function Editor({ product, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice }: EditorProps) {
   const router = useRouter();
   const model = product.model;
   const profile = useMemo(() => profileForModel(model), [model]);
@@ -223,14 +225,9 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   }, []);
 
   // ---------------------------------------------------------------- autosave (local draft + versions)
-  useEffect(() => {
-    if (!state.revision) return;
-    setSaveState('saving');
-    const t = window.setTimeout(() => {
-      const snapshot = Date.now() - lastVersion.current > 60_000;
-      if (snapshot) lastVersion.current = Date.now();
-      const firstText = design.elements.find((e): e is TextElement => e.type === 'text')?.text.split('\n')[0];
-      saveDesign(
+  const persist = (snapshot: boolean) => {
+    const firstText = design.elements.find((e): e is TextElement => e.type === 'text')?.text.split('\n')[0];
+    saveDesign(
         {
           id: designId,
           name: firstText || product.title,
@@ -243,6 +240,14 @@ export function Editor({ product, products, initialDesign, designId, templateId,
         },
         snapshot,
       );
+  };
+  useEffect(() => {
+    if (!state.revision) return;
+    setSaveState('saving');
+    const t = window.setTimeout(() => {
+      const snapshot = Date.now() - lastVersion.current > 60_000;
+      if (snapshot) lastVersion.current = Date.now();
+      persist(snapshot);
       setSaveState(typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'saved');
     }, 700);
     return () => window.clearTimeout(t);
@@ -348,6 +353,19 @@ export function Editor({ product, products, initialDesign, designId, templateId,
     return () => window.clearTimeout(t);
   }, [firstDragDone, hasElements, dismissDragTip]);
 
+  useEffect(() => {
+    if (notice) toast(notice);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // A design carried over from another product is saved under this product right away.
+  const movedSaved = useRef(false);
+  useEffect(() => {
+    if (!notice || !ready || !render || movedSaved.current) return;
+    movedSaved.current = true;
+    persist(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, render]);
+
   const openPanel = useCallback((p: PanelId) => {
     setPanel(p);
     setPanelOpen(true);
@@ -360,7 +378,10 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   };
 
   const changeProduct = (slug: string) => {
-    router.push(`/designer/${slug}/?ink=${design.inkColor}&qty=${qty}`);
+    // Keep the work: save now and carry this design over to the new product.
+    const hasWork = design.elements.length > 0;
+    if (hasWork) persist(true);
+    router.push(`/designer/${slug}/?${hasWork ? `design=${designId}&` : ''}ink=${design.inkColor}&qty=${qty}`);
   };
 
   const ctx: EditorContextValue = {
@@ -609,6 +630,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
             )}
             {showEmpty && design.elements.length === 0 && (
               <EmptyState
+                currentId={designId}
                 onTemplates={() => {
                   setShowEmpty(false);
                   openPanel('templates');
