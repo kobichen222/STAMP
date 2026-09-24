@@ -586,7 +586,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
               </div>
             )}
             {/* Mobile: a fixed strip under the stamp for the editing bar, so it never covers the design (and nothing jumps on select). */}
-            <div className="h-full bg-[#F5F7FA] max-lg:pb-14">
+            <div className={`h-full bg-[#F5F7FA] ${isMobile && sheet === 'closed' ? 'pb-14' : ''}`}>
               <Canvas
                 design={design}
                 render={render}
@@ -615,7 +615,8 @@ export function Editor({ product, products, initialDesign, designId, templateId,
                 onFirstDrag={dismissDragTip}
               />
             </div>
-            {selected.length > 0 && (isMobile ? <MobileEditBar /> : <FloatingToolbar />)}
+            {/* Mobile: the open panel already holds every action – the bar only appears with the panel closed. */}
+            {selected.length > 0 && (isMobile ? sheet === 'closed' && <MobileEditBar /> : <FloatingToolbar />)}
             {resumeBar && (
               <div role="status" className="absolute inset-x-3 top-16 z-30 mx-auto flex w-fit max-w-full animate-fade-up items-center gap-2 rounded-2xl border border-blue/20 bg-white/95 py-1.5 ps-3 pe-1.5 text-sm shadow-lift backdrop-blur lg:top-3">
                 <Icon name="history" size={16} className="shrink-0 text-blue" />
@@ -642,7 +643,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
               </div>
             </div>
             {toastMsg && isMobile && (
-              <div role="status" className={`pointer-events-none absolute inset-x-3 z-20 mx-auto w-fit max-w-full animate-fade-up rounded-full bg-ink/90 px-4 py-2 text-center text-[13px] text-white shadow-lift ${selected.length ? 'bottom-16' : 'bottom-3'}`}>
+              <div role="status" className={`pointer-events-none absolute inset-x-3 z-20 mx-auto w-fit max-w-full animate-fade-up rounded-full bg-ink/90 px-4 py-2 text-center text-[13px] text-white shadow-lift ${selected.length && sheet === 'closed' ? 'bottom-16' : 'bottom-3'}`}>
                 {toastMsg}
               </div>
             )}
