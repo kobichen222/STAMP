@@ -9,3 +9,4 @@ next-env.d.ts
 wordpress-export/
 # Media downloaded from the old site is large; commit it only if you want it versioned
 # public/wp-content/
+screenshots/

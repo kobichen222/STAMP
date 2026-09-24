@@ -44,14 +44,14 @@ export function Header() {
           <Logo />
         </Link>
 
-        <nav aria-label="תפריט ראשי" className="hidden flex-1 items-center gap-1 lg:flex">
-          <Link href="/" className="rounded-full px-3 py-2 text-[14.5px] text-ink-2 hover:text-ink">
+        <nav aria-label="תפריט ראשי" className="hidden flex-1 items-center gap-0.5 xl:flex">
+          <Link href="/" className="rounded-full px-2.5 py-2 text-[14.5px] text-ink-2 hover:text-ink">
             ראשי
           </Link>
           <div className="relative" onMouseEnter={() => setMega(true)} onMouseLeave={() => setMega(false)}>
             <button
               type="button"
-              className="flex items-center gap-1 rounded-full px-3 py-2 text-[14.5px] text-ink-2 hover:text-ink"
+              className="flex items-center gap-1 rounded-full px-2.5 py-2 text-[14.5px] whitespace-nowrap text-ink-2 hover:text-ink"
               aria-expanded={mega}
               onClick={() => setMega((m) => !m)}
             >
@@ -76,7 +76,7 @@ export function Header() {
             <Link
               key={m.href}
               href={m.href}
-              className={`rounded-full px-3 py-2 text-[14.5px] hover:text-ink ${pathname.startsWith(m.href) ? 'text-ink font-medium' : 'text-ink-2'}`}
+              className={`rounded-full px-2.5 py-2 text-[14.5px] whitespace-nowrap hover:text-ink ${pathname.startsWith(m.href) ? 'text-ink font-medium' : 'text-ink-2'}`}
             >
               {m.label}
             </Link>
@@ -99,14 +99,14 @@ export function Header() {
           <Link href="/designer/" className="btn-primary hidden sm:inline-flex">
             עיצוב חותמת
           </Link>
-          <button type="button" className="btn-ghost !px-2.5 lg:hidden" aria-label="פתיחת תפריט" aria-expanded={drawer} onClick={() => setDrawer(true)}>
+          <button type="button" className="btn-ghost !px-2.5 xl:hidden" aria-label="פתיחת תפריט" aria-expanded={drawer} onClick={() => setDrawer(true)}>
             <Icon name="menu" size={22} />
           </button>
         </div>
       </div>
 
       {drawer && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="תפריט">
+        <div className="fixed inset-0 z-50 xl:hidden" role="dialog" aria-modal="true" aria-label="תפריט">
           <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm" onClick={() => setDrawer(false)} />
           <div className="absolute inset-y-0 right-0 flex w-[88%] max-w-sm animate-fade-up flex-col bg-white shadow-lift">
             <div className="flex h-16 items-center justify-between border-b border-line px-5">

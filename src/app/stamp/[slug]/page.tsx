@@ -40,7 +40,8 @@ export default async function ProductPage({ params }: Props) {
   if (!product) notFound();
   const facts = productFacts(product);
   const model = designerModelForProduct(product);
-  const category = CATEGORIES.find((c) => productsForCategory(c).some((p) => p.id === product.id));
+  const inCats = CATEGORIES.filter((c) => productsForCategory(c).some((p) => p.id === product.id));
+  const category = inCats.find((c) => c.titleIncludes) ?? inCats.find((c) => c.wpCategoryIds?.includes(product.primaryCategoryId ?? -1)) ?? inCats[0];
   const images = [product.image, ...product.gallery].filter((x): x is NonNullable<typeof x> => !!x);
   const related = category ? productsForCategory(category).filter((p) => p.id !== product.id).slice(0, 3) : [];
 

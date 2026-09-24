@@ -235,7 +235,8 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   add('base', base, 0.55, -0.45, 0);
 
   // Paper + impression
-  const paper = new THREE.Mesh(new THREE.PlaneGeometry(14, 9), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }));
+  const paperMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0 });
+  const paper = new THREE.Mesh(new THREE.PlaneGeometry(14, 9), paperMat);
   paper.rotation.x = -Math.PI / 2;
   paper.receiveShadow = true;
   scene.add(paper);
@@ -273,6 +274,8 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     root.position.z = 0.4 * stampMove;
     root.position.y = 0.6 * stampMove * (1 - press) - 0.52 * press + (1 - stampMove) * 0.25;
     impMat.opacity = reveal;
+    // Paper only appears for the stamping finale.
+    paperMat.opacity = seg(p, 0.7, 0.8);
 
     camera.position.set(7.5 - 1.5 * stampMove, 5.5 + 1.2 * explode + 1 * stampMove, 9.5 - 0.5 * stampMove);
     camera.lookAt(-1.2 * stampMove, 1.3 + 1.1 * explode - 0.6 * stampMove, 0);
