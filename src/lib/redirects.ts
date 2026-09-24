@@ -14,8 +14,18 @@ const index = legacy as LegacyIndex;
 export function legacyRedirects(): { from: string; to: string }[] {
   const out: { from: string; to: string }[] = [];
   for (const c of CATEGORIES) if (c.wpPageSlug) out.push({ from: `/${c.wpPageSlug}/`, to: `/stamps/${c.slug}/` });
-  const catMap: Record<number, string> = {};
-  for (const c of [...CATEGORIES].reverse()) for (const id of c.wpCategoryIds ?? []) catMap[id] = c.slug;
+  // WooCommerce category → the landing page where it is the primary category.
+  const catMap: Record<number, string> = { 25: 'business' };
+  const rank: Record<number, number> = {};
+  for (const c of CATEGORIES) {
+    (c.wpCategoryIds ?? []).forEach((id, idx) => {
+      if (id in catMap && !(id in rank)) return;
+      if (rank[id] === undefined || idx < rank[id]) {
+        rank[id] = idx;
+        catMap[id] = c.slug;
+      }
+    });
+  }
   for (const wc of index.categories) out.push({ from: `/product-category/${wc.slug}/`, to: catMap[wc.id] ? `/stamps/${catMap[wc.id]}/` : '/stamps/' });
   for (const t of index.tags) out.push({ from: `/product-tag/${t}/`, to: t.includes('עורך') ? '/stamps/lawyers/' : '/stamps/date/' });
   for (const slug of index.products) out.push({ from: `/product/${slug}/`, to: `/stamp/${slug}/` });

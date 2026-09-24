@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "import:wp": "node scripts/import-wordpress.mjs",
-    "media:download": "node scripts/download-media.mjs"
+    "media:download": "node scripts/download-media.mjs",
+    "golden:update": "UPDATE_GOLDEN=1 vitest run tests/golden.test.ts",
+    "redirects:check": "node scripts/redirect-map.mjs"
   },
   "repository": {
     "type": "git",

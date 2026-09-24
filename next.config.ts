@@ -20,18 +20,18 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // WooCommerce account area → new personal area.
-      { source: '/my-account/:path*', destination: '/account/', permanent: true },
+      { source: '/my-account/:path*', destination: '/account/', statusCode: 301 },
       // WordPress system URLs.
-      { source: '/feed/:path*', destination: '/', permanent: true },
-      { source: '/comments/feed/:path*', destination: '/', permanent: true },
-      { source: '/wp-admin/:path*', destination: '/', permanent: true },
-      { source: '/wp-login.php', destination: '/', permanent: true },
-      { source: '/xmlrpc.php', destination: '/', permanent: true },
-      { source: '/sitemap_index.xml', destination: '/sitemap.xml', permanent: true },
-      { source: '/:type(page|product|product_cat|product_tag|post)-sitemap.xml', destination: '/sitemap.xml', permanent: true },
-      { source: '/product/:slug/feed/:path*', destination: '/stamp/:slug/', permanent: true },
-      { source: '/:slug/feed/:path*', destination: '/:slug/', permanent: true },
-      { source: '/', has: [{ type: 'query', key: 'attachment_id' }], destination: '/', permanent: true },
+      { source: '/feed/:path*', destination: '/', statusCode: 301 },
+      { source: '/comments/feed/:path*', destination: '/', statusCode: 301 },
+      { source: '/wp-admin/:path*', destination: '/', statusCode: 301 },
+      { source: '/wp-login.php', destination: '/', statusCode: 301 },
+      { source: '/xmlrpc.php', destination: '/', statusCode: 301 },
+      { source: '/sitemap_index.xml', destination: '/sitemap.xml', statusCode: 301 },
+      { source: '/:type(page|product|product_cat|product_tag|post)-sitemap.xml', destination: '/sitemap.xml', statusCode: 301 },
+      { source: '/product/:slug/feed/:path*', destination: '/stamp/:slug/', statusCode: 301 },
+      { source: '/:slug/feed/:path*', destination: '/:slug/', statusCode: 301 },
+      { source: '/', has: [{ type: 'query', key: 'attachment_id' }], destination: '/', statusCode: 301 },
     ];
   },
   async rewrites() {

@@ -3,6 +3,7 @@ node_modules/
 out/
 .vercel
 .env*.local
+.env
 *.tsbuildinfo
 next-env.d.ts
 # Raw WordPress export (contains user e-mails) – keep it out of git

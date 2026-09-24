@@ -234,16 +234,22 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   const base = new THREE.Mesh(new THREE.BoxGeometry(W + 0.2, 0.1, D + 0.2), shell);
   add('base', base, 0.55, -0.45, 0);
 
-  // Paper + impression
-  const paperMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0 });
-  const paper = new THREE.Mesh(new THREE.PlaneGeometry(14, 9), paperMat);
+  // Paper + impression (unlit white paper so it reads as a sheet, not a grey slab)
+  const paperMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, toneMapped: false });
+  const paper = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 4.2), paperMat);
   paper.rotation.x = -Math.PI / 2;
-  paper.receiveShadow = true;
+  paper.position.set(-1.4, 0, 0.5);
   scene.add(paper);
-  const impMat = new THREE.MeshBasicMaterial({ map: impressionTexture(opts.lines), transparent: true, opacity: 0, depthWrite: false });
+  const shadowMat = new THREE.ShadowMaterial({ opacity: 0 });
+  const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(14, 9), shadowMat);
+  shadowPlane.rotation.x = -Math.PI / 2;
+  shadowPlane.position.y = 0.002;
+  shadowPlane.receiveShadow = true;
+  scene.add(shadowPlane);
+  const impMat = new THREE.MeshBasicMaterial({ map: impressionTexture(opts.lines), transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
   const impression = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.34, D - 0.34), impMat);
   impression.rotation.x = -Math.PI / 2;
-  impression.position.set(-3.1, 0.005, 0.4);
+  impression.position.set(-1.4, 0.006, 0.5);
   scene.add(impression);
 
   let progress = 0;
@@ -251,15 +257,15 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
 
   function update() {
     const p = progress;
-    const explode = seg(p, 0.08, 0.32) * (1 - seg(p, 0.62, 0.78));
+    const explode = seg(p, 0.08, 0.32) * (1 - seg(p, 0.62, 0.76));
     const spin = seg(p, 0.0, 0.62);
-    const stampMove = seg(p, 0.78, 0.86);
-    const press = seg(p, 0.86, 0.9) * (1 - seg(p, 0.92, 0.97));
-    const reveal = seg(p, 0.88, 0.95);
+    const toSpot = seg(p, 0.76, 0.84); // move over the paper
+    const press = seg(p, 0.84, 0.88) * (1 - seg(p, 0.89, 0.93)); // down… up
+    const away = seg(p, 0.92, 1); // lift away to reveal the print
+    const reveal = seg(p, 0.87, 0.91);
     const designSwap = seg(p, 0.45, 0.55);
 
-    root.rotation.y = -0.55 + spin * Math.PI * 0.9 - stampMove * 0.35;
-    root.rotation.x = 0;
+    root.rotation.y = -0.55 + spin * Math.PI * 0.9 - toSpot * 0.25;
     for (const { obj, home, exploded } of Object.values(parts)) {
       tmp.copy(home).lerp(exploded, explode);
       obj.position.copy(tmp);
@@ -269,16 +275,16 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     plateFaceMat.map = designSwap > 0.5 ? designTex : blankTex;
     plateTopMat.map = plateFaceMat.map;
 
-    // Move to the side, press onto the paper, lift.
-    root.position.x = -3.1 * stampMove;
-    root.position.z = 0.4 * stampMove;
-    root.position.y = 0.6 * stampMove * (1 - press) - 0.52 * press + (1 - stampMove) * 0.25;
+    root.position.x = -1.4 * toSpot + 3.2 * away;
+    root.position.z = 0.5 * toSpot - 0.5 * away;
+    root.position.y = (1 - toSpot) * 0.25 + toSpot * (0.9 * (1 - press) - 0.53 * press) + away * 1.1;
     impMat.opacity = reveal;
-    // Paper only appears for the stamping finale.
-    paperMat.opacity = seg(p, 0.7, 0.8);
+    paperMat.opacity = seg(p, 0.68, 0.78);
+    shadowMat.opacity = 0.12 * seg(p, 0.68, 0.78);
 
-    camera.position.set(7.5 - 1.5 * stampMove, 5.5 + 1.2 * explode + 1 * stampMove, 9.5 - 0.5 * stampMove);
-    camera.lookAt(-1.2 * stampMove, 1.3 + 1.1 * explode - 0.6 * stampMove, 0);
+    const cam = toSpot;
+    camera.position.set(7.5 - 3.3 * cam, 5.5 + 1.2 * explode + 2.2 * cam, 9.5 - 1.8 * cam);
+    camera.lookAt(-0.9 * cam, 1.3 + 1.1 * explode - 1.0 * cam, 0.3 * cam);
     renderer.render(scene, camera);
   }
 
