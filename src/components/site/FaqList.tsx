@@ -1,10 +1,10 @@
 import { faqJsonLd, type FaqItem } from '@/lib/faq';
 
-export function FaqList({ items, schema = true }: { items: FaqItem[]; schema?: boolean }) {
+export function FaqList({ items, schema = true, openFirst = false }: { items: FaqItem[]; schema?: boolean; openFirst?: boolean }) {
   return (
     <div className="divide-y divide-line rounded-2xl border border-line bg-white">
-      {items.map((it) => (
-        <details key={it.q} className="group px-5 py-4">
+      {items.map((it, i) => (
+        <details key={it.q} className="group px-5 py-4" open={openFirst && i === 0}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[16px] font-semibold marker:hidden">
             {it.q}
             <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface text-lg transition group-open:rotate-45">+</span>

@@ -4,10 +4,11 @@ import { CategoryCard } from '@/components/catalog/CategoryCard';
 import { HowItWorks } from '@/components/home/HowItWorks';
 import { StampHero } from '@/components/home/StampHero';
 import { TemplateStrip } from '@/components/home/TemplateStrip';
+import { WHY_FAQ, WhyUs } from '@/components/home/WhyUs';
 import { FaqList } from '@/components/site/FaqList';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES, categoryCard } from '@/lib/catalog';
-import { FAQ } from '@/lib/faq';
+import { FAQ, faqJsonLd } from '@/lib/faq';
 
 export const metadata: Metadata = { alternates: { canonical: '/' } };
 
@@ -20,6 +21,7 @@ export default function HomePage() {
     <>
       <StampHero />
       <HowItWorks />
+      <WhyUs />
 
       <section className="border-y border-line bg-surface py-20 sm:py-28">
         <div className="container-x">
@@ -77,9 +79,12 @@ export default function HomePage() {
               לכל השאלות
             </Link>
           </div>
-          <FaqList items={faq} />
+          <FaqList items={faq} schema={false} />
         </div>
       </section>
+
+      {/* One FAQPage for the whole home page (why-us + general questions). */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd([...WHY_FAQ, ...faq])) }} />
 
       <section className="container-x py-24 text-center">
         <h2 className="text-4xl font-extrabold sm:text-5xl">עכשיו תורכם לעצב.</h2>
