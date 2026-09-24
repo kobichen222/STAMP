@@ -87,10 +87,10 @@ export function StampHero() {
         const h = canvas.clientHeight || 1;
         const introEl = introRef.current;
         const canvasTop = canvas.parentElement?.offsetTop ?? 64;
-        const freeTop = introEl ? Math.max(0, introEl.offsetTop + introEl.offsetHeight - canvasTop + 28) : h * 0.5;
+        const freeTop = introEl ? Math.max(0, introEl.offsetTop + introEl.offsetHeight - canvasTop + 64) : h * 0.5;
         const freeH = Math.max(120, h - freeTop - 16);
         const startShift = (freeTop + freeH / 2 - h / 2) / h;
-        const startZoom = Math.min(0.62, Math.max(0.3, (freeH / h) * 1.35));
+        const startZoom = Math.min(0.55, Math.max(0.28, (freeH / h) * 1.15));
         scene.setFraming(startShift * (1 - intro), startZoom + (0.72 - startZoom) * intro);
       } else scene.setFraming(0, 1);
       scene.setProgress(p);
