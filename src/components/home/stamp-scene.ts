@@ -57,31 +57,34 @@ function plateTexture(lines: string[], round = false) {
 }
 
 function impressionTexture(lines: string[]) {
+  // 2× resolution + crisp ink: the impression is the payoff shot, it must read.
   const c = document.createElement('canvas');
-  c.width = 1024;
-  c.height = 512;
+  c.width = 2048;
+  c.height = 1024;
   const g = c.getContext('2d')!;
-  g.fillStyle = '#2457ff';
-  g.strokeStyle = '#2457ff';
-  g.lineWidth = 14;
-  g.strokeRect(40, 40, c.width - 80, c.height - 80);
+  g.scale(2, 2);
+  g.fillStyle = '#1d44e0';
+  g.strokeStyle = '#1d44e0';
+  g.lineWidth = 16;
+  g.lineJoin = 'round';
+  g.strokeRect(36, 36, 1024 - 72, 512 - 72);
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.direction = 'rtl';
-  const sizes = [92, 64, 58, 58];
-  const total = lines.reduce((s, _, i) => s + sizes[i] * 1.25, 0);
+  const sizes = [104, 70, 64, 64];
+  const total = lines.reduce((s, _, i) => s + sizes[i] * 1.22, 0);
   let y = 256 - total / 2;
   lines.forEach((l, i) => {
-    g.font = `${i === 0 ? 800 : 500} ${sizes[i]}px Heebo, Arial, sans-serif`;
-    y += (sizes[i] * 1.25) / 2;
+    g.font = `${i === 0 ? 800 : 600} ${sizes[i]}px Heebo, Arial, sans-serif`;
+    y += (sizes[i] * 1.22) / 2;
     g.fillText(l, 512, y);
-    y += (sizes[i] * 1.25) / 2;
+    y += (sizes[i] * 1.22) / 2;
   });
-  // Ink texture: knock out some speckles.
+  // Very light ink grain – enough to feel stamped, not enough to blur the text.
   g.globalCompositeOperation = 'destination-out';
-  for (let i = 0; i < 1400; i++) {
-    g.globalAlpha = Math.random() * 0.5;
-    g.fillRect(Math.random() * 1024, Math.random() * 512, 2, 2);
+  for (let i = 0; i < 500; i++) {
+    g.globalAlpha = Math.random() * 0.25;
+    g.fillRect(Math.random() * 1024, Math.random() * 512, 1.5, 1.5);
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -341,7 +344,9 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   shadowPlane.position.y = 0.002;
   shadowPlane.receiveShadow = true;
   scene.add(shadowPlane);
-  const impMat = new THREE.MeshBasicMaterial({ map: impressionTexture(opts.lines), transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
+  const impTex = impressionTexture(opts.lines);
+  impTex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // sharp at a grazing angle
+  const impMat = new THREE.MeshBasicMaterial({ map: impTex, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
   const impression = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.34, D - 0.34), impMat);
   impression.rotation.x = -Math.PI / 2;
   impression.position.set(-1.4, 0.006, 0.5);
@@ -386,8 +391,14 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     shadowMat.opacity = 0.12 * seg(p, 0.68, 0.78);
 
     const cam = toSpot;
-    camera.position.set(7.5 - 3.3 * cam, 5.5 + 1.2 * explode + 2.2 * cam, 9.5 - 1.8 * cam);
-    camera.lookAt(-0.9 * cam, 1.3 + 1.1 * explode - 1.0 * cam, 0.3 * cam);
+    // Finale: rise above the paper so the impression is seen almost top-down.
+    const top = seg(p, 0.9, 1);
+    camera.position.set(
+      (7.5 - 3.3 * cam) * (1 - top) + -0.9 * top,
+      (5.5 + 1.2 * explode + 2.2 * cam) * (1 - top) + 7.6 * top,
+      (9.5 - 1.8 * cam) * (1 - top) + 4.6 * top,
+    );
+    camera.lookAt(-0.9 * cam * (1 - top) + -1.4 * top, (1.3 + 1.1 * explode - 1.0 * cam) * (1 - top), 0.3 * cam * (1 - top) + 0.5 * top);
     // Desktop: pull back while exploded / over the paper so nothing is cropped.
     const desktop = framing.shiftY === 0 && framing.zoom === 1;
     const zoom = desktop ? 1 - 0.2 * explode - 0.15 * cam : framing.zoom;
