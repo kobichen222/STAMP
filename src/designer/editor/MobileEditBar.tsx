@@ -129,19 +129,34 @@ export function MobileEditBar() {
           <Icon name="plus" size={18} />
         </button>
         {sep}
-        <button
-          type="button"
-          aria-label="מרכוז לרוחב"
-          disabled={locked}
-          onClick={() => {
-            actions.patch(ids, { x: design.width / 2 });
-            navigator.vibrate?.(4);
-            show('ממורכז');
-          }}
-          className={btn}
-        >
-          <Icon name="alignCenter" size={19} />
-        </button>
+        {(() => {
+          // Text: real alignment (x is the centre of the text box, so "centre x" alone did nothing).
+          const text = el?.type === 'text' ? el : null;
+          const order = ['center', 'right', 'left'] as const;
+          const labels = { center: 'מרכז', right: 'ימין', left: 'שמאל' } as const;
+          const icon = text ? (text.align === 'right' ? 'alignRight' : text.align === 'left' ? 'alignLeft' : 'alignCenter') : 'alignCenter';
+          return (
+            <button
+              type="button"
+              aria-label={text ? `יישור (${labels[text.align]})` : 'מרכוז לרוחב'}
+              disabled={locked}
+              onClick={() => {
+                navigator.vibrate?.(4);
+                if (text) {
+                  const next = order[(order.indexOf(text.align) + 1) % order.length];
+                  actions.patch(text.id, { align: next, ...(next === 'center' ? { x: design.width / 2 } : {}) });
+                  show(`מיושר ל${labels[next]}`);
+                } else {
+                  actions.patch(ids, { x: design.width / 2 });
+                  show('ממורכז');
+                }
+              }}
+              className={btn}
+            >
+              <Icon name={icon} size={19} />
+            </button>
+          );
+        })()}
         <button type="button" aria-label="מחיקה" disabled={locked} onClick={() => actions.remove(ids)} className={`${btn} active:!bg-bad/10 active:!text-bad`}>
           <Icon name="trash" size={18} />
         </button>
