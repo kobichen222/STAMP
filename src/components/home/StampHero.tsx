@@ -212,7 +212,7 @@ export function StampHero() {
                 </div>
               </div>
             )}
-            {animated && <canvas ref={canvasRef} className={`h-full w-full transition-opacity duration-700 [mask-image:linear-gradient(to_bottom,transparent,#000_7%,#000_93%,transparent)] ${ready ? 'opacity-100' : 'opacity-0'}`} aria-hidden />}
+            {animated && <canvas ref={canvasRef} className={`h-full w-full transition-opacity duration-700 [mask-image:linear-gradient(to_bottom,transparent,#000_3%,#000_96%,transparent)] ${ready ? 'opacity-100' : 'opacity-0'}`} aria-hidden />}
             <div ref={labelsRef} className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden>
               {PART_LABELS.map((l) => (
                 <span

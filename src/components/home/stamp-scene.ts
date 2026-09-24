@@ -400,10 +400,11 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
       (5.5 + 1.2 * explode + 2.2 * cam) * (1 - top) + 7.6 * top,
       (9.5 - 1.8 * cam) * (1 - top) + 4.6 * top,
     );
-    camera.lookAt(-0.9 * cam * (1 - top) + -1.4 * top, (1.3 + 1.1 * explode - 1.0 * cam) * (1 - top), 0.3 * cam * (1 - top) + 0.5 * top);
+    // While exploded, aim at the middle of the stack (base ≈ -0.5 … handle ≈ 7.3).
+    camera.lookAt(-0.9 * cam * (1 - top) + -1.4 * top, (1.3 + 2.1 * explode - 1.0 * cam) * (1 - top), 0.3 * cam * (1 - top) + 0.5 * top);
     // Desktop: pull back while exploded / over the paper so nothing is cropped.
     const desktop = framing.shiftY === 0 && framing.zoom === 1;
-    const zoom = desktop ? 1 - 0.2 * explode - 0.15 * cam : framing.zoom;
+    const zoom = desktop ? 1 - 0.26 * explode - 0.15 * cam : framing.zoom;
     if (framing.shiftY || zoom !== 1) {
       camera.zoom = zoom;
       camera.setViewOffset(size.w, size.h, 0, -framing.shiftY * size.h, size.w, size.h);
