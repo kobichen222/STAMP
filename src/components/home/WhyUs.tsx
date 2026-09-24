@@ -77,14 +77,15 @@ export function LaserArt() {
 export function WhyUs() {
   return (
     <section id="why" className="container-x py-20 sm:py-28">
-      <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:gap-14">
-        <div className="lg:sticky lg:top-24 lg:self-start">
+      {/* Intro across the full width… */}
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="max-w-2xl">
           <p className="eyebrow">למה רק אצלנו?</p>
           <h2 className="mt-2 text-3xl font-extrabold sm:text-4xl">מכונת הלייזר החזקה בעולם. ברמת גן.</h2>
           <p className="mt-4 text-lg leading-8 text-muted">
             בלי גלופות, בלי הזמנה מראש ובלי לחזור פעמיים. החותמת נחרטת בלייזר ומוכנה לשימוש תוך 2 דקות – על גוף חותמת COLOP מאוסטריה.
           </p>
-          <ul className="mt-6 flex flex-wrap gap-2 text-sm">
+          <ul className="mt-5 flex flex-wrap gap-2 text-sm">
             {[
               ['shield', 'תוצרת אוסטריה · COLOP'],
               ['check', 'דיו בתקן אירופי'],
@@ -96,19 +97,21 @@ export function WhyUs() {
               </li>
             ))}
           </ul>
-          <div className="mt-8">
-            <LaserArt />
-          </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/designer/" className="btn-primary">
-              עיצוב חותמת עכשיו
-            </Link>
-            <a href={SITE.whatsapp} target="_blank" rel="noopener" className="btn-outline">
-              <Icon name="whatsapp" size={17} /> שלחו לנו את התוכן
-            </a>
-          </div>
         </div>
-        <div className="self-start">
+        <div className="flex flex-wrap gap-3">
+          <Link href="/designer/" className="btn-primary">
+            עיצוב חותמת עכשיו
+          </Link>
+          <a href={SITE.whatsapp} target="_blank" rel="noopener" className="btn-outline">
+            <Icon name="whatsapp" size={17} /> שלחו לנו את התוכן
+          </a>
+        </div>
+      </div>
+
+      {/* …then the laser and the questions side by side, starting on the same line. */}
+      <div className="mt-10 grid items-start gap-6 lg:grid-cols-2 lg:gap-8">
+        <LaserArt />
+        <div>
           <FaqList items={WHY_FAQ.slice(0, 5)} schema={false} openFirst compact />
           <details className="group/more mt-3">
             <summary className="flex cursor-pointer list-none items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold text-blue marker:hidden hover:bg-blue-50">
