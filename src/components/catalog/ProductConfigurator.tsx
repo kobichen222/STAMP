@@ -68,7 +68,7 @@ export function ProductVisual({ model, images, title }: { model: StampModel | nu
               className="w-full"
               content={
                 model.shape === 'round'
-                  ? { arcTop: 'שם העסק שלכם', arcBottom: 'Stamp2Go', lines: ['הטקסט', 'שלכם'] }
+                  ? { arcTop: 'שם העסק שלכם', arcBottom: 'חותמות 2 דקות', lines: ['הטקסט', 'שלכם'] }
                   : { lines: ['השם שלכם כאן', 'שורה שנייה לבחירתכם', 'טל׳ 03-1234567'].slice(0, Math.max(1, Math.min(3, model.maxLines ?? 3))) }
               }
             />
@@ -80,7 +80,7 @@ export function ProductVisual({ model, images, title }: { model: StampModel | nu
           <span className="text-muted">{title}</span>
         )}
         {model && images[0] && (
-          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-line bg-white p-1 text-sm shadow-soft">
+          <div className="absolute top-4 left-4 flex gap-1 rounded-full border border-line bg-white p-1 text-sm shadow-soft">
             {(['impression', 'product'] as const).map((v) => (
               <button key={v} type="button" onClick={() => setView(v)} className={`rounded-full px-3.5 py-1.5 ${view === v ? 'bg-ink text-white' : 'text-ink-2'}`}>
                 {v === 'impression' ? 'טביעה' : 'המוצר'}

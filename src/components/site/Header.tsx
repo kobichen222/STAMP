@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { Logo } from '@/components/Logo';
 import { useCartCount } from '@/lib/cart-store';
+import { MobileMenu } from './MobileMenu';
 import { MAIN_NAV, STAMP_MENU } from './nav';
 
 export function Header() {
@@ -26,9 +27,6 @@ export function Header() {
     setDrawer(false);
     setMega(false);
   }, [pathname]);
-  useEffect(() => {
-    document.body.style.overflow = drawer ? 'hidden' : '';
-  }, [drawer]);
 
   if (pathname.startsWith('/designer') || pathname.startsWith('/admin')) return null;
 
@@ -99,45 +97,13 @@ export function Header() {
           <Link href="/designer/" className="btn-primary hidden sm:inline-flex">
             עיצוב חותמת
           </Link>
-          <button type="button" className="btn-ghost !px-2.5 xl:hidden" aria-label="פתיחת תפריט" aria-expanded={drawer} onClick={() => setDrawer(true)}>
+          <button type="button" className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface xl:hidden" aria-label="פתיחת תפריט" aria-expanded={drawer} onClick={() => setDrawer(true)}>
             <Icon name="menu" size={22} />
           </button>
         </div>
       </div>
 
-      {drawer && (
-        <div className="fixed inset-0 z-50 xl:hidden" role="dialog" aria-modal="true" aria-label="תפריט">
-          <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm" onClick={() => setDrawer(false)} />
-          <div className="absolute inset-y-0 right-0 flex w-[88%] max-w-sm animate-fade-up flex-col bg-white shadow-lift">
-            <div className="flex h-16 items-center justify-between border-b border-line px-5">
-              <Logo />
-              <button type="button" className="btn-ghost !px-2" aria-label="סגירה" onClick={() => setDrawer(false)}>
-                <Icon name="close" />
-              </button>
-            </div>
-            <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="תפריט מובייל">
-              {[{ label: 'ראשי', href: '/' }, { label: 'כל החותמות', href: '/stamps/' }, ...MAIN_NAV, { label: 'האזור שלי', href: '/account/' }].map((m) => (
-                <Link key={m.href} href={m.href} className="block rounded-xl px-3 py-3 text-[17px] font-medium hover:bg-surface">
-                  {m.label}
-                </Link>
-              ))}
-              <p className="mt-4 px-3 text-xs font-semibold text-muted">סוגי חותמות</p>
-              <div className="mt-2 flex flex-wrap gap-2 px-3">
-                {STAMP_MENU.filter((m) => m.featured).map((m) => (
-                  <Link key={m.href} href={m.href} className="chip">
-                    {m.label}
-                  </Link>
-                ))}
-              </div>
-            </nav>
-            <div className="border-t border-line p-4">
-              <Link href="/designer/" className="btn-primary btn-lg w-full">
-                עיצוב חותמת עכשיו
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+      <MobileMenu open={drawer} onClose={() => setDrawer(false)} pathname={pathname} cartCount={cartCount} />
     </header>
   );
 }

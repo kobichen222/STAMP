@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Blocks } from '@/components/Blocks';
@@ -41,7 +42,11 @@ export default async function ProductPage({ params }: Props) {
   const facts = productFacts(product);
   const model = designerModelForProduct(product);
   const inCats = CATEGORIES.filter((c) => productsForCategory(c).some((p) => p.id === product.id));
-  const category = inCats.find((c) => c.titleIncludes) ?? inCats.find((c) => c.wpCategoryIds?.includes(product.primaryCategoryId ?? -1)) ?? inCats[0];
+  const primaryRank = (c: (typeof inCats)[number]) => {
+    const i = c.wpCategoryIds?.indexOf(product.primaryCategoryId ?? -1) ?? -1;
+    return i < 0 ? 99 : i;
+  };
+  const category = inCats.find((c) => c.titleIncludes) ?? [...inCats].sort((a, b) => primaryRank(a) - primaryRank(b))[0];
   const images = [product.image, ...product.gallery].filter((x): x is NonNullable<typeof x> => !!x);
   const related = category ? productsForCategory(category).filter((p) => p.id !== product.id).slice(0, 3) : [];
 
@@ -68,7 +73,7 @@ export default async function ProductPage({ params }: Props) {
   };
 
   return (
-    <div className="pt-20">
+    <div className="pt-20 pb-20 lg:pb-0">
       <div className="container-x py-6">
         <Breadcrumbs items={[{ label: 'חותמות', href: '/stamps/' }, ...(category ? [{ label: category.name, href: `/stamps/${category.slug}/` }] : []), { label: product.title }]} />
       </div>
@@ -138,6 +143,17 @@ export default async function ProductPage({ params }: Props) {
             </div>
           </div>
         </section>
+      )}
+      {model && (
+        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-line bg-white/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+          <div className="leading-tight">
+            <p className="text-lg font-bold">{formatPrice(product.price)}</p>
+            <p className="text-[11px] text-muted">{facts.size}</p>
+          </div>
+          <Link href={`/designer/${product.slug}/`} className="btn-primary ms-auto">
+            עיצוב החותמת
+          </Link>
+        </div>
       )}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     </div>
