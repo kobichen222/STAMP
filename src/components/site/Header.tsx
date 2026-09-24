@@ -37,9 +37,14 @@ export function Header() {
         solid ? 'border-b border-line/80 bg-white/80 backdrop-blur-xl backdrop-saturate-150' : 'bg-transparent'
       }`}
     >
-      <div className="container-x flex h-16 items-center gap-6">
-        <Link href="/" aria-label="Stamp2Go – דף הבית" className="shrink-0 text-ink">
-          <Logo />
+      <div className="container-x flex h-16 items-center gap-2 sm:gap-6">
+        <Link href="/" aria-label="חותמות 2 דקות – דף הבית" className="min-w-0 shrink text-ink">
+          <span className="sm:hidden">
+            <Logo size="sm" />
+          </span>
+          <span className="hidden sm:inline">
+            <Logo />
+          </span>
         </Link>
 
         <nav aria-label="תפריט ראשי" className="hidden flex-1 items-center gap-0.5 xl:flex">
@@ -81,7 +86,7 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="ms-auto flex items-center gap-1.5">
+        <div className="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1.5">
           <Link href="/account/" className="btn-ghost hidden !px-3 sm:inline-flex" aria-label="האזור שלי">
             <Icon name="user" size={19} />
             <span className="hidden 2xl:inline">האזור שלי</span>

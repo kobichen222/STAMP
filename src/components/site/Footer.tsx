@@ -21,12 +21,12 @@ export function Footer() {
         </div>
         <div>
           <h2 className="text-sm font-semibold">חותמות</h2>
-          <ul className="mt-3 space-y-2 text-sm text-muted">
+          <ul className="mt-2 space-y-0.5 text-sm text-muted">
             {STAMP_MENU.filter((m) => m.featured)
               .slice(0, 8)
               .map((m) => (
                 <li key={m.href}>
-                  <Link href={m.href} className="hover:text-ink">
+                  <Link href={m.href} className="inline-block py-1 hover:text-ink">
                     {m.label}
                   </Link>
                 </li>
@@ -35,10 +35,10 @@ export function Footer() {
         </div>
         <div>
           <h2 className="text-sm font-semibold">האתר</h2>
-          <ul className="mt-3 space-y-2 text-sm text-muted">
+          <ul className="mt-2 space-y-0.5 text-sm text-muted">
             {[...MAIN_NAV, { label: 'תבניות', href: '/templates/' }, { label: 'היסטוריה', href: '/היסטוריה/' }, { label: 'ממליצים', href: '/ממליצים/' }, { label: 'הצהרת נגישות', href: '/הצהרת-נגישות/' }, { label: 'מפת אתר', href: '/מפת-אתר/' }].map((m) => (
               <li key={m.href}>
-                <Link href={m.href} className="hover:text-ink">
+                <Link href={m.href} className="inline-block py-1 hover:text-ink">
                   {m.label}
                 </Link>
               </li>
@@ -47,12 +47,12 @@ export function Footer() {
         </div>
         <div>
           <h2 className="text-sm font-semibold">יצירת קשר</h2>
-          <ul className="mt-3 space-y-2.5 text-sm text-muted">
-            <li className="flex items-center gap-2"><Icon name="phone" size={16} /><a href={SITE.phoneHref} className="hover:text-ink" dir="ltr">{SITE.phone}</a></li>
-            <li className="flex items-center gap-2"><Icon name="mail" size={16} /><a href={`mailto:${SITE.email}`} className="hover:text-ink">{SITE.email}</a></li>
-            <li className="flex items-center gap-2"><Icon name="pin" size={16} /><a href={SITE.waze} target="_blank" rel="noopener" className="hover:text-ink">{SITE.address}</a></li>
+          <ul className="mt-2 space-y-1 text-sm text-muted">
+            <li className="flex items-center gap-2"><Icon name="phone" size={16} /><a href={SITE.phoneHref} className="inline-block py-1 hover:text-ink" dir="ltr">{SITE.phone}</a></li>
+            <li className="flex items-center gap-2"><Icon name="mail" size={16} /><a href={`mailto:${SITE.email}`} className="inline-block py-1 hover:text-ink">{SITE.email}</a></li>
+            <li className="flex items-center gap-2"><Icon name="pin" size={16} /><a href={SITE.waze} target="_blank" rel="noopener" className="inline-block py-1 hover:text-ink">{SITE.address}</a></li>
             <li className="flex items-center gap-2"><Icon name="clock" size={16} />א׳–ה׳ 09:00–17:00</li>
-            <li className="flex items-center gap-2"><Icon name="whatsapp" size={16} /><a href={SITE.whatsapp} target="_blank" rel="noopener" className="hover:text-ink">וואטסאפ</a></li>
+            <li className="flex items-center gap-2"><Icon name="whatsapp" size={16} /><a href={SITE.whatsapp} target="_blank" rel="noopener" className="inline-block py-1 hover:text-ink">וואטסאפ</a></li>
           </ul>
         </div>
       </div>
