@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { adaptToModel } from '@/designer/compose';
 import { Editor, type DesignerProduct } from '@/designer/editor/Editor';
 import type { InkColor } from '@/designer/types';
+import { getActiveDraft } from '@/lib/active-draft';
 import { designsStore } from '@/lib/designs-store';
 
 function supported() {
@@ -21,12 +22,21 @@ function supported() {
   }
 }
 
-export function DesignerClient({ product, products }: { product: DesignerProduct; products: DesignerProduct[] }) {
+export function DesignerClient({ product: requested, products, generic = false }: { product: DesignerProduct; products: DesignerProduct[]; generic?: boolean }) {
   const params = useSearchParams();
   const [ok, setOk] = useState<boolean | null>(null);
   const designParam = params.get('design');
-  const [designId] = useState(() => designParam || `d-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
-  const saved = useMemo(() => (designParam ? designsStore.get().find((d) => d.id === designParam) : undefined), [designParam]);
+  // No explicit instruction (a design, template, upload or "new")? Continue the draft in progress.
+  const explicit = !!designParam || !!params.get('template') || params.get('upload') === '1' || params.get('new') === '1';
+  const [draft] = useState(() => {
+    if (explicit) return undefined;
+    const id = getActiveDraft();
+    return id ? designsStore.get().find((d) => d.id === id && d.design.elements.length > 0) : undefined;
+  });
+  const [designId] = useState(() => designParam || draft?.id || `d-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
+  const saved = useMemo(() => (designParam ? designsStore.get().find((d) => d.id === designParam) : draft), [designParam, draft]);
+  // Plain /designer/ continues the draft on its own product; a chosen product/size gets the draft carried over.
+  const product = (generic && draft && products.find((p) => p.slug === draft.productSlug)) || requested;
   // A saved design for another stamp (product switch) is carried over, not dropped.
   const initial = useMemo(() => {
     if (!saved) return { design: null, moved: false };
@@ -56,6 +66,7 @@ export function DesignerClient({ product, products }: { product: DesignerProduct
       products={products}
       initialDesign={initial.design}
       notice={initial.moved ? `העיצוב הועבר ל${product.title} – בדקו את הסידור` : undefined}
+      resumed={!!draft && !designParam}
       designId={designId}
       templateId={params.get('template')}
       initialInk={ink ?? undefined}

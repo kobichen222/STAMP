@@ -18,7 +18,7 @@ export default function DesignerPage() {
   const roundTemplates = TEMPLATES.filter((t) => t.shape === 'round').map((t) => t.id);
   return (
     <Suspense>
-      <DesignerRouter roundTemplates={roundTemplates} rect={<DesignerClient product={rect} products={products} />} round={<DesignerClient product={round} products={products} />} />
+      <DesignerRouter roundTemplates={roundTemplates} rect={<DesignerClient product={rect} products={products} generic />} round={<DesignerClient product={round} products={products} generic />} />
     </Suspense>
   );
 }

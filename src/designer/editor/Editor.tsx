@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Logo } from '@/components/Logo';
 import { Icon } from '@/components/ui/Icon';
+import { clearActiveDraft, setActiveDraft } from '@/lib/active-draft';
 import { addToCart } from '@/lib/cart-store';
 import { saveDesign } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
@@ -143,9 +144,11 @@ export interface EditorProps {
   startWithUpload?: boolean;
   /** One-time message on open (e.g. design carried over to another product). */
   notice?: string;
+  /** Opened by continuing the customer's draft in progress. */
+  resumed?: boolean;
 }
 
-export function Editor({ product, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice }: EditorProps) {
+export function Editor({ product, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice, resumed }: EditorProps) {
   const router = useRouter();
   const model = product.model;
   const profile = useMemo(() => profileForModel(model), [model]);
@@ -177,6 +180,12 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   const [qty, setQty] = useState(initialQty);
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'offline'>('saved');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [resumeBar, setResumeBar] = useState(!!resumed);
+  useEffect(() => {
+    if (!resumeBar) return;
+    const t = window.setTimeout(() => setResumeBar(false), 12_000);
+    return () => window.clearTimeout(t);
+  }, [resumeBar]);
   const [showEmpty, setShowEmpty] = useState(!initialDesign && !templateId && !startWithUpload);
   const [readyFile, setReadyFile] = useState(!!startWithUpload);
   const [exitAsk, setExitAsk] = useState(false);
@@ -226,6 +235,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
 
   // ---------------------------------------------------------------- autosave (local draft + versions)
   const persist = (snapshot: boolean) => {
+    setActiveDraft(designId);
     const firstText = design.elements.find((e): e is TextElement => e.type === 'text')?.text.split('\n')[0];
     saveDesign(
         {
@@ -354,7 +364,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   }, [firstDragDone, hasElements, dismissDragTip]);
 
   useEffect(() => {
-    if (notice) toast(notice);
+    if (notice && !resumed) toast(notice);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // A design carried over from another product is saved under this product right away.
@@ -420,6 +430,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
           unitPrice: product.price,
         });
       }
+      clearActiveDraft();
       router.push('/cart/?added=' + list.length);
     },
     improve: (style) => {
@@ -443,6 +454,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
       unitPrice: product.price,
       designId,
     });
+    clearActiveDraft(); // done – the next stamp starts fresh
     router.push('/cart/?added=1');
   };
 
@@ -601,6 +613,26 @@ export function Editor({ product, products, initialDesign, designId, templateId,
               onFirstDrag={dismissDragTip}
             />
             {selected.length > 0 && (isMobile ? <MobileEditBar /> : <FloatingToolbar />)}
+            {resumeBar && (
+              <div role="status" className="absolute inset-x-3 top-16 z-30 mx-auto flex w-fit max-w-full animate-fade-up items-center gap-2 rounded-2xl border border-blue/20 bg-white/95 py-1.5 ps-3 pe-1.5 text-sm shadow-lift backdrop-blur lg:top-3">
+                <Icon name="history" size={16} className="shrink-0 text-blue" />
+                <span className="min-w-0">
+                  <span className="font-semibold">המשכנו מהעיצוב שלכם</span>
+                  {notice && <span className="text-muted"> · הותאם ל{product.title}</span>}
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-xl px-2.5 py-1 text-xs font-semibold text-blue hover:bg-blue-50"
+                  onClick={() => {
+                    clearActiveDraft();
+                    router.push(`/designer/${product.slug}/?new=1&ink=${design.inkColor}&qty=${qty}`);
+                  }}
+                >
+                  התחלה מחדש
+                </button>
+                <IconButton icon="close" label="סגירה" onClick={() => setResumeBar(false)} className="!h-7 !w-7" size={14} />
+              </div>
+            )}
             <div className="pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-2">
               <div className="pointer-events-auto">
                 <PreflightBadge issues={issues} onFix={fixAll} onSelect={(id) => actions.select([id])} />
