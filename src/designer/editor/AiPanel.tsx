@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { composeForProduction } from '../autofix';
 import { composeLayout } from '../compose';
 import { renderDesign } from '../render';
 import { StampSvg } from '../StampSvg';
@@ -28,7 +29,7 @@ function SuggestionCard({ s, onApply }: { s: Suggestion; onApply: () => void }) 
 }
 
 export function AiPanel() {
-  const { model, actions, design, toast, improve } = useEditor();
+  const { model, actions, design, toast, improve, resolveFace, profile } = useEditor();
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<Suggestion[] | null>(null);
@@ -79,7 +80,7 @@ export function AiPanel() {
               s={s}
               onApply={() => {
                 const logo = design.elements.find((e) => e.type === 'image');
-                actions.set({ ...composeLayout(model, { ...s.content, logo: logo && logo.type === 'image' ? logo : null }, s.style), inkColor: design.inkColor, modelId: design.modelId });
+                actions.set({ ...composeForProduction(model, { ...s.content, logo: logo && logo.type === 'image' ? logo : null }, s.style, resolveFace, profile).design, inkColor: design.inkColor, modelId: design.modelId });
                 toast('ההצעה הוחלה – אפשר להמשיך לערוך');
               }}
             />

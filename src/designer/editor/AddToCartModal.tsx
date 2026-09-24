@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { formatPrice } from '@/lib/format';
 import { formatSize } from '../models';
@@ -41,6 +42,8 @@ export function AddToCartModal({
   const outside = issues.some((i) => i.code === 'out-of-bounds');
   const logoIssue = issues.some((i) => i.code === 'logo-resolution' && i.severity === 'error');
   const warnings = issues.filter((i) => i.severity === 'warning');
+  const errors = issues.filter((i) => i.severity === 'error');
+  const [triedFix, setTriedFix] = useState(false);
   const checks = [
     { ok: ready, label: ready ? 'קובץ תקין לייצור' : 'בקובץ יש בעיות שחוסמות ייצור' },
     { ok: !outside, label: outside ? 'יש אלמנטים מחוץ לגבולות' : 'כל האלמנטים בתוך הגבולות' },
@@ -90,6 +93,17 @@ export function AddToCartModal({
           ))}
           {warnings.length > 0 && <li className="text-xs text-warn">{warnings.length} הערות שכדאי לבדוק (לא חוסמות)</li>}
         </ul>
+        {!ready && (
+          <div className="mt-3 rounded-xl border border-bad/20 bg-bad/5 p-3 text-sm">
+            <p className="font-semibold text-bad">{triedFix ? 'לא הכול תוקן אוטומטית:' : 'מה צריך לתקן:'}</p>
+            <ul className="mt-1 list-disc space-y-0.5 ps-5 text-ink-2">
+              {errors.slice(0, 3).map((e, i) => (
+                <li key={i}>{e.message}</li>
+              ))}
+            </ul>
+            {triedFix && <p className="mt-2 text-xs text-muted">נסו לקצר את הטקסט המסומן באדום או להסיר שורה – ואז חזרו לכאן.</p>}
+          </div>
+        )}
         <div className="mt-5 flex items-center justify-between">
           <p className="text-2xl font-bold">{onRequest ? 'מחיר לפי הצעה' : formatPrice(total)}</p>
           {ready ? (
@@ -97,9 +111,23 @@ export function AddToCartModal({
               אישור והוספה לסל
             </button>
           ) : (
-            <button type="button" className="btn-dark btn-lg" onClick={onFix}>
-              <Icon name="wand" size={18} /> תקן עבורי
-            </button>
+            <div className="flex gap-2">
+              {triedFix && (
+                <button type="button" className="btn-outline" onClick={onClose}>
+                  חזרה לעריכה
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-dark btn-lg"
+                onClick={() => {
+                  onFix();
+                  setTriedFix(true);
+                }}
+              >
+                <Icon name="wand" size={18} /> תקן עבורי
+              </button>
+            </div>
           )}
         </div>
         <p className="mt-3 text-xs text-muted">באישור אתם מאשרים שהטקסט והעיצוב נכונים. הקובץ יועבר לייצור בדיוק כפי שמוצג.</p>

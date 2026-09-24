@@ -13,23 +13,25 @@ import type { BorderStyle, Design, ImageElement, ShapeElement, TextElement } fro
 import { PT_TO_MM } from '../types';
 import { IconButton, IconToggle, Section, Segmented, Slider, Field } from './controls';
 import { useEditor } from './context';
+import { composeForProduction } from '../autofix';
 
 // ------------------------------------------------------------------ templates
 
 function TemplateThumb({ t }: { t: StampTemplate }) {
-  const { model, resolveFace } = useEditor();
+  const { model, resolveFace, profile } = useEditor();
   const r = useMemo(() => {
     try {
-      return renderDesign(composeLayout(model, t.content, t.style), resolveFace);
+      // Preview exactly what applying will produce on this stamp size.
+      return renderDesign(composeForProduction(model, t.content, t.style, resolveFace, profile).design, resolveFace);
     } catch {
       return null;
     }
-  }, [model, t, resolveFace]);
+  }, [model, t, resolveFace, profile]);
   return r ? <StampSvg render={r} className="h-full w-full" pad={1} /> : <div className="h-full w-full animate-pulse bg-line/50" />;
 }
 
 export function TemplatesPanel() {
-  const { model, design, actions, toast } = useEditor();
+  const { model, design, actions, toast, resolveFace, profile } = useEditor();
   const [cat, setCat] = useState<string>('all');
   const [q, setQ] = useState('');
   const list = TEMPLATES.filter((t) => (cat === 'all' || t.category === cat) && (!q || `${t.name} ${t.content.lines.join(' ')} ${t.content.arcTop ?? ''}`.includes(q))).sort(
@@ -38,13 +40,19 @@ export function TemplatesPanel() {
 
   const apply = (t: StampTemplate) => {
     const logo = design.elements.find((e): e is ImageElement => e.type === 'image') ?? null;
-    const next = composeLayout(model, { ...t.content, logo: t.withLogo ? logo : null }, t.style);
+    const { design: next, dropped } = composeForProduction(model, { ...t.content, logo: t.withLogo ? logo : null }, t.style, resolveFace, profile);
     actions.set({
       ...next,
       inkColor: design.inkColor,
       modelId: design.modelId,
     });
-    toast(t.withLogo && !logo ? 'התבנית הוחלה – העלו לוגו בלשונית "לוגו"' : 'התבנית הוחלה · אפשר לבטל עם Undo');
+    toast(
+      t.withLogo && !logo
+        ? 'התבנית הוחלה – העלו לוגו בלשונית "לוגו"'
+        : dropped.length
+          ? `התבנית הותאמה לגודל החותמת (${dropped.length === 1 ? 'שורה אחת הוסרה' : `${dropped.length} שורות הוסרו`})`
+          : 'התבנית הוחלה · אפשר לבטל עם Undo',
+    );
   };
 
   return (

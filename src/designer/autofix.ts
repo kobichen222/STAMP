@@ -1,7 +1,8 @@
 import { pathPoints, type Pt } from './geometry';
 import type { FaceResolver, RenderItem } from './render';
 import { renderDesign } from './render';
-import type { Design, DesignElement } from './types';
+import { composeLayout, type LayoutContent, type LayoutStyle } from './compose';
+import type { Design, DesignElement, StampModel } from './types';
 import { BASE_PROFILE, type ProductionProfile } from './profiles';
 import { dateBandRect, overflow, validateDesign } from './validate';
 
@@ -96,4 +97,54 @@ export function autoFix(design: Design, resolveFace: FaceResolver, profile: Prod
     d = { ...d, elements, border };
   }
   return d;
+}
+
+/**
+ * Composes a layout and makes sure it can actually be produced on this model:
+ * when text cannot reach the minimum production size, the least important
+ * content is dropped (last line first, then the bottom arc) and the rest is
+ * re-laid out at a larger size – the way a designer adapts a template to a
+ * small stamp. Returns the design and how many items were left out.
+ */
+export function composeForProduction(
+  model: StampModel,
+  content: LayoutContent,
+  style: LayoutStyle,
+  resolveFace: FaceResolver,
+  profile: ProductionProfile = BASE_PROFILE,
+): { design: Design; dropped: string[] } {
+  const hasErrors = (d: Design) => validateDesign(d, renderDesign(d, resolveFace), profile).some((i) => i.severity === 'error' && i.code !== 'empty');
+  const compose = (c: LayoutContent) => composeLayout(model, c, style);
+  // Prefer the template's own proportions: drop content before resizing text
+  // (auto-fixing sizes can push text across inner rings or frames).
+  let c: LayoutContent = { ...content, lines: [...content.lines] };
+  const dropped: string[] = [];
+  for (let guard = 0; guard < 12; guard++) {
+    const raw = compose(c);
+    if (!hasErrors(raw)) return { design: raw, dropped };
+    if (c.lines.length > 1) dropped.push(c.lines.pop()!);
+    else if (c.arcBottom && (c.arcTop || c.lines.length)) {
+      dropped.push(c.arcBottom);
+      c = { ...c, arcBottom: undefined };
+    } else if (c.lines.length === 1 && c.lines[0].includes(' ') && !c.arcTop) {
+      // A single long line: break it into 2, then 3… balanced lines.
+      const words = c.lines[0].split(' ');
+      for (let parts = 2; parts <= words.length; parts++) {
+        const per = Math.ceil(words.length / parts);
+        const lines = Array.from({ length: parts }, (_, i) => words.slice(i * per, (i + 1) * per).join(' ')).filter(Boolean);
+        const split = compose({ ...c, lines });
+        if (!hasErrors(split)) return { design: split, dropped };
+        // Same split in a narrower typeface (Assistant is the most compact).
+        if (!c.font) {
+          const narrow = compose({ ...c, lines, font: 'assistant' });
+          if (!hasErrors(narrow)) return { design: narrow, dropped };
+        }
+      }
+      break;
+    } else break;
+  }
+  // Nothing left to drop – fall back to the automatic fixer.
+  const fixedFull = autoFix(compose(content), resolveFace, profile);
+  if (!hasErrors(fixedFull)) return { design: fixedFull, dropped: [] };
+  return { design: autoFix(compose(c), resolveFace, profile), dropped };
 }

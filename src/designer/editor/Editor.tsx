@@ -9,7 +9,7 @@ import { addToCart } from '@/lib/cart-store';
 import { saveDesign } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
 import { quoteLine } from '@/lib/pricing';
-import { autoFix } from '../autofix';
+import { autoFix, composeForProduction } from '../autofix';
 import { composeLayout, improveLayout, newDesign } from '../compose';
 import { formatSize } from '../models';
 import { profileForModel } from '../profiles';
@@ -157,6 +157,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
 
   const { state, actions, selected, canUndo, canRedo } = useEditorStore(initial);
   const design = state.design;
+  const templateFitted = useRef(false);
   const [panel, setPanel] = useState<PanelId | null>(initialDesign || templateId ? 'text' : startWithUpload ? 'logo' : 'templates');
   const [panelOpen, setPanelOpen] = useState(true);
   const [sheet, setSheet] = useState<'closed' | 'half' | 'full'>('closed');
@@ -189,6 +190,17 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   const render = useMemo(() => (ready ? renderDesign(design, resolve) : null), [design, resolve, ready, version]);
   const issues = useMemo(() => (render ? validateDesign(design, render, profile) : []), [design, render, profile]);
   const productionReady = isProductionReady(issues);
+
+  // A template opened from a link is composed before fonts load; once they
+  // are ready, adapt it to this stamp size so it starts production-ready.
+  useEffect(() => {
+    if (!ready || templateFitted.current || initialDesign || !templateId || state.revision) return;
+    templateFitted.current = true;
+    const t = TEMPLATES.find((x) => x.id === templateId);
+    if (!t || isProductionReady(issues)) return;
+    actions.set({ ...composeForProduction(model, t.content, t.style, resolve, profile).design, inkColor: design.inkColor }, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
   const issuesById = useMemo(() => {
     const m: Record<string, 'error' | 'warning'> = {};
     for (const i of issues) if (i.elementId && i.severity !== 'info') m[i.elementId] = m[i.elementId] === 'error' ? 'error' : (i.severity as 'error' | 'warning');
@@ -572,6 +584,11 @@ export function Editor({ product, products, initialDesign, designId, templateId,
                 <PreflightBadge issues={issues} onFix={fixAll} onSelect={(id) => actions.select([id])} />
               </div>
             </div>
+            {toastMsg && isMobile && (
+              <div role="status" className="pointer-events-none absolute inset-x-3 bottom-3 z-20 mx-auto w-fit max-w-full animate-fade-up rounded-full bg-ink/90 px-4 py-2 text-center text-[13px] text-white shadow-lift">
+                {toastMsg}
+              </div>
+            )}
             {isMobile && !autoFit && (
               <button
                 type="button"
@@ -759,7 +776,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
         {toastMsg && (
           <div
             role="status"
-            className="fixed top-16 left-1/2 z-[60] w-max max-w-[90vw] -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-center text-sm text-white shadow-lift lg:top-auto lg:bottom-20"
+            className="fixed bottom-20 left-1/2 z-[60] hidden w-max max-w-[90vw] -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-center text-sm text-white shadow-lift lg:block"
           >
             {toastMsg}
           </div>
