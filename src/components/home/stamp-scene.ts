@@ -379,9 +379,11 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     plateTopMat.map = plateFaceMat.map;
     plateTopMat.bumpMap = plateFaceMat.map;
 
-    root.position.x = -1.4 * toSpot + 3.2 * away;
-    root.position.z = 0.5 * toSpot - 0.5 * away;
-    root.position.y = (1 - toSpot) * 0.25 + toSpot * (0.9 * (1 - press) - 0.53 * press) + away * 1.1;
+    // Lift off and leave the frame entirely, so only the impression remains.
+    root.position.x = -1.4 * toSpot + 11 * away * away + 2 * away;
+    root.position.z = 0.5 * toSpot - 3 * away * away;
+    root.position.y = (1 - toSpot) * 0.25 + toSpot * (0.9 * (1 - press) - 0.53 * press) + away * 1.4;
+    root.visible = away < 0.96;
     impMat.opacity = reveal;
     contact.position.x = root.position.x;
     contact.position.z = root.position.z;
