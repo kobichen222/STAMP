@@ -6,7 +6,7 @@ const STEPS = ['בחרו אלמנט על החותמת או מהפאנל.', 'ער
 const KEY = 's2g-onboarding-done';
 
 /** First-visit only, 4 short steps. */
-export function Onboarding() {
+export function Onboarding({ paused = false }: { paused?: boolean }) {
   const [step, setStep] = useState<number | null>(null);
   useEffect(() => {
     try {
@@ -15,7 +15,7 @@ export function Onboarding() {
       /* ignore */
     }
   }, []);
-  if (step == null) return null;
+  if (step == null || paused) return null;
   const done = () => {
     try {
       localStorage.setItem(KEY, '1');
@@ -25,7 +25,7 @@ export function Onboarding() {
     setStep(null);
   };
   return (
-    <div className="fixed right-4 bottom-24 z-[65] w-72 animate-fade-up rounded-2xl bg-ink p-4 text-white shadow-lift lg:bottom-20 lg:right-[420px]" role="dialog" aria-label="היכרות עם העורך">
+    <div className="fixed inset-x-3 top-16 z-[65] animate-fade-up rounded-2xl bg-ink p-4 text-white shadow-lift sm:inset-x-auto sm:right-4 sm:w-72 lg:top-auto lg:bottom-20 lg:right-[420px]" role="dialog" aria-label="היכרות עם העורך">
       <p className="text-xs text-white/60">
         {step + 1} / {STEPS.length}
       </p>

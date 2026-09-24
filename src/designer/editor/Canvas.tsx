@@ -34,7 +34,11 @@ interface Props {
   selection: string[];
   actions: EditorActions;
   view: ViewSettings;
-  onZoom: (z: number) => void;
+  onZoom: (z: number, source?: 'fit' | 'user') => void;
+  /** Re-fit automatically when the canvas area resizes (until the user zooms manually). */
+  autoFit?: boolean;
+  /** Tap (no drag) on an element – used on touch devices to open its editor. */
+  onTap?: (id: string) => void;
   ink: InkColor;
   safeMargin: number;
   issuesById: Record<string, 'error' | 'warning'>;
@@ -44,7 +48,7 @@ interface Props {
 
 const round = (v: number, step = 0.05) => Math.round(v / step) * step;
 
-export function Canvas({ design, render, selection, actions, view, onZoom, ink, safeMargin, issuesById, onFirstDrag, fitSignal }: Props) {
+export function Canvas({ design, render, selection, actions, view, onZoom, autoFit = true, onTap, ink, safeMargin, issuesById, onFirstDrag, fitSignal }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const gesture = useRef<Gesture | null>(null);
@@ -54,6 +58,13 @@ export function Canvas({ design, render, selection, actions, view, onZoom, ink, 
   const [pan, setPan] = useState<[number, number]>([0, 0]);
   const [editing, setEditing] = useState<string | null>(null);
   const [fitZoom, setFitZoom] = useState(3);
+  const autoFitRef = useRef(autoFit);
+  autoFitRef.current = autoFit;
+  const onZoomRef = useRef(onZoom);
+  onZoomRef.current = onZoom;
+  const moved = useRef(false);
+  const downId = useRef<string | null>(null);
+  const coarse = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
   const W = design.width;
   const H = design.height;
   const pxPerMm = MM_PX * view.zoom;
@@ -69,7 +80,7 @@ export function Canvas({ design, render, selection, actions, view, onZoom, ink, 
   useLayoutEffect(() => {
     const z = computeFit();
     setFitZoom(z);
-    onZoom(z);
+    onZoom(z, 'fit');
     setPan([0, 0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [W, H, fitSignal]);
@@ -77,7 +88,14 @@ export function Canvas({ design, render, selection, actions, view, onZoom, ink, 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setFitZoom(computeFit()));
+    const ro = new ResizeObserver(() => {
+      const z = computeFit();
+      setFitZoom(z);
+      if (autoFitRef.current) {
+        onZoomRef.current(z, 'fit');
+        setPan([0, 0]);
+      }
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, [computeFit]);
@@ -100,7 +118,7 @@ export function Canvas({ design, render, selection, actions, view, onZoom, ink, 
       e.preventDefault();
       if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
         const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015));
-        onZoom(Math.max(0.3, Math.min(20, view.zoom * factor)));
+        onZoom(Math.max(0.3, Math.min(20, view.zoom * factor)), 'user');
       } else {
         setPan(([x, y]) => [x - e.deltaX, y - e.deltaY]);
       }
@@ -133,6 +151,8 @@ export function Canvas({ design, render, selection, actions, view, onZoom, ink, 
     e.stopPropagation();
     const el = design.elements.find((x) => x.id === id);
     if (!el) return;
+    moved.current = false;
+    downId.current = id;
     const ids = e.shiftKey ? (selection.includes(id) ? selection.filter((s) => s !== id) : [...selection, id]) : selection.includes(id) ? selection : [id];
     actions.select(ids);
     const movable = design.elements.filter((x) => ids.includes(x.id) && !x.locked);
@@ -184,7 +204,7 @@ export function Canvas({ design, render, selection, actions, view, onZoom, ink, 
     if (pinch.current && pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
       const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
-      onZoom(Math.max(0.3, Math.min(20, (pinch.current.zoom * d) / pinch.current.dist)));
+      onZoom(Math.max(0.3, Math.min(20, (pinch.current.zoom * d) / pinch.current.dist)), 'user');
       return;
     }
     const g = gesture.current;
@@ -221,6 +241,8 @@ export function Canvas({ design, render, selection, actions, view, onZoom, ink, 
         }
       }
       setGuides(found);
+      if (Math.hypot(p[0] - g.start[0], p[1] - g.start[1]) * pxPerMm > 4) moved.current = true;
+      if (!moved.current) return;
       const ids = Object.keys(g.origin);
       actions.patch(ids, (el) => ({ x: round(g.origin[el.id][0] + dx, 0.01), y: round(g.origin[el.id][1] + dy, 0.01) }));
       onFirstDrag?.();
@@ -248,6 +270,9 @@ export function Canvas({ design, render, selection, actions, view, onZoom, ink, 
     pointers.current.delete(e.pointerId);
     if (pointers.current.size < 2) pinch.current = null;
     if (gesture.current && gesture.current.kind !== 'pan') actions.commit();
+    if (gesture.current?.kind === 'move' && !moved.current && downId.current) onTap?.(downId.current);
+    else if (!gesture.current && downId.current && !moved.current) onTap?.(downId.current);
+    downId.current = null;
     gesture.current = null;
     setGuides([]);
   };
@@ -264,7 +289,7 @@ export function Canvas({ design, render, selection, actions, view, onZoom, ink, 
     return b;
   })();
   const single = selection.length === 1 ? design.elements.find((e) => e.id === selection[0]) : undefined;
-  const hs = 9 / pxPerMm; // handle size in mm
+  const hs = (coarse ? 20 : 9) / pxPerMm; // handle size in mm (bigger for fingers)
   const pad = 0.6;
 
   const editingEl = editing ? (design.elements.find((e) => e.id === editing) as TextElement | undefined) : undefined;
@@ -444,13 +469,13 @@ export function Canvas({ design, render, selection, actions, view, onZoom, ink, 
                     x1={(selBox.minX + selBox.maxX) / 2}
                     x2={(selBox.minX + selBox.maxX) / 2}
                     y1={selBox.minY - pad}
-                    y2={selBox.minY - pad - 14 / pxPerMm}
+                    y2={selBox.minY - pad - (coarse ? 26 : 14) / pxPerMm}
                     stroke="#2457ff"
                     strokeWidth={1 / pxPerMm}
                   />
                   <circle
                     cx={(selBox.minX + selBox.maxX) / 2}
-                    cy={selBox.minY - pad - 14 / pxPerMm}
+                    cy={selBox.minY - pad - (coarse ? 26 : 14) / pxPerMm}
                     r={hs / 2}
                     fill="#fff"
                     stroke="#2457ff"

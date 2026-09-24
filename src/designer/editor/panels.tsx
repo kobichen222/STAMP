@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
-import { composeLayout, newShape, newText, uid } from '../compose';
+import { composeLayout, newShape, newText, restackLines, uid } from '../compose';
 import { FONT_FAMILIES } from '../fonts';
 import { ICONS } from '../icons';
 import { DEFAULT_PROCESS, LogoError, loadLogoFile, logoQualityFromPixels, processLogo, vectorize, type LoadedLogo, type ProcessOptions } from '../logo';
@@ -31,14 +31,18 @@ export function TemplatesPanel() {
   const { model, design, actions, toast } = useEditor();
   const [cat, setCat] = useState<string>('all');
   const [q, setQ] = useState('');
-  const list = TEMPLATES.filter(
-    (t) => (cat === 'all' || t.category === cat) && (!q || `${t.name} ${t.content.lines.join(' ')} ${t.content.arcTop ?? ''}`.includes(q)),
-  ).sort((a, b) => Number((b.shape ?? model.shape) === model.shape) - Number((a.shape ?? model.shape) === model.shape));
+  const list = TEMPLATES.filter((t) => (cat === 'all' || t.category === cat) && (!q || `${t.name} ${t.content.lines.join(' ')} ${t.content.arcTop ?? ''}`.includes(q))).sort(
+    (a, b) => Number((b.shape ?? model.shape) === model.shape) - Number((a.shape ?? model.shape) === model.shape),
+  );
 
   const apply = (t: StampTemplate) => {
     const logo = design.elements.find((e): e is ImageElement => e.type === 'image') ?? null;
     const next = composeLayout(model, { ...t.content, logo: t.withLogo ? logo : null }, t.style);
-    actions.set({ ...next, inkColor: design.inkColor, modelId: design.modelId });
+    actions.set({
+      ...next,
+      inkColor: design.inkColor,
+      modelId: design.modelId,
+    });
     toast(t.withLogo && !logo ? 'התבנית הוחלה – העלו לוגו בלשונית "לוגו"' : 'התבנית הוחלה · אפשר לבטל עם Undo');
   };
 
@@ -77,47 +81,170 @@ export function TemplatesPanel() {
 
 // ------------------------------------------------------------------ text
 
+function LinesEditor() {
+  const { design, actions, selection, focusTextId, setFocusTextId, profile, render, isMobile } = useEditor();
+  const refs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
+  const texts = design.elements
+    .filter((e): e is TextElement => e.type === 'text')
+    .sort((a, b) => (a.curve?.position === 'top' ? -1 : b.curve?.position === 'top' ? 1 : a.curve?.position === 'bottom' ? 1 : b.curve?.position === 'bottom' ? -1 : a.y - b.y));
+
+  useEffect(() => {
+    if (!focusTextId) return;
+    const el = refs.current[focusTextId];
+    if (el) {
+      el.focus({ preventScroll: true });
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      const len = el.value.length;
+      el.setSelectionRange?.(len, len);
+    }
+    setFocusTextId(null);
+  }, [focusTextId, setFocusTextId]);
+
+  const addLine = () => {
+    const last = texts.filter((t) => !t.curve).at(-1);
+    const el = newText(design, '', {
+      font: last?.font,
+      size: last ? Math.max(profile.minFontPt + 1, Math.round(last.size * 0.9)) : undefined,
+      align: last?.align,
+      x: last?.x,
+      y: (last?.y ?? design.height / 2) + 1,
+      maxWidth: last?.maxWidth,
+    });
+    actions.set(restackLines({ ...design, elements: [...design.elements, el] }));
+    actions.select([el.id]);
+    setFocusTextId(el.id);
+  };
+  const removeLine = (id: string) => {
+    actions.set(
+      restackLines({
+        ...design,
+        elements: design.elements.filter((e) => e.id !== id),
+      }),
+    );
+  };
+  const bump = (t: TextElement, d: number) =>
+    actions.patch(t.id, {
+      size: Math.max(4, Math.round((t.size + d) * 2) / 2),
+    });
+
+  return (
+    <Section title="שורות הטקסט">
+      <ul className="space-y-2">
+        {texts.map((t, i) => {
+          const on = selection.includes(t.id);
+          const eff = render?.info[t.id]?.effectiveSize;
+          const small = eff != null && eff < profile.minFontPt;
+          const multi = t.text.includes('\n');
+          const common = {
+            ref: (el: HTMLInputElement | HTMLTextAreaElement | null) => {
+              refs.current[t.id] = el;
+            },
+            dir: 'auto' as const,
+            value: t.text,
+            placeholder: t.curve ? 'טקסט בקשת' : `שורה ${i + 1}`,
+            'aria-label': `שורה ${i + 1}`,
+            onFocus: () => {
+              actions.select([t.id]);
+              actions.begin();
+            },
+            onBlur: actions.commit,
+            className: 'min-w-0 flex-1 bg-transparent px-2 py-2 text-base leading-6 outline-none',
+          };
+          return (
+            <li key={t.id} className={`rounded-xl border p-1 transition ${on ? 'border-blue bg-blue-50/50 ring-2 ring-blue/10' : 'border-line bg-white'}`}>
+              <div className="flex items-center gap-1">
+                {multi ? (
+                  <textarea {...common} rows={t.text.split('\n').length} onChange={(e) => actions.patch(t.id, { text: e.target.value })} />
+                ) : (
+                  <input
+                    {...common}
+                    enterKeyHint="next"
+                    onChange={(e) => actions.patch(t.id, { text: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return;
+                      e.preventDefault();
+                      const next = texts[i + 1];
+                      if (next) setFocusTextId(next.id);
+                      else addLine();
+                    }}
+                  />
+                )}
+                <button
+                  type="button"
+                  aria-pressed={t.bold}
+                  aria-label="מודגש"
+                  onClick={() => actions.patch(t.id, { bold: !t.bold })}
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-sm font-black ${t.bold ? 'bg-ink text-white' : 'text-ink-2 hover:bg-surface'}`}
+                >
+                  B
+                </button>
+                {isMobile && (
+                  <>
+                    <button type="button" aria-label="הקטנת טקסט" onClick={() => bump(t, -0.5)} className="grid h-9 w-8 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-surface">
+                      <Icon name="minus" size={15} />
+                    </button>
+                    <span className={`w-8 shrink-0 text-center text-xs tabular-nums ${small ? 'font-bold text-bad' : 'text-muted'}`}>
+                      {(eff ?? t.size).toFixed(eff && eff < t.size - 0.05 ? 1 : 0)}
+                    </span>
+                    <button type="button" aria-label="הגדלת טקסט" onClick={() => bump(t, 0.5)} className="grid h-9 w-8 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-surface">
+                      <Icon name="plus" size={15} />
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  aria-label="מחיקת שורה"
+                  onClick={() => removeLine(t.id)}
+                  disabled={t.locked}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-bad/10 hover:text-bad disabled:opacity-30"
+                >
+                  <Icon name="trash" size={16} />
+                </button>
+              </div>
+              {(t.curve || small) && (
+                <p className={`px-2 pb-1 text-[11px] ${small ? 'text-bad' : 'text-muted'}`}>
+                  {t.curve ? (t.curve.position === 'top' ? 'קשת עליונה' : 'קשת תחתונה') : ''}
+                  {t.curve && small ? ' · ' : ''}
+                  {small ? `קטן מדי לייצור – מינימום ${profile.minFontPt}pt` : ''}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <button
+        type="button"
+        onClick={addLine}
+        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-line py-2.5 text-sm font-medium text-ink-2 transition hover:border-blue hover:text-blue"
+      >
+        <Icon name="plus" size={17} /> הוספת שורה
+      </button>
+    </Section>
+  );
+}
+
 export function TextPanel() {
   const { design, selected, actions, advanced, render, profile } = useEditor();
   const text = selected.length === 1 && selected[0].type === 'text' ? (selected[0] as TextElement) : null;
-  const add = () => {
-    const count = design.elements.filter((e) => e.type === 'text').length;
-    const el = newText(design, count ? 'שורה נוספת' : 'השם שלכם כאן', { y: Math.min(design.height - 3, design.height / 2 + count * 3) });
-    actions.add(el);
-  };
   const up = (p: Partial<TextElement>, history = true) => text && actions.patch(text.id, p, history);
   const eff = text ? render?.info[text.id]?.effectiveSize : undefined;
 
   return (
     <>
-      <Section>
-        <button type="button" className="btn-primary w-full" onClick={add}>
-          <Icon name="plus" size={18} /> הוסף טקסט
-        </button>
-      </Section>
+      <LinesEditor />
       {!text ? (
-        <p className="px-4 py-6 text-center text-sm text-muted">בחרו טקסט על החותמת כדי לערוך אותו, או הוסיפו טקסט חדש.</p>
+        <p className="px-4 pb-6 text-center text-sm text-muted">הקישו על שורה כדי לשנות גופן, יישור וסגנון.</p>
       ) : (
         <>
-          <Section title="תוכן">
-            <textarea
-              dir="auto"
-              value={text.text}
-              rows={Math.min(5, Math.max(2, text.text.split('\n').length))}
-              onFocus={actions.begin}
-              onBlur={actions.commit}
-              onChange={(e) => up({ text: e.target.value })}
-              className="input text-[15px]"
-              aria-label="תוכן הטקסט"
-            />
-          </Section>
-          <Section title="גופן">
+          <Section title="עיצוב השורה הנבחרת">
             <select
               value={text.font}
               onChange={(e) => up({ font: e.target.value })}
-              className="input !py-2 text-sm"
+              className="input !py-2"
               aria-label="גופן"
-              style={{ fontFamily: FONT_FAMILIES.find((f) => f.id === text.font)?.css }}
+              style={{
+                fontFamily: FONT_FAMILIES.find((f) => f.id === text.font)?.css,
+              }}
             >
               {FONT_FAMILIES.map((f) => (
                 <option key={f.id} value={f.id} style={{ fontFamily: f.css }}>
@@ -127,12 +254,10 @@ export function TextPanel() {
             </select>
             <div className="mt-3">
               <Slider label="גודל" unit="pt" min={4} max={36} step={0.5} value={text.size} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ size: v })} />
-              {eff != null && eff < text.size - 0.05 && (
-                <p className="mt-1 text-xs text-muted">הוקטן אוטומטית ל־{eff.toFixed(1)}pt כדי להיכנס ברוחב</p>
-              )}
+              {eff != null && eff < text.size - 0.05 && <p className="mt-1 text-xs text-muted">הוקטן אוטומטית ל־{eff.toFixed(1)}pt כדי להיכנס ברוחב</p>}
               {eff != null && eff < profile.minFontPt && <p className="mt-1 text-xs text-bad">מתחת למינימום לייצור ({profile.minFontPt}pt)</p>}
             </div>
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <IconToggle icon="bold" label="מודגש" on={text.bold} onClick={() => up({ bold: !text.bold })} />
               <IconToggle icon="italic" label="נטוי" on={!!text.italic} onClick={() => up({ italic: !text.italic })} />
               <IconToggle icon="underline" label="קו תחתון" on={!!text.underline} onClick={() => up({ underline: !text.underline })} />
@@ -157,8 +282,20 @@ export function TextPanel() {
                 onChange={(v) =>
                   up(
                     v === 'none'
-                      ? { curve: null, x: design.width / 2, y: design.height / 2 }
-                      : { curve: { radius: text.curve?.radius ?? design.width / 2 - 4, position: v }, x: design.width / 2, y: design.height / 2, maxWidth: 0 },
+                      ? {
+                          curve: null,
+                          x: design.width / 2,
+                          y: design.height / 2,
+                        }
+                      : {
+                          curve: {
+                            radius: text.curve?.radius ?? design.width / 2 - 4,
+                            position: v,
+                          },
+                          x: design.width / 2,
+                          y: design.height / 2,
+                          maxWidth: 0,
+                        },
                   )
                 }
                 options={[
@@ -169,7 +306,17 @@ export function TextPanel() {
               />
               {text.curve && (
                 <div className="mt-3">
-                  <Slider label="רדיוס" unit="מ״מ" min={3} max={design.width / 2} step={0.1} value={text.curve.radius} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ curve: { ...text.curve!, radius: v } })} />
+                  <Slider
+                    label="רדיוס"
+                    unit="מ״מ"
+                    min={3}
+                    max={design.width / 2}
+                    step={0.1}
+                    value={text.curve.radius}
+                    onStart={actions.begin}
+                    onEnd={actions.commit}
+                    onChange={(v) => up({ curve: { ...text.curve!, radius: v } })}
+                  />
                 </div>
               )}
             </Section>
@@ -181,7 +328,17 @@ export function TextPanel() {
                   <Slider label="ריווח אותיות" min={-100} max={400} step={10} value={text.letterSpacing} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ letterSpacing: v })} />
                   <Slider label="ריווח שורות" min={0.8} max={2.5} step={0.05} value={text.lineHeight} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ lineHeight: v })} />
                   {!text.curve && (
-                    <Slider label="רוחב אזור הטקסט" unit="מ״מ" min={0} max={design.width} step={0.5} value={text.maxWidth} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ maxWidth: v })} />
+                    <Slider
+                      label="רוחב אזור הטקסט"
+                      unit="מ״מ"
+                      min={0}
+                      max={design.width}
+                      step={0.5}
+                      value={text.maxWidth}
+                      onStart={actions.begin}
+                      onEnd={actions.commit}
+                      onChange={(v) => up({ maxWidth: v })}
+                    />
                   )}
                 </div>
               </Section>
@@ -190,6 +347,17 @@ export function TextPanel() {
           )}
         </>
       )}
+    </>
+  );
+}
+
+/** Mobile "Elements" tab: icons, shapes and frames in one place. */
+export function ElementsPanel() {
+  return (
+    <>
+      <FramesPanel />
+      <IconsPanel />
+      <ShapesPanel />
     </>
   );
 }
@@ -299,9 +467,21 @@ export function LogoPanel({ readyFile = false }: { readyFile?: boolean }) {
       height: Math.round(w * aspect * 100) / 100,
       src: processed.dataUrl,
       vector: vector?.d ?? null,
-      source: { name: loaded.name, mime: loaded.mime, pxWidth: loaded.pxWidth, pxHeight: loaded.pxHeight, isVector: loaded.isVector },
+      source: {
+        name: loaded.name,
+        mime: loaded.mime,
+        pxWidth: loaded.pxWidth,
+        pxHeight: loaded.pxHeight,
+        isVector: loaded.isVector,
+      },
     };
-    if (current) actions.patch(current.id, { ...el, id: current.id, x: current.x, y: current.y } as Partial<ImageElement>);
+    if (current)
+      actions.patch(current.id, {
+        ...el,
+        id: current.id,
+        x: current.x,
+        y: current.y,
+      } as Partial<ImageElement>);
     else actions.add(el);
     toast(vector ? 'הלוגו נוסף כקווים וקטוריים' : 'הלוגו נוסף');
     setLoaded(null);
@@ -365,7 +545,9 @@ export function LogoPanel({ readyFile = false }: { readyFile?: boolean }) {
               <dt className="text-muted">רזולוציה</dt>
               <dd>{loaded.isVector ? 'וקטורי' : `${loaded.pxWidth}×${loaded.pxHeight}px`}</dd>
               <dt className="text-muted">מידות בחותמת</dt>
-              <dd>~{Math.round(design.width * 0.35)} מ״מ · {q?.dpi} DPI</dd>
+              <dd>
+                ~{Math.round(design.width * 0.35)} מ״מ · {q?.dpi} DPI
+              </dd>
             </dl>
             {q && (
               <div className={`mt-3 rounded-lg px-3 py-2 text-sm font-medium ${QUALITY[q.level].cls}`}>
@@ -394,8 +576,26 @@ export function LogoPanel({ readyFile = false }: { readyFile?: boolean }) {
                   חיתוך שוליים (Crop)
                   <input type="checkbox" className="h-4 w-4 accent-blue" checked={opts.crop} onChange={(e) => setOpts({ ...opts, crop: e.target.checked })} />
                 </label>
-                <Slider label="סף שחור־לבן (Threshold)" min={20} max={240} value={opts.threshold} onChange={(v) => { setOpts({ ...opts, threshold: v }); setTraced(null); }} />
-                <Slider label="ניגודיות" min={-50} max={90} value={opts.contrast} onChange={(v) => { setOpts({ ...opts, contrast: v }); setTraced(null); }} />
+                <Slider
+                  label="סף שחור־לבן (Threshold)"
+                  min={20}
+                  max={240}
+                  value={opts.threshold}
+                  onChange={(v) => {
+                    setOpts({ ...opts, threshold: v });
+                    setTraced(null);
+                  }}
+                />
+                <Slider
+                  label="ניגודיות"
+                  min={-50}
+                  max={90}
+                  value={opts.contrast}
+                  onChange={(v) => {
+                    setOpts({ ...opts, contrast: v });
+                    setTraced(null);
+                  }}
+                />
                 <button type="button" className="btn-outline btn-sm w-full" onClick={() => void doTrace(advanced ? 'high' : 'medium')} disabled={!!busy}>
                   <Icon name="wand" size={16} /> המרה לקווים (Vectorize)
                 </button>
@@ -445,7 +645,12 @@ export function LogoPanel({ readyFile = false }: { readyFile?: boolean }) {
                 value={current.width}
                 onStart={actions.begin}
                 onEnd={actions.commit}
-                onChange={(v) => actions.patch(current.id, { width: v, height: (v * current.height) / current.width })}
+                onChange={(v) =>
+                  actions.patch(current.id, {
+                    width: v,
+                    height: (v * current.height) / current.width,
+                  })
+                }
               />
             </div>
           </Section>
@@ -487,7 +692,14 @@ export function IconsPanel() {
           <Section key={g.label} title={g.label}>
             <div className="grid grid-cols-4 gap-2">
               {items.map((i) => (
-                <button key={i.id} type="button" onClick={() => add(i.id)} className="grid aspect-square place-items-center rounded-lg border border-line bg-white transition hover:border-blue hover:bg-blue-50" aria-label={`הוסף אייקון ${i.label}`} title={i.label}>
+                <button
+                  key={i.id}
+                  type="button"
+                  onClick={() => add(i.id)}
+                  className="grid aspect-square place-items-center rounded-lg border border-line bg-white transition hover:border-blue hover:bg-blue-50"
+                  aria-label={`הוסף אייקון ${i.label}`}
+                  title={i.label}
+                >
                   <svg viewBox="0 0 24 24" className="h-6 w-6">
                     <path d={i.d} fillRule="evenodd" />
                   </svg>
@@ -500,7 +712,13 @@ export function IconsPanel() {
       <Section title="סמלים">
         <div className="grid grid-cols-4 gap-2">
           {['₪', '★', '©', '®', '✓', '•', '№', '&'].map((s) => (
-            <button key={s} type="button" onClick={() => addText(s)} className="grid aspect-square place-items-center rounded-lg border border-line bg-white text-lg transition hover:border-blue hover:bg-blue-50" aria-label={`הוסף סימן ${s}`}>
+            <button
+              key={s}
+              type="button"
+              onClick={() => addText(s)}
+              className="grid aspect-square place-items-center rounded-lg border border-line bg-white text-lg transition hover:border-blue hover:bg-blue-50"
+              aria-label={`הוסף סימן ${s}`}
+            >
               {s}
             </button>
           ))}
@@ -524,12 +742,30 @@ export function IconsPanel() {
 export function ShapesPanel() {
   const { design, actions, selected } = useEditor();
   const shape = selected.length === 1 && selected[0].type === 'shape' ? (selected[0] as ShapeElement) : null;
-  const items: { kind: ShapeElement['kind']; icon: string; label: string; over?: Partial<ShapeElement> }[] = [
+  const items: {
+    kind: ShapeElement['kind'];
+    icon: string;
+    label: string;
+    over?: Partial<ShapeElement>;
+  }[] = [
     { kind: 'line', icon: 'line', label: 'קו' },
-    { kind: 'line', icon: 'minus', label: 'מפריד', over: { width: design.width * 0.4, stroke: 0.3 } },
+    {
+      kind: 'line',
+      icon: 'minus',
+      label: 'מפריד',
+      over: { width: design.width * 0.4, stroke: 0.3 },
+    },
     { kind: 'rect', icon: 'square', label: 'מלבן' },
     { kind: 'ellipse', icon: 'circle', label: 'עיגול' },
-    { kind: 'ellipse', icon: 'ellipse', label: 'אליפסה', over: { width: Math.min(design.width * 0.5, 20), height: Math.min(design.height * 0.4, 10) } },
+    {
+      kind: 'ellipse',
+      icon: 'ellipse',
+      label: 'אליפסה',
+      over: {
+        width: Math.min(design.width * 0.5, 20),
+        height: Math.min(design.height * 0.4, 10),
+      },
+    },
     { kind: 'star', icon: 'star', label: 'כוכב' },
   ];
   const up = (p: Partial<ShapeElement>, h = true) => shape && actions.patch(shape.id, p, h);
@@ -538,7 +774,12 @@ export function ShapesPanel() {
       <Section title="צורות">
         <div className="grid grid-cols-3 gap-2">
           {items.map((it) => (
-            <button key={it.label} type="button" onClick={() => actions.add(newShape(design, it.kind, it.over))} className="flex flex-col items-center gap-1 rounded-lg border border-line bg-white py-3 text-xs transition hover:border-blue hover:bg-blue-50">
+            <button
+              key={it.label}
+              type="button"
+              onClick={() => actions.add(newShape(design, it.kind, it.over))}
+              className="flex flex-col items-center gap-1 rounded-lg border border-line bg-white py-3 text-xs transition hover:border-blue hover:bg-blue-50"
+            >
               <Icon name={it.icon} size={22} />
               {it.label}
             </button>
@@ -554,10 +795,16 @@ export function ShapesPanel() {
                 <input type="checkbox" className="h-4 w-4 accent-blue" checked={shape.filled} onChange={(e) => up({ filled: e.target.checked })} />
               </label>
             )}
-            {!shape.filled && <Slider label="עובי קו" unit="מ״מ" min={0.1} max={2} step={0.05} value={shape.stroke} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ stroke: v })} />}
+            {!shape.filled && (
+              <Slider label="עובי קו" unit="מ״מ" min={0.1} max={2} step={0.05} value={shape.stroke} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ stroke: v })} />
+            )}
             <Slider label="רוחב" unit="מ״מ" min={0.5} max={design.width} step={0.1} value={shape.width} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ width: v })} />
-            {shape.kind !== 'line' && <Slider label="גובה" unit="מ״מ" min={0.5} max={design.height} step={0.1} value={shape.height} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ height: v })} />}
-            {shape.kind === 'rect' && <Slider label="פינות מעוגלות" unit="מ״מ" min={0} max={5} step={0.1} value={shape.radius ?? 0} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ radius: v })} />}
+            {shape.kind !== 'line' && (
+              <Slider label="גובה" unit="מ״מ" min={0.5} max={design.height} step={0.1} value={shape.height} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ height: v })} />
+            )}
+            {shape.kind === 'rect' && (
+              <Slider label="פינות מעוגלות" unit="מ״מ" min={0} max={5} step={0.1} value={shape.radius ?? 0} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ radius: v })} />
+            )}
             <Slider label="סיבוב" unit="°" min={0} max={360} value={shape.rotation} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ rotation: v })} />
           </div>
         </Section>
@@ -573,7 +820,12 @@ export function ShapesPanel() {
 
 // ------------------------------------------------------------------ frames
 
-const FRAMES: { style: BorderStyle; label: string; round?: boolean; rect?: boolean }[] = [
+const FRAMES: {
+  style: BorderStyle;
+  label: string;
+  round?: boolean;
+  rect?: boolean;
+}[] = [
   { style: 'none', label: 'ללא' },
   { style: 'rect', label: 'מלבנית', rect: true },
   { style: 'rounded', label: 'מעוגלת', rect: true },
@@ -593,7 +845,14 @@ export function FramesPanel() {
       <Section title="מסגרות – מותאמות לגודל החותמת">
         <div className="grid grid-cols-2 gap-2">
           {frames.map((f) => {
-            const preview = renderDesign({ ...design, elements: [], border: { ...design.border, style: f.style } }, resolveFace);
+            const preview = renderDesign(
+              {
+                ...design,
+                elements: [],
+                border: { ...design.border, style: f.style },
+              },
+              resolveFace,
+            );
             return (
               <button
                 key={f.style}
@@ -614,9 +873,31 @@ export function FramesPanel() {
       {design.border.style !== 'none' && (
         <Section title="הגדרות מסגרת">
           <div className="space-y-3">
-            <Slider label="עובי" unit="מ״מ" min={0.2} max={2} step={0.05} value={design.border.thickness} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => setBorder({ thickness: v })} />
+            <Slider
+              label="עובי"
+              unit="מ״מ"
+              min={0.2}
+              max={2}
+              step={0.05}
+              value={design.border.thickness}
+              onStart={actions.begin}
+              onEnd={actions.commit}
+              onChange={(v) => setBorder({ thickness: v })}
+            />
             <Slider label="מרחק מהקצה" unit="מ״מ" min={0} max={4} step={0.1} value={design.border.inset} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => setBorder({ inset: v })} />
-            {design.border.style === 'double' && <Slider label="רווח בין הקווים" unit="מ״מ" min={0.2} max={3} step={0.1} value={design.border.gap} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => setBorder({ gap: v })} />}
+            {design.border.style === 'double' && (
+              <Slider
+                label="רווח בין הקווים"
+                unit="מ״מ"
+                min={0.2}
+                max={3}
+                step={0.1}
+                value={design.border.gap}
+                onStart={actions.begin}
+                onEnd={actions.commit}
+                onChange={(v) => setBorder({ gap: v })}
+              />
+            )}
           </div>
         </Section>
       )}
@@ -631,7 +912,17 @@ export function LayersPanel() {
   const [dragId, setDragId] = useState<string | null>(null);
   const list = [...design.elements].reverse(); // top-most first
   const name = (el: Design['elements'][number]) =>
-    el.type === 'text' ? el.text.split('\n')[0] || 'טקסט' : el.type === 'image' ? `לוגו – ${el.source.name}` : { rect: 'מלבן', ellipse: 'עיגול', line: 'קו', star: 'כוכב', icon: 'אייקון' }[el.kind];
+    el.type === 'text'
+      ? el.text.split('\n')[0] || 'טקסט'
+      : el.type === 'image'
+        ? `לוגו – ${el.source.name}`
+        : {
+            rect: 'מלבן',
+            ellipse: 'עיגול',
+            line: 'קו',
+            star: 'כוכב',
+            icon: 'אייקון',
+          }[el.kind];
   return (
     <Section title="שכבות">
       <ul className="space-y-1">
@@ -656,7 +947,13 @@ export function LayersPanel() {
               {name(el)}
             </button>
             <IconButton icon={el.hidden ? 'eyeOff' : 'eye'} label={el.hidden ? 'הצג' : 'הסתר'} onClick={() => actions.patch(el.id, { hidden: !el.hidden })} size={16} className="!h-7 !w-7" />
-            <IconButton icon={el.locked ? 'lock' : 'unlock'} label={el.locked ? 'שחרר נעילה' : 'נעל'} onClick={() => actions.patch(el.id, { locked: !el.locked })} size={16} className={`!h-7 !w-7 ${el.locked ? 'text-blue' : ''}`} />
+            <IconButton
+              icon={el.locked ? 'lock' : 'unlock'}
+              label={el.locked ? 'שחרר נעילה' : 'נעל'}
+              onClick={() => actions.patch(el.id, { locked: !el.locked })}
+              size={16}
+              className={`!h-7 !w-7 ${el.locked ? 'text-blue' : ''}`}
+            />
             <IconButton icon="copy" label="שכפל" onClick={() => actions.duplicate([el.id])} size={16} className="!h-7 !w-7" />
             <IconButton icon="trash" label="מחק" onClick={() => actions.remove([el.id])} size={16} className="!h-7 !w-7" disabled={el.locked} />
           </li>

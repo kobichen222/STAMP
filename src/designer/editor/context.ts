@@ -26,10 +26,14 @@ export interface EditorContextValue {
   improve: (style: 'classic' | 'modern' | 'minimal') => void;
   toast: (msg: string) => void;
   designId: string;
+  /** Text element whose input should receive focus (tap on canvas). */
+  focusTextId: string | null;
+  setFocusTextId: (id: string | null) => void;
+  isMobile: boolean;
   addVariants: (designs: import('../types').Design[]) => void;
 }
 
-export type PanelId = 'templates' | 'text' | 'logo' | 'icons' | 'shapes' | 'frames' | 'layers' | 'ai' | 'settings';
+export type PanelId = 'templates' | 'text' | 'logo' | 'icons' | 'shapes' | 'frames' | 'layers' | 'ai' | 'settings' | 'elements';
 
 export const EditorContext = createContext<EditorContextValue | null>(null);
 

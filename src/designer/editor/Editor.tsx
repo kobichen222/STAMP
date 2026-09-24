@@ -30,7 +30,7 @@ import { Onboarding } from './Onboarding';
 import { PreflightBadge } from './PreflightBadge';
 import { PreviewMode } from './PreviewMode';
 import { SettingsPanel } from './SettingsPanel';
-import { FramesPanel, IconsPanel, LayersPanel, LogoPanel, ShapesPanel, TemplatesPanel, TextPanel } from './panels';
+import { ElementsPanel, FramesPanel, IconsPanel, LayersPanel, LogoPanel, ShapesPanel, TemplatesPanel, TextPanel } from './panels';
 import { useEditorStore } from './store';
 
 export interface DesignerProduct {
@@ -41,7 +41,12 @@ export interface DesignerProduct {
   model: StampModel;
 }
 
-const PANELS: { id: PanelId; label: string; icon: string; advanced?: boolean }[] = [
+const PANELS: {
+  id: PanelId;
+  label: string;
+  icon: string;
+  advanced?: boolean;
+}[] = [
   { id: 'templates', label: 'תבניות', icon: 'template' },
   { id: 'text', label: 'טקסט', icon: 'text' },
   { id: 'logo', label: 'לוגו', icon: 'image' },
@@ -51,9 +56,52 @@ const PANELS: { id: PanelId; label: string; icon: string; advanced?: boolean }[]
   { id: 'layers', label: 'שכבות', icon: 'layers', advanced: true },
   { id: 'ai', label: 'עיצוב עם AI', icon: 'sparkles' },
   { id: 'settings', label: 'הגדרות', icon: 'settings' },
+  { id: 'elements', label: 'אלמנטים', icon: 'shapes', advanced: true },
 ];
 
-const MOBILE_TABS: PanelId[] = ['templates', 'text', 'logo', 'icons'];
+const MOBILE_TABS: { id: PanelId; label: string; icon: string }[] = [
+  { id: 'templates', label: 'תבניות', icon: 'template' },
+  { id: 'text', label: 'טקסט', icon: 'text' },
+  { id: 'logo', label: 'לוגו', icon: 'image' },
+  { id: 'elements', label: 'אלמנטים', icon: 'star' },
+  { id: 'settings', label: 'עוד', icon: 'menu' },
+];
+const MORE_LINKS: PanelId[] = ['ai', 'layers', 'shapes'];
+
+/** Viewport height that follows the on-screen keyboard (visualViewport). */
+function useViewport() {
+  const [vp, setVp] = useState({
+    h: 0,
+    top: 0,
+    keyboard: false,
+    mobile: false,
+  });
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const vv = window.visualViewport;
+    const update = () => {
+      const h = vv?.height ?? window.innerHeight;
+      setVp({
+        h: Math.round(h),
+        top: Math.round(vv?.offsetTop ?? 0),
+        keyboard: window.innerHeight - h > 140,
+        mobile: mq.matches,
+      });
+    };
+    update();
+    vv?.addEventListener('resize', update);
+    vv?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    mq.addEventListener('change', update);
+    return () => {
+      vv?.removeEventListener('resize', update);
+      vv?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      mq.removeEventListener('change', update);
+    };
+  }, []);
+  return vp;
+}
 
 let clipboard: DesignElement[] = [];
 
@@ -67,6 +115,8 @@ function PanelBody({ id, readyFile }: { id: PanelId; readyFile: boolean }) {
       return <LogoPanel readyFile={readyFile} />;
     case 'icons':
       return <IconsPanel />;
+    case 'elements':
+      return <ElementsPanel />;
     case 'shapes':
       return <ShapesPanel />;
     case 'frames':
@@ -111,7 +161,12 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   const [panelOpen, setPanelOpen] = useState(true);
   const [sheet, setSheet] = useState<'closed' | 'half' | 'full'>('closed');
   const [advanced, setAdvanced] = useState(false);
-  const [view, setView] = useState<ViewSettings>({ zoom: 3, grid: false, safeArea: true, snap: true });
+  const [view, setView] = useState<ViewSettings>({
+    zoom: 3,
+    grid: false,
+    safeArea: true,
+    snap: true,
+  });
   const [fitSignal, setFitSignal] = useState(0);
   const [preview, setPreview] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
@@ -122,7 +177,13 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   const [readyFile, setReadyFile] = useState(!!startWithUpload);
   const [exitAsk, setExitAsk] = useState(false);
   const [firstDragDone, setFirstDragDone] = useState(true);
+  const [focusTextId, setFocusTextId] = useState<string | null>(null);
+  const [autoFit, setAutoFit] = useState(true);
+  const [dragH, setDragH] = useState<number | null>(null);
+  const vp = useViewport();
+  const isMobile = vp.mobile;
   const lastVersion = useRef(0);
+  const sheetDrag = useRef<{ y: number; h: number; moved: boolean } | null>(null);
 
   const { resolve, ready, version } = useFaces([design]);
   const render = useMemo(() => (ready ? renderDesign(design, resolve) : null), [design, resolve, ready, version]);
@@ -135,7 +196,13 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   }, [issues]);
 
   const hasLogo = design.elements.some((e) => e.type === 'image');
-  const quote = quoteLine({ basePrice: product.price, quantity: qty, ink: design.inkColor, body: bodyColor, hasLogo });
+  const quote = quoteLine({
+    basePrice: product.price,
+    quantity: qty,
+    ink: design.inkColor,
+    body: bodyColor,
+    hasLogo,
+  });
 
   const toast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -187,7 +254,15 @@ export function Editor({ product, products, initialDesign, designId, templateId,
         clipboard = design.elements.filter((x) => sel.includes(x.id));
       } else if (mod && e.key.toLowerCase() === 'v' && clipboard.length) {
         e.preventDefault();
-        actions.add(...clipboard.map((c) => ({ ...c, id: `${c.type}-${Math.random().toString(36).slice(2, 9)}`, x: c.x + 1.5, y: c.y + 1.5, locked: false })));
+        actions.add(
+          ...clipboard.map((c) => ({
+            ...c,
+            id: `${c.type}-${Math.random().toString(36).slice(2, 9)}`,
+            x: c.x + 1.5,
+            y: c.y + 1.5,
+            locked: false,
+          })),
+        );
       } else if (mod && e.key.toLowerCase() === 'd' && sel.length) {
         e.preventDefault();
         actions.duplicate(sel);
@@ -208,7 +283,10 @@ export function Editor({ product, products, initialDesign, designId, templateId,
         const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
         actions.patch(
           sel.filter((id) => !design.elements.find((x) => x.id === id)?.locked),
-          (el) => ({ x: Math.round((el.x + dx) * 100) / 100, y: Math.round((el.y + dy) * 100) / 100 }),
+          (el) => ({
+            x: Math.round((el.x + dx) * 100) / 100,
+            y: Math.round((el.y + dy) * 100) / 100,
+          }),
         );
       } else if (e.key === '+' || e.key === '=') {
         setView((v) => ({ ...v, zoom: Math.min(20, v.zoom * 1.2) }));
@@ -227,7 +305,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
     setPanel((p) => {
       if (t === 'text') return 'text';
       if (t === 'image') return 'logo';
-      if (t === 'shape') return (selected[0] as { kind: string }).kind === 'icon' ? 'icons' : 'shapes';
+      if (t === 'shape') return isMobile ? 'elements' : (selected[0] as { kind: string }).kind === 'icon' ? 'icons' : 'shapes';
       return p;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -240,6 +318,22 @@ export function Editor({ product, products, initialDesign, designId, templateId,
       /* ignore */
     }
   }, []);
+
+  const dismissDragTip = useCallback(() => {
+    setFirstDragDone(true);
+    try {
+      localStorage.setItem('s2g-drag-tip', '1');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  // The hint is a one-time nudge – fade it out on its own after a few seconds.
+  const hasElements = design.elements.length > 0;
+  useEffect(() => {
+    if (firstDragDone || !hasElements) return;
+    const t = window.setTimeout(dismissDragTip, 7000);
+    return () => window.clearTimeout(t);
+  }, [firstDragDone, hasElements, dismissDragTip]);
 
   const openPanel = useCallback((p: PanelId) => {
     setPanel(p);
@@ -273,6 +367,9 @@ export function Editor({ product, products, initialDesign, designId, templateId,
     setView,
     setAdvanced,
     designId,
+    focusTextId,
+    setFocusTextId,
+    isMobile,
     addVariants: (list) => {
       for (const d of list) {
         const r = renderDesign(d, resolve);
@@ -318,10 +415,21 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   const visiblePanels = PANELS.filter((p) => advanced || !p.advanced);
   const activePanel = PANELS.find((p) => p.id === panel);
   const elementsCount = design.elements.filter((e) => !e.hidden).length;
+  const isEmpty = issues.some((i) => i.code === 'empty');
+  // Sheet heights follow the visible viewport; with the keyboard open the
+  // sheet takes what is left while keeping a strip of the stamp visible.
+  const avail = Math.max(0, vp.h - 56);
+  const halfH = Math.round(vp.keyboard ? Math.max(avail - 150, 140) : vp.h * 0.42);
+  const fullH = Math.round(vp.keyboard ? halfH : Math.min(vp.h * 0.72, avail - 120));
+  const sheetHeight = dragH ?? (sheet === 'full' ? fullH : halfH);
 
   return (
     <EditorContext.Provider value={ctx}>
-      <div className="fixed inset-0 z-40 flex flex-col bg-white text-ink" dir="rtl">
+      <div
+        className="fixed inset-x-0 top-0 bottom-0 z-40 flex flex-col overflow-hidden bg-white text-ink"
+        style={isMobile && vp.h ? { height: vp.h, top: vp.top, bottom: 'auto' } : undefined}
+        dir="rtl"
+      >
         {/* ------------------------------------------------ header */}
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-2 sm:px-3">
           <button type="button" onClick={() => setExitAsk(true)} className="hidden items-center sm:flex" aria-label="יציאה מהעורך">
@@ -358,7 +466,14 @@ export function Editor({ product, products, initialDesign, designId, templateId,
                 {Math.round(view.zoom * 100)}%
               </button>
               <IconButton icon="zoomIn" label="הגדל" onClick={() => setView((v) => ({ ...v, zoom: Math.min(20, v.zoom * 1.25) }))} />
-              <IconButton icon="fit" label="התאם למסך" onClick={() => setFitSignal((s) => s + 1)} />
+              <IconButton
+                icon="fit"
+                label="התאם למסך"
+                onClick={() => {
+                  setAutoFit(true);
+                  setFitSignal((s) => s + 1);
+                }}
+              />
             </div>
             <span className="mx-1 hidden h-6 w-px bg-line md:block" />
             <button type="button" className="btn-ghost btn-sm" onClick={() => setPreview(true)}>
@@ -430,30 +545,48 @@ export function Editor({ product, products, initialDesign, designId, templateId,
               selection={state.selection}
               actions={actions}
               view={view}
-              onZoom={(z) => setView((v) => ({ ...v, zoom: z }))}
+              onZoom={(z, source) => {
+                if (source === 'user') setAutoFit(false);
+                setView((v) => ({ ...v, zoom: z }));
+              }}
+              autoFit={autoFit}
+              onTap={(id) => {
+                if (!isMobile) return;
+                dismissDragTip();
+                const el = design.elements.find((e) => e.id === id);
+                if (!el) return;
+                const p: PanelId = el.type === 'text' ? 'text' : el.type === 'image' ? 'logo' : 'elements';
+                setPanel(p);
+                if (sheet === 'closed') setSheet('half');
+                if (el.type === 'text') setFocusTextId(id);
+              }}
               ink={design.inkColor}
               safeMargin={profile.safeMargin}
               issuesById={issuesById}
               fitSignal={fitSignal}
-              onFirstDrag={() => {
-                if (firstDragDone) return;
-                setFirstDragDone(true);
-                try {
-                  localStorage.setItem('s2g-drag-tip', '1');
-                } catch {
-                  /* ignore */
-                }
-              }}
+              onFirstDrag={dismissDragTip}
             />
-            {selected.length > 0 && <FloatingToolbar />}
-            <div className="pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-2">
+            {selected.length > 0 && !(isMobile && sheet !== 'closed') && <FloatingToolbar />}
+            <div className={`pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-2 ${isMobile && selected.length > 0 && sheet === 'closed' ? 'top-16' : ''}`}>
               <div className="pointer-events-auto">
                 <PreflightBadge issues={issues} onFix={fixAll} onSelect={(id) => actions.select([id])} />
               </div>
             </div>
+            {isMobile && !autoFit && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAutoFit(true);
+                  setFitSignal((s) => s + 1);
+                }}
+                className="absolute right-3 bottom-3 flex items-center gap-1 rounded-full border border-line bg-white/95 px-3 py-1.5 text-xs font-medium shadow-soft"
+              >
+                <Icon name="fit" size={15} /> התאמה למסך
+              </button>
+            )}
             {!firstDragDone && design.elements.length > 0 && (
-              <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-sm text-white shadow-lift">
-                גררו אלמנטים כדי למקם אותם · לחיצה כפולה לעריכת טקסט
+              <div className="pointer-events-none absolute bottom-5 left-1/2 w-max max-w-[90%] -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-center text-sm text-white shadow-lift">
+                {isMobile ? 'הקישו על טקסט כדי לערוך · גררו כדי להזיז' : 'גררו אלמנטים כדי למקם אותם · לחיצה כפולה לעריכת טקסט'}
               </div>
             )}
             {showEmpty && design.elements.length === 0 && (
@@ -501,7 +634,10 @@ export function Editor({ product, products, initialDesign, designId, templateId,
             </div>
             <div className="text-left leading-tight">
               <p className="text-lg font-bold tabular-nums">{quote.onRequest ? 'לפי הצעה' : formatPrice(quote.total)}</p>
-              <p className="text-[11px] text-muted">{qty > 1 && !quote.onRequest ? `${formatPrice(quote.unitPrice)} ליח׳ · ` : ''}כולל החותמת והעיצוב · משלוח בקופה</p>
+              <p className="text-[11px] text-muted">
+                {qty > 1 && !quote.onRequest ? `${formatPrice(quote.unitPrice)} ליח׳ · ` : ''}
+                כולל החותמת והעיצוב · משלוח בקופה
+              </p>
             </div>
             <button type="button" className="btn-primary" onClick={() => setCartOpen(true)} disabled={!render}>
               המשך להזמנה <Icon name="arrowLeft" size={17} />
@@ -509,70 +645,129 @@ export function Editor({ product, products, initialDesign, designId, templateId,
           </div>
         </footer>
 
-        {/* ------------------------------------------------ mobile bottom toolbar */}
-        <div className="shrink-0 border-t border-line bg-white lg:hidden">
-          <div className="flex items-center justify-between gap-2 px-3 py-2">
-            <div className="leading-tight">
-              <p className="font-bold tabular-nums">{quote.onRequest ? 'לפי הצעה' : formatPrice(quote.total)}</p>
-              <p className={`text-[11px] ${productionReady ? 'text-ok' : 'text-bad'}`}>{productionReady ? '✓ מוכן לייצור' : 'נדרשים תיקונים'}</p>
+        {/* ------------------------------------------------ mobile: in-flow bottom sheet + toolbar */}
+        {isMobile && sheet !== 'closed' && panel && (
+          <section
+            className="relative flex shrink-0 flex-col rounded-t-3xl border-t border-line bg-white shadow-[0_-8px_30px_-12px_rgba(11,20,38,.18)] lg:hidden"
+            style={{
+              height: sheetHeight,
+              transition: dragH == null ? 'height .28s cubic-bezier(.2,.8,.2,1)' : 'none',
+            }}
+            aria-label={activePanel?.label}
+          >
+            <div
+              className="flex shrink-0 cursor-grab touch-none flex-col items-center pt-2 pb-1 select-none"
+              onPointerDown={(e) => {
+                (e.target as HTMLElement).setPointerCapture(e.pointerId);
+                sheetDrag.current = {
+                  y: e.clientY,
+                  h: sheetHeight,
+                  moved: false,
+                };
+              }}
+              onPointerMove={(e) => {
+                const d = sheetDrag.current;
+                if (!d) return;
+                const dy = d.y - e.clientY;
+                if (Math.abs(dy) > 4) d.moved = true;
+                if (d.moved) setDragH(Math.max(60, Math.min(fullH, d.h + dy)));
+              }}
+              onPointerUp={() => {
+                const d = sheetDrag.current;
+                sheetDrag.current = null;
+                if (!d) return;
+                if (!d.moved) {
+                  setSheet((s) => (s === 'full' ? 'half' : 'full'));
+                  setDragH(null);
+                  return;
+                }
+                const h = dragH ?? d.h;
+                setDragH(null);
+                if (h < halfH * 0.6) setSheet('closed');
+                else setSheet(Math.abs(h - halfH) < Math.abs(h - fullH) ? 'half' : 'full');
+              }}
+              onPointerCancel={() => {
+                sheetDrag.current = null;
+                setDragH(null);
+              }}
+            >
+              <span className="h-1.5 w-11 rounded-full bg-line" aria-hidden />
+              <div className="flex w-full items-center justify-between px-4 pt-1">
+                <h2 className="text-[15px] font-semibold">{activePanel?.label ?? 'עוד'}</h2>
+                <div className="flex items-center gap-0.5" onPointerDown={(e) => e.stopPropagation()}>
+                  <IconButton icon={sheet === 'full' ? 'chevronDown' : 'chevronUp'} label={sheet === 'full' ? 'הקטנה' : 'הרחבה'} onClick={() => setSheet((s) => (s === 'full' ? 'half' : 'full'))} />
+                  <IconButton icon="close" label="סגירת הפאנל" onClick={() => setSheet('closed')} />
+                </div>
+              </div>
             </div>
-            <button type="button" className="btn-primary" onClick={() => setCartOpen(true)} disabled={!render}>
-              המשך
+            {panel === 'settings' && (
+              <div className="flex shrink-0 gap-2 overflow-x-auto px-4 pb-2">
+                {MORE_LINKS.map((id) => {
+                  const p = PANELS.find((x) => x.id === id)!;
+                  return (
+                    <button key={id} type="button" className="chip shrink-0 gap-1.5" onClick={() => setPanel(id)}>
+                      <Icon name={p.icon} size={15} /> {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div key={panel} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-line/60 pb-3">
+              <PanelBody id={panel} readyFile={readyFile} />
+            </div>
+          </section>
+        )}
+
+        <div className={`shrink-0 border-t border-line bg-white lg:hidden ${vp.keyboard ? 'hidden' : ''}`}>
+          <div className="flex items-center justify-between gap-2 px-3 py-2">
+            <div className="min-w-0 leading-tight">
+              <p className="font-bold tabular-nums">{quote.onRequest ? 'לפי הצעה' : formatPrice(quote.total)}</p>
+              <p className={`truncate text-[11px] ${isEmpty ? 'text-muted' : productionReady ? 'text-ok' : 'text-bad'}`}>
+                {isEmpty ? 'התחילו מתבנית או מטקסט' : productionReady ? '✓ מוכן לייצור' : 'נדרשים תיקונים'}
+              </p>
+            </div>
+            <button type="button" className="btn-primary" onClick={() => setCartOpen(true)} disabled={!render || isEmpty}>
+              המשך להזמנה <Icon name="arrowLeft" size={16} />
             </button>
           </div>
           <nav className="grid grid-cols-5 border-t border-line pb-[env(safe-area-inset-bottom)]" aria-label="כלים">
-            {[...MOBILE_TABS.map((id) => PANELS.find((p) => p.id === id)!), { id: 'settings' as PanelId, label: 'עוד', icon: 'menu' }].map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  setPanel(p.id);
-                  setSheet(sheet !== 'closed' && panel === p.id ? 'closed' : 'half');
-                }}
-                className={`flex flex-col items-center gap-0.5 py-2 text-[11px] ${sheet !== 'closed' && panel === p.id ? 'text-blue' : 'text-ink-2'}`}
-              >
-                <Icon name={p.icon} size={21} />
-                {p.label}
-              </button>
-            ))}
+            {MOBILE_TABS.map((p) => {
+              const on = sheet !== 'closed' && (panel === p.id || (p.id === 'settings' && !!panel && MORE_LINKS.includes(panel)));
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => {
+                    if (on) setSheet('closed');
+                    else {
+                      setPanel(p.id);
+                      setSheet('half');
+                    }
+                  }}
+                  className={`relative flex flex-col items-center gap-0.5 py-2 text-[11px] transition ${on ? 'font-semibold text-blue' : 'text-ink-2'}`}
+                >
+                  {on && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-blue" />}
+                  <Icon name={p.icon} size={21} />
+                  {p.label}
+                </button>
+              );
+            })}
           </nav>
         </div>
 
-        {/* ------------------------------------------------ mobile bottom sheet */}
-        {sheet !== 'closed' && panel && (
-          <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden" role="dialog" aria-label={activePanel?.label}>
-            <div className="absolute inset-x-0 bottom-0 -top-[100dvh] bg-ink/10" onClick={() => setSheet('closed')} />
-            <div className={`relative flex animate-fade-up flex-col rounded-t-3xl bg-white shadow-lift transition-[height] duration-300 ${sheet === 'full' ? 'h-[85dvh]' : 'h-[48dvh]'}`}>
-              <button type="button" className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-line" aria-label={sheet === 'full' ? 'הקטנה' : 'הרחבה'} onClick={() => setSheet((s) => (s === 'full' ? 'half' : 'full'))} />
-              <div className="flex items-center justify-between px-4 pt-1">
-                <h2 className="text-sm font-semibold">{activePanel?.label}</h2>
-                <div className="flex items-center gap-1">
-                  {panel === 'settings' && (
-                    <div className="flex gap-1">
-                      {PANELS.filter((p) => !MOBILE_TABS.includes(p.id) && p.id !== 'settings').map((p) => (
-                        <button key={p.id} type="button" className="chip !px-2 !py-1 !text-xs" onClick={() => setPanel(p.id)}>
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <IconButton icon="close" label="סגירה" onClick={() => setSheet('closed')} />
-                </div>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                <PanelBody id={panel} readyFile={readyFile} />
-              </div>
-            </div>
-          </div>
-        )}
-
         {toastMsg && (
-          <div role="status" className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-sm text-white shadow-lift lg:bottom-20">
+          <div
+            role="status"
+            className="fixed top-16 left-1/2 z-[60] w-max max-w-[90vw] -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-center text-sm text-white shadow-lift lg:top-auto lg:bottom-20"
+          >
             {toastMsg}
           </div>
         )}
 
-        {preview && render && <PreviewMode render={render} ink={design.inkColor} onInk={(ink) => actions.set({ ...design, inkColor: ink })} productImage={product.image} onClose={() => setPreview(false)} />}
+        {preview && render && (
+          <PreviewMode render={render} ink={design.inkColor} onInk={(ink) => actions.set({ ...design, inkColor: ink })} productImage={product.image} onClose={() => setPreview(false)} />
+        )}
         {cartOpen && render && (
           <AddToCartModal
             render={render}
@@ -610,7 +805,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
             </div>
           </div>
         )}
-        <Onboarding />
+        <Onboarding paused={showEmpty && design.elements.length === 0} />
         <ProductSwitcherHost products={products} current={product.slug} onChange={changeProduct} />
       </div>
     </EditorContext.Provider>
@@ -627,7 +822,11 @@ function ProductSwitcherHost({ products, current, onChange }: { products: Design
   return null;
 }
 
-export const productSwitcher: { products: DesignerProduct[]; current: string; onChange: (slug: string) => void } = {
+export const productSwitcher: {
+  products: DesignerProduct[];
+  current: string;
+  onChange: (slug: string) => void;
+} = {
   products: [],
   current: '',
   onChange: () => undefined,

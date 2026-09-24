@@ -36,6 +36,7 @@ const PATHS: Record<string, string> = {
   arrowLeft: 'M19 12H5M11 6l-6 6 6 6',
   arrowRight: 'M5 12h14M13 6l6 6-6 6',
   chevronDown: 'M6 9l6 6 6-6',
+  chevronUp: 'M6 15l6-6 6 6',
   chevronLeft: 'M15 6l-6 6 6 6',
   alignRight: 'M4 6h16M10 10h10M4 14h16M10 18h10',
   alignCenter: 'M4 6h16M7 10h10M4 14h16M7 18h10',

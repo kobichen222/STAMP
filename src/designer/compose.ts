@@ -245,3 +245,29 @@ export function fillPlaceholders(design: Design, row: Record<string, string>): D
     ),
   };
 }
+
+/**
+ * Re-spaces the straight text lines evenly inside the safe area (keeping their
+ * order, alignment and relative sizes, shrinking them if they no longer fit).
+ * Used when lines are added / removed from the simple line editor.
+ */
+export function restackLines(design: Design, margin = 1.2): Design {
+  const texts = design.elements.filter((e): e is TextElement => e.type === 'text' && !e.curve && !e.hidden).sort((a, b) => a.y - b.y);
+  if (!texts.length) return design;
+  const round = design.shape === 'round';
+  const border = design.border.style === 'none' ? 0 : design.border.inset + design.border.thickness + 0.5;
+  const top = margin + border + (round ? design.height * 0.18 : 0);
+  const bottom = design.height - margin - border - (round ? design.height * 0.18 : 0);
+  const avail = Math.max(2, bottom - top);
+  const heights = texts.map((t) => t.size * PT_TO_MM * t.lineHeight * t.text.split('\n').length);
+  const total = heights.reduce((a, b) => a + b, 0);
+  const f = total > avail ? avail / total : 1;
+  let y = top + (avail - total * f) / 2;
+  const updates = new Map<string, Partial<TextElement>>();
+  texts.forEach((t, i) => {
+    const h = heights[i] * f;
+    updates.set(t.id, { y: round1(y + h / 2), size: round1(Math.max(MIN_FONT_PT, t.size * f)) });
+    y += h;
+  });
+  return { ...design, elements: design.elements.map((e) => (updates.has(e.id) ? ({ ...e, ...updates.get(e.id) } as DesignElement) : e)) };
+}

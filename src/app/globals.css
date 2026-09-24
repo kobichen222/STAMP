@@ -38,7 +38,7 @@
   ::selection { @apply bg-blue/15; }
 }
 
-.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); opacity: 0; pointer-events: none; }
 @utility container-x {
   @apply mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8;
 }
@@ -70,7 +70,7 @@
   @apply text-[13px] font-semibold tracking-wide text-blue;
 }
 @utility input {
-  @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-[15px] outline-none transition placeholder:text-muted/70 focus:border-blue focus:ring-4 focus:ring-blue/10;
+  @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-base sm:text-[15px] outline-none transition placeholder:text-muted/70 focus:border-blue focus:ring-4 focus:ring-blue/10;
 }
 @utility label {
   @apply mb-1.5 block text-sm font-medium text-ink-2;

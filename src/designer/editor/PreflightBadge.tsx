@@ -11,6 +11,13 @@ export function PreflightBadge({ issues, onFix, onSelect }: { issues: Issue[]; o
   const list = issues.filter((i) => i.severity !== 'info');
   const errors = list.filter((i) => i.severity === 'error').length;
   const fixable = list.some((i) => i.fix && i.fix !== 'vectorize');
+  if (issues.some((i) => i.code === 'empty')) {
+    return (
+      <span className="flex items-center gap-2 rounded-full border border-line bg-white/90 px-3.5 py-2 text-sm font-medium text-muted shadow-soft backdrop-blur">
+        <Icon name="sparkles" size={16} className="text-blue" /> התחילו לעצב
+      </span>
+    );
+  }
   return (
     <div className="relative">
       <button
@@ -26,7 +33,7 @@ export function PreflightBadge({ issues, onFix, onSelect }: { issues: Issue[]; o
         {ready && list.length > 0 && <span className="rounded-full bg-warn/15 px-1.5 text-xs text-warn">{list.length}</span>}
       </button>
       {open && (
-        <div className="absolute top-full left-0 z-30 mt-2 w-80 animate-pop rounded-2xl border border-line bg-white p-3 shadow-lift">
+        <div className="absolute top-full left-0 z-30 mt-2 w-[min(20rem,calc(100vw-1.5rem))] animate-pop rounded-2xl border border-line bg-white p-3 shadow-lift">
           <p className="px-1 text-sm font-semibold">{list.length ? `נמצאו ${list.length} הערות` : 'הקובץ תקין ✓'}</p>
           <ul className="mt-2 max-h-72 space-y-1 overflow-y-auto">
             {list.map((i, n) => (
