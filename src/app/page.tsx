@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { CategoryCard } from '@/components/catalog/CategoryCard';
+import { AboutSection } from '@/components/home/AboutSection';
 import { HowItWorks } from '@/components/home/HowItWorks';
 import { StampHero } from '@/components/home/StampHero';
 import { TemplateStrip } from '@/components/home/TemplateStrip';
@@ -43,6 +44,7 @@ export default function HomePage() {
       </section>
 
       <TemplateStrip />
+      <AboutSection />
 
       <section className="container-x py-20 sm:py-28">
         <div className="grid gap-12 lg:grid-cols-2">
