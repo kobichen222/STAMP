@@ -586,7 +586,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
             )}
             {!firstDragDone && design.elements.length > 0 && (
               <div className="pointer-events-none absolute bottom-5 left-1/2 w-max max-w-[90%] -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-center text-sm text-white shadow-lift">
-                {isMobile ? 'הקישו על טקסט כדי לערוך · גררו כדי להזיז' : 'גררו אלמנטים כדי למקם אותם · לחיצה כפולה לעריכת טקסט'}
+                {isMobile ? 'הקשה על טקסט פותחת עריכה · לחיצה ארוכה וגרירה כדי להזיז' : 'גררו אלמנטים כדי למקם אותם · לחיצה כפולה לעריכת טקסט'}
               </div>
             )}
             {showEmpty && design.elements.length === 0 && (

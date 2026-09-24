@@ -64,6 +64,15 @@ export function Canvas({ design, render, selection, actions, view, onZoom, autoF
   onZoomRef.current = onZoom;
   const moved = useRef(false);
   const downId = useRef<string | null>(null);
+  // Touch: a quick tap only selects/opens editing; moving needs a long press,
+  // so scrolling or tapping with a finger never nudges the layout by accident.
+  const touchArmed = useRef(true);
+  const holdTimer = useRef<number | null>(null);
+  const [lifted, setLifted] = useState(false);
+  const clearHold = () => {
+    if (holdTimer.current) window.clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  };
   const coarse = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
   const W = design.width;
   const H = design.height;
@@ -153,6 +162,15 @@ export function Canvas({ design, render, selection, actions, view, onZoom, autoF
     if (!el) return;
     moved.current = false;
     downId.current = id;
+    clearHold();
+    if (e.pointerType === 'touch') {
+      touchArmed.current = false;
+      holdTimer.current = window.setTimeout(() => {
+        touchArmed.current = true;
+        setLifted(true);
+        navigator.vibrate?.(12);
+      }, 380);
+    } else touchArmed.current = true;
     const ids = e.shiftKey ? (selection.includes(id) ? selection.filter((s) => s !== id) : [...selection, id]) : selection.includes(id) ? selection : [id];
     actions.select(ids);
     const movable = design.elements.filter((x) => ids.includes(x.id) && !x.locked);
@@ -241,7 +259,17 @@ export function Canvas({ design, render, selection, actions, view, onZoom, autoF
         }
       }
       setGuides(found);
-      if (Math.hypot(p[0] - g.start[0], p[1] - g.start[1]) * pxPerMm > 4) moved.current = true;
+      const dist = Math.hypot(p[0] - g.start[0], p[1] - g.start[1]) * pxPerMm;
+      if (!touchArmed.current) {
+        // Finger moved before the long press completed: not a drag.
+        if (dist > 8) {
+          clearHold();
+          moved.current = true;
+          setGuides([]);
+        }
+        return;
+      }
+      if (dist > 4) moved.current = true;
       if (!moved.current) return;
       const ids = Object.keys(g.origin);
       actions.patch(ids, (el) => ({ x: round(g.origin[el.id][0] + dx, 0.01), y: round(g.origin[el.id][1] + dy, 0.01) }));
@@ -267,6 +295,9 @@ export function Canvas({ design, render, selection, actions, view, onZoom, autoF
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
+    clearHold();
+    setLifted(false);
+    touchArmed.current = true;
     pointers.current.delete(e.pointerId);
     if (pointers.current.size < 2) pinch.current = null;
     if (gesture.current && gesture.current.kind !== 'pan') actions.commit();
@@ -437,12 +468,13 @@ export function Canvas({ design, render, selection, actions, view, onZoom, autoF
                 y={selBox.minY - pad}
                 width={selBox.maxX - selBox.minX + 2 * pad}
                 height={selBox.maxY - selBox.minY + 2 * pad}
-                fill="none"
+                fill={lifted ? 'rgba(36,87,255,.08)' : 'none'}
                 stroke="#2457ff"
-                strokeWidth={1.2 / pxPerMm}
+                strokeWidth={(lifted ? 2.5 : 1.2) / pxPerMm}
+                strokeDasharray={lifted ? `${4 / pxPerMm} ${3 / pxPerMm}` : undefined}
                 pointerEvents="none"
               />
-              {single && !single.locked && (
+              {single && !single.locked && !coarse && (
                 <>
                   {[
                     [selBox.minX - pad, selBox.minY - pad],

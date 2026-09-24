@@ -96,14 +96,16 @@ function springGeometry(radius: number, height: number, turns: number, wire: num
 export interface StampScene {
   setProgress(p: number): void;
   resize(w: number, h: number): void;
+  /** Shift the rendered image down (fraction of height) and scale it – used for the mobile intro. */
+  setFraming(shiftY: number, zoom: number): void;
   /** Screen positions (px) of each part, for the HTML labels. */
   labelPositions(): { id: string; x: number; y: number; visible: number }[];
   dispose(): void;
 }
 
 export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: boolean; lines: string[] }): StampScene {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !opts.lowPower, alpha: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, opts.lowPower ? 1.25 : 1.75));
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, opts.lowPower ? 1.6 : 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = !opts.lowPower;
@@ -215,7 +217,7 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   const plateGroup = new THREE.Group();
   const plateMount = new THREE.Mesh(new THREE.BoxGeometry(W - 0.3, 0.12, D - 0.3), navy);
   plateGroup.add(plateMount);
-  const blankTex = plateTexture(['Stamp2Go', 'חותמת אישית'], false);
+  const blankTex = plateTexture(['חותמות 2 דקות', 'חותמת אישית'], false);
   const designTex = plateTexture(opts.lines, false);
   const plateFaceMat = new THREE.MeshStandardMaterial({ map: blankTex, roughness: 0.85 });
   const plateFace = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.34, D - 0.34), plateFaceMat);
@@ -253,6 +255,8 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   scene.add(impression);
 
   let progress = 0;
+  let size = { w: 1, h: 1 };
+  let framing = { shiftY: 0, zoom: 1 };
   const tmp = new THREE.Vector3();
 
   function update() {
@@ -285,6 +289,14 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     const cam = toSpot;
     camera.position.set(7.5 - 3.3 * cam, 5.5 + 1.2 * explode + 2.2 * cam, 9.5 - 1.8 * cam);
     camera.lookAt(-0.9 * cam, 1.3 + 1.1 * explode - 1.0 * cam, 0.3 * cam);
+    if (framing.shiftY || framing.zoom !== 1) {
+      camera.zoom = framing.zoom;
+      camera.setViewOffset(size.w, size.h, 0, -framing.shiftY * size.h, size.w, size.h);
+    } else if (camera.view) {
+      camera.zoom = 1;
+      camera.clearViewOffset();
+    }
+    camera.updateProjectionMatrix();
     renderer.render(scene, camera);
   }
 
@@ -295,10 +307,17 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     },
     resize(w: number, h: number) {
       renderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      camera.fov = w < 640 ? 38 : 30;
+      size = { w, h };
+      const aspect = w / h;
+      camera.aspect = aspect;
+      // Portrait screens: widen the vertical FOV so the stamp (and the exploded
+      // stack) keeps a comfortable horizontal margin.
+      camera.fov = aspect < 1 ? Math.min(50, Math.max(34, (2 * Math.atan(0.19 / aspect) * 180) / Math.PI)) : w < 640 ? 38 : 30;
       camera.updateProjectionMatrix();
       update();
+    },
+    setFraming(shiftY: number, zoom: number) {
+      framing = { shiftY, zoom };
     },
     labelPositions() {
       const w = renderer.domElement.clientWidth;

@@ -38,7 +38,7 @@ export function Header() {
       }`}
     >
       <div className="container-x flex h-16 items-center gap-2 sm:gap-6">
-        <Link href="/" aria-label="חותמות 2 דקות – דף הבית" className="min-w-0 shrink text-ink">
+        <Link href="/" aria-label="חותמות 2 דקות – דף הבית" className="min-w-0 shrink text-ink sm:shrink-0">
           <span className="sm:hidden">
             <Logo size="sm" />
           </span>

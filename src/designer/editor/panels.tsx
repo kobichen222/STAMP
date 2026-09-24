@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { composeLayout, newShape, newText, restackLines, uid } from '../compose';
 import { FONT_FAMILIES } from '../fonts';
@@ -10,6 +10,7 @@ import { renderDesign } from '../render';
 import { StampSvg } from '../StampSvg';
 import { TEMPLATE_CATEGORIES, TEMPLATES, type StampTemplate } from '../templates';
 import type { BorderStyle, Design, ImageElement, ShapeElement, TextElement } from '../types';
+import { PT_TO_MM } from '../types';
 import { IconButton, IconToggle, Section, Segmented, Slider, Field } from './controls';
 import { useEditor } from './context';
 
@@ -81,8 +82,11 @@ export function TemplatesPanel() {
 
 // ------------------------------------------------------------------ text
 
+const NEW_TEXT_FIRST = 'השם שלכם כאן';
+const NEW_TEXT_MORE = 'טקסט נוסף';
+
 function LinesEditor() {
-  const { design, actions, selection, focusTextId, setFocusTextId, profile, render, isMobile } = useEditor();
+  const { design, actions, selection, focusTextId, setFocusTextId, profile, render } = useEditor();
   const refs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
   const texts = design.elements
     .filter((e): e is TextElement => e.type === 'text')
@@ -94,132 +98,87 @@ function LinesEditor() {
     if (el) {
       el.focus({ preventScroll: true });
       el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      const len = el.value.length;
-      el.setSelectionRange?.(len, len);
+      // Placeholder copy is selected so typing simply replaces it.
+      if (el.value === NEW_TEXT_FIRST || el.value === NEW_TEXT_MORE) el.select();
+      else el.setSelectionRange?.(el.value.length, el.value.length);
     }
     setFocusTextId(null);
   }, [focusTextId, setFocusTextId]);
 
-  const addLine = () => {
+  const addText = () => {
     const last = texts.filter((t) => !t.curve).at(-1);
-    const el = newText(design, '', {
-      font: last?.font,
-      size: last ? Math.max(profile.minFontPt + 1, Math.round(last.size * 0.9)) : undefined,
-      align: last?.align,
-      x: last?.x,
-      y: (last?.y ?? design.height / 2) + 1,
-      maxWidth: last?.maxWidth,
-    });
+    // Only pass what we inherit – undefined keys would wipe newText's defaults.
+    const el = newText(
+      design,
+      last ? NEW_TEXT_MORE : NEW_TEXT_FIRST,
+      last
+        ? { font: last.font, size: Math.max(profile.minFontPt + 1, Math.round(last.size * 0.9)), align: last.align, x: last.x, y: last.y + 1, maxWidth: last.maxWidth }
+        : { y: design.height / 2, bold: true, size: Math.max(profile.minFontPt + 2, Math.min(18, Math.round((Math.min(design.height, design.width) * 0.28) / PT_TO_MM))) },
+    );
     actions.set(restackLines({ ...design, elements: [...design.elements, el] }));
     actions.select([el.id]);
     setFocusTextId(el.id);
   };
-  const removeLine = (id: string) => {
-    actions.set(
-      restackLines({
-        ...design,
-        elements: design.elements.filter((e) => e.id !== id),
-      }),
-    );
-  };
-  const bump = (t: TextElement, d: number) =>
-    actions.patch(t.id, {
-      size: Math.max(4, Math.round((t.size + d) * 2) / 2),
-    });
+  const removeText = (id: string) => actions.set(restackLines({ ...design, elements: design.elements.filter((e) => e.id !== id) }));
 
   return (
-    <Section title="שורות הטקסט">
-      <ul className="space-y-2">
-        {texts.map((t, i) => {
-          const on = selection.includes(t.id);
-          const eff = render?.info[t.id]?.effectiveSize;
-          const small = eff != null && eff < profile.minFontPt;
-          const multi = t.text.includes('\n');
-          const common = {
-            ref: (el: HTMLInputElement | HTMLTextAreaElement | null) => {
-              refs.current[t.id] = el;
-            },
-            dir: 'auto' as const,
-            value: t.text,
-            placeholder: t.curve ? 'טקסט בקשת' : `שורה ${i + 1}`,
-            'aria-label': `שורה ${i + 1}`,
-            onFocus: () => {
-              actions.select([t.id]);
-              actions.begin();
-            },
-            onBlur: actions.commit,
-            className: 'min-w-0 flex-1 bg-transparent px-2 py-2 text-base leading-6 outline-none',
-          };
-          return (
-            <li key={t.id} className={`rounded-xl border p-1 transition ${on ? 'border-blue bg-blue-50/50 ring-2 ring-blue/10' : 'border-line bg-white'}`}>
-              <div className="flex items-center gap-1">
-                {multi ? (
-                  <textarea {...common} rows={t.text.split('\n').length} onChange={(e) => actions.patch(t.id, { text: e.target.value })} />
-                ) : (
-                  <input
-                    {...common}
-                    enterKeyHint="next"
-                    onChange={(e) => actions.patch(t.id, { text: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return;
-                      e.preventDefault();
-                      const next = texts[i + 1];
-                      if (next) setFocusTextId(next.id);
-                      else addLine();
-                    }}
-                  />
-                )}
-                <button
-                  type="button"
-                  aria-pressed={t.bold}
-                  aria-label="מודגש"
-                  onClick={() => actions.patch(t.id, { bold: !t.bold })}
-                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-sm font-black ${t.bold ? 'bg-ink text-white' : 'text-ink-2 hover:bg-surface'}`}
-                >
-                  B
-                </button>
-                {isMobile && (
-                  <>
-                    <button type="button" aria-label="הקטנת טקסט" onClick={() => bump(t, -0.5)} className="grid h-9 w-8 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-surface">
-                      <Icon name="minus" size={15} />
+    <>
+      <Section>
+        <button type="button" className="btn-primary w-full" onClick={addText}>
+          <Icon name="plus" size={18} /> הוסף טקסט
+        </button>
+      </Section>
+      {texts.length > 0 && (
+        <Section title="הטקסט על החותמת">
+          <ul className="space-y-2">
+            {texts.map((t, i) => {
+              const on = selection.includes(t.id);
+              const eff = render?.info[t.id]?.effectiveSize;
+              const small = eff != null && eff < profile.minFontPt;
+              const common = {
+                ref: (el: HTMLInputElement | HTMLTextAreaElement | null) => {
+                  refs.current[t.id] = el;
+                },
+                dir: 'auto' as const,
+                value: t.text,
+                placeholder: 'כתבו כאן…',
+                'aria-label': `טקסט ${i + 1}`,
+                onFocus: () => {
+                  actions.select([t.id]);
+                  actions.begin();
+                },
+                onBlur: actions.commit,
+                onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => actions.patch(t.id, { text: e.target.value }),
+                className: 'min-w-0 flex-1 bg-transparent px-3 py-2.5 text-base leading-6 outline-none',
+              };
+              return (
+                <li key={t.id} className={`rounded-xl border transition ${on ? 'border-blue bg-blue-50/40 ring-2 ring-blue/10' : 'border-line bg-white'}`}>
+                  <div className="flex items-center">
+                    {t.text.includes('\n') ? <textarea {...common} rows={t.text.split('\n').length} /> : <input {...common} enterKeyHint="done" />}
+                    <button
+                      type="button"
+                      aria-label="מחיקת הטקסט"
+                      onClick={() => removeText(t.id)}
+                      disabled={t.locked}
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-muted hover:text-bad disabled:opacity-30"
+                    >
+                      <Icon name="trash" size={17} />
                     </button>
-                    <span className={`w-8 shrink-0 text-center text-xs tabular-nums ${small ? 'font-bold text-bad' : 'text-muted'}`}>
-                      {(eff ?? t.size).toFixed(eff && eff < t.size - 0.05 ? 1 : 0)}
-                    </span>
-                    <button type="button" aria-label="הגדלת טקסט" onClick={() => bump(t, 0.5)} className="grid h-9 w-8 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-surface">
-                      <Icon name="plus" size={15} />
-                    </button>
-                  </>
-                )}
-                <button
-                  type="button"
-                  aria-label="מחיקת שורה"
-                  onClick={() => removeLine(t.id)}
-                  disabled={t.locked}
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-bad/10 hover:text-bad disabled:opacity-30"
-                >
-                  <Icon name="trash" size={16} />
-                </button>
-              </div>
-              {(t.curve || small) && (
-                <p className={`px-2 pb-1 text-[11px] ${small ? 'text-bad' : 'text-muted'}`}>
-                  {t.curve ? (t.curve.position === 'top' ? 'קשת עליונה' : 'קשת תחתונה') : ''}
-                  {t.curve && small ? ' · ' : ''}
-                  {small ? `קטן מדי לייצור – מינימום ${profile.minFontPt}pt` : ''}
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <button
-        type="button"
-        onClick={addLine}
-        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-line py-2.5 text-sm font-medium text-ink-2 transition hover:border-blue hover:text-blue"
-      >
-        <Icon name="plus" size={17} /> הוספת שורה
-      </button>
-    </Section>
+                  </div>
+                  {(t.curve || small) && (
+                    <p className={`px-3 pb-1.5 text-[11px] ${small ? 'text-bad' : 'text-muted'}`}>
+                      {t.curve ? (t.curve.position === 'top' ? 'בקשת העליונה' : 'בקשת התחתונה') : ''}
+                      {t.curve && small ? ' · ' : ''}
+                      {small ? 'קטן מדי לייצור – הגדילו או קצרו' : ''}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      )}
+    </>
   );
 }
 
@@ -233,10 +192,10 @@ export function TextPanel() {
     <>
       <LinesEditor />
       {!text ? (
-        <p className="px-4 pb-6 text-center text-sm text-muted">הקישו על שורה כדי לשנות גופן, יישור וסגנון.</p>
+        <p className="px-4 pb-6 text-center text-sm text-muted">{design.elements.some((e) => e.type === 'text') ? 'הקישו על טקסט כדי לשנות גודל, גופן ויישור.' : 'לחצו ״הוסף טקסט״ והקלידו – הטקסט יופיע מיד על החותמת.'}</p>
       ) : (
         <>
-          <Section title="עיצוב השורה הנבחרת">
+          <Section title="עיצוב הטקסט הנבחר">
             <select
               value={text.font}
               onChange={(e) => up({ font: e.target.value })}

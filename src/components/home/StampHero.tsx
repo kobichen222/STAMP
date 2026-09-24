@@ -6,7 +6,7 @@ import type { StampScene } from './stamp-scene';
 import { PART_LABELS } from './stamp-labels';
 
 const STORY = [
-  { from: 0, to: 0.1, eyebrow: 'Stamp2Go', title: null },
+  { from: 0, to: 0.1, eyebrow: 'חותמות 2 דקות', title: null },
   { from: 0.12, to: 0.42, eyebrow: 'מבפנים', title: 'כל רכיב מדויק. כל חותמת נבנית להחזיק שנים.' },
   { from: 0.44, to: 0.62, eyebrow: 'פלטת הגומי', title: 'העיצוב שלכם הופך לפלטת גומי – בדיוק במילימטר.' },
   { from: 0.64, to: 0.8, eyebrow: 'הרכבה', title: 'מוכנה תוך 2 דקות מרגע האישור.' },
@@ -38,6 +38,9 @@ export function StampHero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
   const storyRef = useRef<HTMLDivElement>(null);
+  const mobileStoryRef = useRef<HTMLDivElement>(null);
+  const introRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLSpanElement>(null);
   const [ready, setReady] = useState(false);
   const [staticMode, setStaticMode] = useState(false);
 
@@ -59,6 +62,9 @@ export function StampHero() {
     let raf = 0;
     let disposed = false;
     const lowPower = window.innerWidth < 768 || (navigator.hardwareConcurrency ?? 8) <= 4;
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const ease = (x: number) => x * x * (3 - 2 * x);
+    const seg = (p: number, a: number, b: number) => ease(Math.min(1, Math.max(0, (p - a) / (b - a))));
 
     const progress = () => {
       const el = sectionRef.current!;
@@ -71,7 +77,29 @@ export function StampHero() {
       raf = 0;
       if (!scene) return;
       const p = progress();
+      const mobile = mq.matches;
+      // Mobile: the headline sits over the top of the stage and fades out as
+      // the stamp slides up to the centre and takes over the screen.
+      const intro = mobile ? seg(p, 0.015, 0.09) : 1;
+      scene.setFraming(mobile ? 0.3 - 0.3 * intro : 0, mobile ? 0.52 + 0.2 * intro : 1);
       scene.setProgress(p);
+      const introEl = introRef.current;
+      if (introEl) {
+        introEl.style.opacity = mobile ? String(1 - intro) : '';
+        introEl.style.transform = mobile ? `translateY(${-24 * intro}px)` : '';
+        introEl.style.pointerEvents = mobile && intro > 0.5 ? 'none' : '';
+      }
+      if (barRef.current) barRef.current.style.transform = `scaleX(${p})`;
+      const ms = mobileStoryRef.current;
+      if (ms) {
+        ms.style.opacity = String(seg(p, 0.08, 0.12));
+        ms.querySelectorAll<HTMLElement>('[data-from]').forEach((n) => {
+          const on = p >= +n.dataset.from! && p < +n.dataset.to!;
+          n.style.opacity = on ? '1' : '0';
+          n.style.transform = on ? 'none' : 'translateY(8px)';
+          n.style.pointerEvents = on ? 'auto' : 'none';
+        });
+      }
       const labels = labelsRef.current;
       if (labels) {
         for (const pos of scene.labelPositions()) {
@@ -108,11 +136,13 @@ export function StampHero() {
       };
       resize();
       window.addEventListener('resize', resize);
+      mq.addEventListener('change', resize);
       window.addEventListener('scroll', request, { passive: true });
       setReady(true);
       request();
       cleanup.push(() => {
         window.removeEventListener('resize', resize);
+        mq.removeEventListener('change', resize);
         window.removeEventListener('scroll', request);
       });
     };
@@ -130,26 +160,27 @@ export function StampHero() {
     };
   }, []);
 
+  const animated = !staticMode;
   return (
-    <section ref={sectionRef} className={`relative ${staticMode ? '' : 'h-[420vh] max-md:h-[300vh]'}`} aria-label="החותמת שלכם, מבפנים">
-      <div className={`${staticMode ? '' : 'sticky top-0'} flex min-h-dvh items-center overflow-hidden bg-gradient-to-b from-white via-white to-surface`}>
+    <section ref={sectionRef} className={`relative ${animated ? 'h-[420vh] max-lg:h-[340vh]' : ''}`} aria-label="החותמת שלכם, מבפנים">
+      <div className={`${animated ? 'sticky top-0 h-svh max-lg:min-h-[560px] lg:min-h-dvh lg:h-auto' : 'min-h-dvh'} flex items-center overflow-hidden bg-gradient-to-b from-white via-white to-surface`}>
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
-        <div className="container-x relative grid w-full items-center gap-6 pt-20 lg:grid-cols-2">
-          <div className="relative z-10 max-w-xl">
+        <div className={`container-x relative grid w-full gap-6 lg:h-auto lg:grid-cols-2 lg:items-center lg:pt-20 ${animated ? 'h-full content-start pt-20' : 'pt-24 pb-10'}`}>
+          <div ref={introRef} className="relative z-10 max-w-xl will-change-transform">
             <p className="eyebrow animate-fade-up">חותמות בהתאמה אישית · מוכנות תוך 2 דקות</p>
-            <h1 className="mt-3 animate-fade-up text-[2.6rem] leading-[1.08] font-extrabold sm:text-6xl">
+            <h1 className="mt-2 animate-fade-up text-[2.15rem] leading-[1.1] font-extrabold sm:mt-3 sm:text-5xl lg:text-6xl lg:leading-[1.08]">
               מעצבים חותמת אונליין.
               <br />
               <span className="grad-text">אנחנו הופכים אותה למוצר אמיתי.</span>
             </h1>
-            <p className="mt-5 animate-fade-up text-lg leading-8 text-muted">
+            <p className="mt-3 animate-fade-up text-base leading-7 text-muted sm:mt-5 sm:text-lg sm:leading-8">
               בחרו חותמת, הוסיפו טקסט או לוגו, ראו את התוצאה בזמן אמת והזמינו ישירות לייצור.
             </p>
-            <div className="mt-8 flex animate-fade-up flex-wrap gap-3">
-              <Link href="/designer/" className="btn-primary btn-lg">
+            <div className="mt-5 flex animate-fade-up gap-2.5 sm:mt-8 sm:flex-wrap sm:gap-3">
+              <Link href="/designer/" className="btn-primary max-sm:flex-1 sm:btn-lg">
                 עיצוב חותמת עכשיו
               </Link>
-              <Link href="/how-it-works/" className="btn-outline btn-lg">
+              <Link href="/how-it-works/" className="btn-outline max-sm:flex-1 sm:btn-lg">
                 איך זה עובד
               </Link>
             </div>
@@ -162,16 +193,16 @@ export function StampHero() {
               ))}
             </div>
           </div>
-          <div className="relative h-[46vh] min-h-[320px] lg:h-[78vh]">
+          <div className={animated ? 'absolute inset-x-0 top-16 bottom-0 lg:relative lg:inset-auto lg:h-[78vh] lg:min-h-[320px]' : 'relative h-[46vh] min-h-[300px] lg:h-[78vh]'}>
             {!ready && (
-              <div className="absolute inset-0 grid place-items-center p-10">
+              <div className={`absolute inset-0 grid place-items-center p-10 ${animated ? 'max-lg:top-auto max-lg:h-[42%] max-lg:p-4' : ''}`}>
                 <div className="h-full max-h-[420px] w-full max-w-[420px]">
                   <StaticStamp />
                 </div>
               </div>
             )}
-            <canvas ref={canvasRef} className={`h-full w-full transition-opacity duration-700 ${ready ? 'opacity-100' : 'opacity-0'}`} aria-hidden />
-            <div ref={labelsRef} className="pointer-events-none absolute inset-0 hidden md:block" aria-hidden>
+            {animated && <canvas ref={canvasRef} className={`h-full w-full transition-opacity duration-700 ${ready ? 'opacity-100' : 'opacity-0'}`} aria-hidden />}
+            <div ref={labelsRef} className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden>
               {PART_LABELS.map((l) => (
                 <span
                   key={l.id}
@@ -185,8 +216,35 @@ export function StampHero() {
             </div>
           </div>
         </div>
-        {!staticMode && (
-          <div className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-xs text-muted md:flex" aria-hidden>
+
+        {/* Mobile story: a caption card under the stamp, with scroll progress. */}
+        {animated && (
+          <div ref={mobileStoryRef} className="absolute inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] opacity-0 lg:hidden" aria-hidden={!ready}>
+            <div className="relative h-[92px] overflow-hidden rounded-2xl border border-line bg-white/85 shadow-soft backdrop-blur-md">
+              {STORY.filter((s) => s.title).map((s, i, arr) => (
+                <div key={s.from} data-from={s.from} data-to={i === arr.length - 1 ? 1.01 : arr[i + 1].from} className="absolute inset-0 flex items-center gap-3 px-4 opacity-0 transition duration-300">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-blue">
+                      {s.eyebrow} <span className="font-normal text-muted">· {i + 1}/{arr.length}</span>
+                    </p>
+                    <p className="mt-0.5 text-[17px] leading-snug font-bold">{s.title}</p>
+                  </div>
+                  {i === arr.length - 1 && (
+                    <Link href="/designer/" className="btn-primary btn-sm shrink-0">
+                      לעיצוב
+                    </Link>
+                  )}
+                </div>
+              ))}
+              <span className="absolute inset-x-0 bottom-0 h-1 bg-line/60">
+                <span ref={barRef} className="block h-full origin-right bg-blue" style={{ transform: 'scaleX(0)' }} />
+              </span>
+            </div>
+          </div>
+        )}
+
+        {animated && (
+          <div className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-xs text-muted lg:flex" aria-hidden>
             גללו כדי לראות מבפנים
             <span className="h-8 w-5 rounded-full border border-ink/20 p-1">
               <span className="block h-2 w-full animate-bounce rounded-full bg-ink/40" />
