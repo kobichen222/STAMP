@@ -7,6 +7,8 @@
  * interactive, and driven by a single `progress` number (0..1).
  */
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 export { PART_LABELS, type PartLabel } from './stamp-labels';
 
@@ -19,13 +21,17 @@ function plateTexture(lines: string[], round = false) {
   c.width = 1024;
   c.height = 512;
   const g = c.getContext('2d')!;
-  g.fillStyle = '#c9ccd3';
+  // Laser-engraved red rubber: raised text is the lighter surface.
+  const bg = g.createLinearGradient(0, 0, c.width, c.height);
+  bg.addColorStop(0, '#7e2f29');
+  bg.addColorStop(1, '#6a2621');
+  g.fillStyle = bg;
   g.fillRect(0, 0, c.width, c.height);
   // Text on a rubber plate is mirrored.
   g.translate(c.width, 0);
   g.scale(-1, 1);
-  g.fillStyle = '#23262d';
-  g.strokeStyle = '#23262d';
+  g.fillStyle = '#e7b7a8';
+  g.strokeStyle = '#e7b7a8';
   g.lineWidth = 14;
   if (round) {
     g.beginPath();
@@ -82,6 +88,49 @@ function impressionTexture(lines: string[]) {
   return t;
 }
 
+function labelTexture() {
+  const c = document.createElement('canvas');
+  c.width = 1024;
+  c.height = 380;
+  const g = c.getContext('2d')!;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.direction = 'rtl';
+  g.font = 'italic 900 150px Heebo, Arial, sans-serif';
+  const grad = g.createLinearGradient(0, 80, 0, 260);
+  grad.addColorStop(0, '#0b1426');
+  grad.addColorStop(1, '#1c2a44');
+  g.fillStyle = grad;
+  g.fillText('חותמות 2 דקות', 512, 160);
+  g.fillStyle = '#2457ff';
+  g.beginPath();
+  g.moveTo(170, 262);
+  g.quadraticCurveTo(512, 236, 860, 232);
+  g.lineTo(860, 244);
+  g.quadraticCurveTo(512, 252, 170, 276);
+  g.fill();
+  g.font = '600 56px Heebo, Arial, sans-serif';
+  g.fillStyle = '#5b6678';
+  g.fillText('SELF-INKING · PRINT 40', 512, 330);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+function contactShadowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d')!;
+  const r = g.createRadialGradient(128, 128, 10, 128, 128, 128);
+  r.addColorStop(0, 'rgba(11,20,38,0.55)');
+  r.addColorStop(0.5, 'rgba(11,20,38,0.18)');
+  r.addColorStop(1, 'rgba(11,20,38,0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
+}
+
 function springGeometry(radius: number, height: number, turns: number, wire: number, segments: number) {
   const pts: THREE.Vector3[] = [];
   const n = turns * 16;
@@ -116,8 +165,8 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   camera.position.set(7.5, 5.5, 9.5);
   camera.lookAt(0, 1.3, 0);
 
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xdfe6f2, 1.6));
-  const key = new THREE.DirectionalLight(0xffffff, 2.2);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xdfe6f2, 0.7));
+  const key = new THREE.DirectionalLight(0xffffff, 1.7);
   key.position.set(5, 10, 6);
   key.castShadow = !opts.lowPower;
   key.shadow.mapSize.set(1024, 1024);
@@ -126,16 +175,24 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   key.shadow.camera.top = 6;
   key.shadow.camera.bottom = -6;
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x8fb0ff, 1.2);
+  const rim = new THREE.DirectionalLight(0x8fb0ff, 0.9);
   rim.position.set(-6, 4, -5);
   scene.add(rim);
 
-  const navy = new THREE.MeshStandardMaterial({ color: 0x0f1b33, roughness: 0.35, metalness: 0.15 });
-  const shell = new THREE.MeshPhysicalMaterial({ color: 0xe9edf3, roughness: 0.25, metalness: 0.05, transmission: 0, clearcoat: 0.6 });
-  const metal = new THREE.MeshStandardMaterial({ color: 0xb8c0cc, roughness: 0.2, metalness: 0.95 });
-  const blue = new THREE.MeshStandardMaterial({ color: 0x2457ff, roughness: 0.4, metalness: 0.1, emissive: 0x0a1f66, emissiveIntensity: 0.25 });
-  const pad = new THREE.MeshStandardMaterial({ color: 0x1b2233, roughness: 0.9 });
+  // Studio reflections – what makes plastic and chrome read as real.
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environment = envTex;
+  pmrem.dispose();
+
+  const navy = new THREE.MeshPhysicalMaterial({ color: 0x14213d, roughness: 0.3, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.12 });
+  const shell = new THREE.MeshPhysicalMaterial({ color: 0xf3f5f9, roughness: 0.32, metalness: 0, clearcoat: 0.8, clearcoatRoughness: 0.2 });
+  const smoke = new THREE.MeshPhysicalMaterial({ color: 0x2a3140, roughness: 0.45, metalness: 0.1, clearcoat: 0.4 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0xdfe3ea, roughness: 0.16, metalness: 1 });
+  const blue = new THREE.MeshPhysicalMaterial({ color: 0x2457ff, roughness: 0.28, metalness: 0.1, clearcoat: 0.7 });
+  const ink = new THREE.MeshStandardMaterial({ color: 0x172554, roughness: 0.95 });
   const SEG = opts.lowPower ? 12 : 32;
+  const RS = opts.lowPower ? 2 : 4; // rounded-box smoothness
 
   const W = 2.6;
   const D = 1.3;
@@ -154,32 +211,56 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     root.add(obj);
     parts[id] = { obj, home: new THREE.Vector3(0, y, 0), exploded: new THREE.Vector3(ex, ey, 0) };
   };
+  const rbox = (w: number, h: number, d: number, r: number, mat: THREE.Material) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, RS, r), mat);
 
-  // Handle: rounded cap
+  // Handle: ergonomic knob with a coloured ink-indicator insert and a neck.
   const handle = new THREE.Group();
-  const cap = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, W - 1.1, 8, SEG), navy);
-  cap.rotation.z = Math.PI / 2;
-  cap.scale.set(1, 1, 0.9);
-  handle.add(cap);
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(W * 0.5, 0.06, 0.62), blue);
-  grip.position.y = 0.55;
-  handle.add(grip);
+  const knob = rbox(W * 0.82, 0.72, D * 1.04, 0.3, navy);
+  handle.add(knob);
+  const insert = rbox(W * 0.46, 0.08, D * 0.52, 0.035, blue);
+  insert.position.y = 0.36;
+  handle.add(insert);
+  const neck = rbox(W * 0.58, 0.4, D * 0.72, 0.08, navy);
+  neck.position.y = -0.5;
+  handle.add(neck);
   add('handle', handle, 3.35, 6.6, 0);
 
-  // Frame: open housing (four walls)
-  const frame = new THREE.Group();
+  // Frame: hollow housing with rounded corners (extruded ring) + brand label.
+  const ringShape = (w: number, d: number, r: number) => {
+    const sh = new THREE.Shape();
+    const x = -w / 2;
+    const y = -d / 2;
+    sh.moveTo(x + r, y);
+    sh.lineTo(x + w - r, y);
+    sh.quadraticCurveTo(x + w, y, x + w, y + r);
+    sh.lineTo(x + w, y + d - r);
+    sh.quadraticCurveTo(x + w, y + d, x + w - r, y + d);
+    sh.lineTo(x + r, y + d);
+    sh.quadraticCurveTo(x, y + d, x, y + d - r);
+    sh.lineTo(x, y + r);
+    sh.quadraticCurveTo(x, y, x + r, y);
+    return sh;
+  };
   const wallH = 1.9;
-  const t = 0.08;
-  for (const [x, z, w, d] of [
-    [0, D / 2, W, t],
-    [0, -D / 2, W, t],
-    [W / 2, 0, t, D],
-    [-W / 2, 0, t, D],
-  ]) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w as number, wallH, d as number), shell);
-    m.position.set(x as number, 0, z as number);
-    frame.add(m);
-  }
+  const t = 0.09;
+  const outer = ringShape(W, D, 0.22);
+  outer.holes.push(ringShape(W - 2 * t, D - 2 * t, 0.16) as unknown as THREE.Path);
+  const frameGeo = new THREE.ExtrudeGeometry(outer, { depth: wallH, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: opts.lowPower ? 1 : 3, curveSegments: opts.lowPower ? 6 : 14 });
+  frameGeo.rotateX(-Math.PI / 2);
+  frameGeo.translate(0, -wallH / 2, 0);
+  const frame = new THREE.Group();
+  frame.add(new THREE.Mesh(frameGeo, shell));
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.62, 0.46), new THREE.MeshStandardMaterial({ map: labelTexture(), transparent: true, roughness: 0.4 }));
+  label.position.set(0, 0.25, D / 2 + 0.035);
+  frame.add(label);
+  // Accent band following the housing's rounded corners.
+  const band = ringShape(W + 0.1, D + 0.1, 0.26);
+  band.holes.push(ringShape(W - 0.02, D - 0.02, 0.2) as unknown as THREE.Path);
+  const bandGeo = new THREE.ExtrudeGeometry(band, { depth: 0.07, bevelEnabled: false, curveSegments: opts.lowPower ? 6 : 14 });
+  bandGeo.rotateX(-Math.PI / 2);
+  const stripe = new THREE.Mesh(bandGeo, blue);
+  stripe.position.y = -wallH / 2 + 0.1;
+  frame.add(stripe);
   add('frame', frame, 1.95, 4.9, 0);
 
   // Springs
@@ -192,49 +273,61 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   }
   add('springs', springs, 2.05, 3.55, 0);
 
-  // Mechanism: axle + side arms
+  // Mechanism: chrome axle + rounded side arms
   const mech = new THREE.Group();
   const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, W + 0.1, SEG), metal);
   axle.rotation.z = Math.PI / 2;
   mech.add(axle);
   for (const x of [-W / 2 + 0.2, W / 2 - 0.2]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.1, 0.5), blue);
+    const arm = rbox(0.13, 1.1, 0.5, 0.05, blue);
     arm.position.set(x, -0.3, 0);
     mech.add(arm);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.05, SEG), metal);
+    cap.rotation.z = Math.PI / 2;
+    cap.position.set(x + Math.sign(x) * 0.09, 0, 0);
+    mech.add(cap);
   }
   add('mechanism', mech, 1.45, 2.45, 0);
 
-  // Ink pad
+  // Ink cartridge: tray + saturated foam + pull tab
   const inkPad = new THREE.Group();
-  const tray = new THREE.Mesh(new THREE.BoxGeometry(W - 0.3, 0.16, D - 0.25), shell);
-  inkPad.add(tray);
-  const foam = new THREE.Mesh(new THREE.BoxGeometry(W - 0.45, 0.06, D - 0.4), pad);
+  inkPad.add(rbox(W - 0.3, 0.18, D - 0.25, 0.05, smoke));
+  const foam = rbox(W - 0.45, 0.06, D - 0.4, 0.02, ink);
   foam.position.y = 0.09;
   inkPad.add(foam);
+  const tab = rbox(0.34, 0.06, 0.22, 0.02, smoke);
+  tab.position.set(0, 0, (D - 0.25) / 2 + 0.1);
+  inkPad.add(tab);
   add('pad', inkPad, 1.1, 1.5, 0);
 
-  // Rubber plate with design texture (faces down)
+  // Rubber plate with the design (raised text via bump map, faces down)
   const plateGroup = new THREE.Group();
-  const plateMount = new THREE.Mesh(new THREE.BoxGeometry(W - 0.3, 0.12, D - 0.3), navy);
-  plateGroup.add(plateMount);
+  plateGroup.add(rbox(W - 0.3, 0.12, D - 0.3, 0.03, navy));
   const blankTex = plateTexture(['חותמות 2 דקות', 'חותמת אישית'], false);
   const designTex = plateTexture(opts.lines, false);
-  const plateFaceMat = new THREE.MeshStandardMaterial({ map: blankTex, roughness: 0.85 });
+  const plateFaceMat = new THREE.MeshStandardMaterial({ map: blankTex, bumpMap: blankTex, bumpScale: 3, roughness: 0.8 });
   const plateFace = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.34, D - 0.34), plateFaceMat);
   plateFace.rotation.x = Math.PI / 2; // facing down
   plateFace.position.y = -0.065;
   plateGroup.add(plateFace);
   // A second, face-up copy while exploded so the design is visible to the camera.
-  const plateTopMat = new THREE.MeshStandardMaterial({ map: blankTex, roughness: 0.85, transparent: true, opacity: 0 });
+  const plateTopMat = new THREE.MeshStandardMaterial({ map: blankTex, bumpMap: blankTex, bumpScale: 3, roughness: 0.8, transparent: true, opacity: 0 });
   const plateTop = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.34, D - 0.34), plateTopMat);
   plateTop.rotation.x = -Math.PI / 2;
   plateTop.position.y = 0.065;
   plateGroup.add(plateTop);
   add('plate', plateGroup, 0.72, 0.55, 0);
 
-  // Base foot
-  const base = new THREE.Mesh(new THREE.BoxGeometry(W + 0.2, 0.1, D + 0.2), shell);
+  // Base: the housing's foot
+  const base = rbox(W + 0.2, 0.14, D + 0.2, 0.06, smoke);
   add('base', base, 0.55, -0.45, 0);
+
+  // Soft contact shadow that follows the stamp (cheap, works without shadow maps).
+  const contactMat = new THREE.MeshBasicMaterial({ map: contactShadowTexture(), transparent: true, depthWrite: false, opacity: 0.55 });
+  const contact = new THREE.Mesh(new THREE.PlaneGeometry(W * 2.1, D * 2.6), contactMat);
+  contact.rotation.x = -Math.PI / 2;
+  contact.position.y = 0.001;
+  scene.add(contact);
 
   // Paper + impression (unlit white paper so it reads as a sheet, not a grey slab)
   const paperMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, toneMapped: false });
@@ -277,20 +370,29 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     // The design plate turns face-up while exploded so the customer sees it.
     plateTopMat.opacity = explode;
     plateFaceMat.map = designSwap > 0.5 ? designTex : blankTex;
+    plateFaceMat.bumpMap = plateFaceMat.map;
     plateTopMat.map = plateFaceMat.map;
+    plateTopMat.bumpMap = plateFaceMat.map;
 
     root.position.x = -1.4 * toSpot + 3.2 * away;
     root.position.z = 0.5 * toSpot - 0.5 * away;
     root.position.y = (1 - toSpot) * 0.25 + toSpot * (0.9 * (1 - press) - 0.53 * press) + away * 1.1;
     impMat.opacity = reveal;
+    contact.position.x = root.position.x;
+    contact.position.z = root.position.z;
+    contact.scale.setScalar(1 + 0.35 * explode);
+    contactMat.opacity = 0.55 * (1 - 0.5 * explode) * (1 - seg(p, 0.7, 0.78)) * (1 - away);
     paperMat.opacity = seg(p, 0.68, 0.78);
     shadowMat.opacity = 0.12 * seg(p, 0.68, 0.78);
 
     const cam = toSpot;
     camera.position.set(7.5 - 3.3 * cam, 5.5 + 1.2 * explode + 2.2 * cam, 9.5 - 1.8 * cam);
     camera.lookAt(-0.9 * cam, 1.3 + 1.1 * explode - 1.0 * cam, 0.3 * cam);
-    if (framing.shiftY || framing.zoom !== 1) {
-      camera.zoom = framing.zoom;
+    // Desktop: pull back while exploded / over the paper so nothing is cropped.
+    const desktop = framing.shiftY === 0 && framing.zoom === 1;
+    const zoom = desktop ? 1 - 0.2 * explode - 0.15 * cam : framing.zoom;
+    if (framing.shiftY || zoom !== 1) {
+      camera.zoom = zoom;
       camera.setViewOffset(size.w, size.h, 0, -framing.shiftY * size.h, size.w, size.h);
     } else if (camera.view) {
       camera.zoom = 1;
@@ -331,6 +433,7 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
       });
     },
     dispose() {
+      envTex.dispose();
       renderer.dispose();
       scene.traverse((o) => {
         const m = o as THREE.Mesh;
