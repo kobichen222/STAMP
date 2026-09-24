@@ -163,7 +163,9 @@ export function Canvas({ design, render, selection, actions, view, onZoom, autoF
     moved.current = false;
     downId.current = id;
     clearHold();
-    if (e.pointerType === 'touch') {
+    // Touch: an element that is already selected drags straight away; an
+    // unselected one needs a long press, so a tap/scroll never moves it.
+    if (e.pointerType === 'touch' && !selection.includes(id)) {
       touchArmed.current = false;
       holdTimer.current = window.setTimeout(() => {
         touchArmed.current = true;

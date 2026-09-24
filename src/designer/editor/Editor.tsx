@@ -26,6 +26,7 @@ import { AddToCartModal } from './AddToCartModal';
 import { AiPanel } from './AiPanel';
 import { EmptyState } from './EmptyState';
 import { FloatingToolbar } from './FloatingToolbar';
+import { MobileEditBar } from './MobileEditBar';
 import { Onboarding } from './Onboarding';
 import { PreflightBadge } from './PreflightBadge';
 import { PreviewMode } from './PreviewMode';
@@ -578,18 +579,18 @@ export function Editor({ product, products, initialDesign, designId, templateId,
               fitSignal={fitSignal}
               onFirstDrag={dismissDragTip}
             />
-            {selected.length > 0 && !(isMobile && sheet !== 'closed') && <FloatingToolbar />}
-            <div className={`pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-2 ${isMobile && selected.length > 0 && sheet === 'closed' ? 'top-16' : ''}`}>
+            {selected.length > 0 && (isMobile ? <MobileEditBar /> : <FloatingToolbar />)}
+            <div className="pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-2">
               <div className="pointer-events-auto">
                 <PreflightBadge issues={issues} onFix={fixAll} onSelect={(id) => actions.select([id])} />
               </div>
             </div>
             {toastMsg && isMobile && (
-              <div role="status" className="pointer-events-none absolute inset-x-3 bottom-3 z-20 mx-auto w-fit max-w-full animate-fade-up rounded-full bg-ink/90 px-4 py-2 text-center text-[13px] text-white shadow-lift">
+              <div role="status" className={`pointer-events-none absolute inset-x-3 z-20 mx-auto w-fit max-w-full animate-fade-up rounded-full bg-ink/90 px-4 py-2 text-center text-[13px] text-white shadow-lift ${selected.length ? 'bottom-16' : 'bottom-3'}`}>
                 {toastMsg}
               </div>
             )}
-            {isMobile && !autoFit && (
+            {isMobile && !autoFit && !selected.length && (
               <button
                 type="button"
                 onClick={() => {
@@ -603,7 +604,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
             )}
             {!firstDragDone && design.elements.length > 0 && (
               <div className="pointer-events-none absolute bottom-5 left-1/2 w-max max-w-[90%] -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-center text-sm text-white shadow-lift">
-                {isMobile ? 'הקשה על טקסט פותחת עריכה · לחיצה ארוכה וגרירה כדי להזיז' : 'גררו אלמנטים כדי למקם אותם · לחיצה כפולה לעריכת טקסט'}
+                {isMobile ? 'הקישו על אלמנט כדי לבחור · אחר כך גררו אותו או השתמשו בחיצים' : 'גררו אלמנטים כדי למקם אותם · לחיצה כפולה לעריכת טקסט'}
               </div>
             )}
             {showEmpty && design.elements.length === 0 && (
