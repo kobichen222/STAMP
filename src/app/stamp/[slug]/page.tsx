@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Blocks } from '@/components/Blocks';
 import { ProductCard } from '@/components/catalog/ProductCard';
-import { Gallery } from '@/components/Gallery';
 import { Breadcrumbs } from '@/components/site/Breadcrumbs';
 import { Icon } from '@/components/ui/Icon';
 import { ProductConfigurator, ProductVisual } from "@/components/catalog/ProductConfigurator";
@@ -80,7 +79,6 @@ export default async function ProductPage({ params }: Props) {
       <div className="container-x grid gap-10 pb-16 lg:grid-cols-[1.15fr_1fr]">
         <div className="min-w-0">
           <ProductVisual model={model} images={images} title={product.title} />
-          {images.length > 1 && <Gallery images={images} variant="grid" />}
         </div>
         <div>
           <p className="eyebrow">{SERIES_LABEL[facts.series]}</p>

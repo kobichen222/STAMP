@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Img } from '@/components/Img';
 import { Icon } from '@/components/ui/Icon';
 import { LazyTemplatePreview as TemplatePreview } from '@/designer/LazyTemplatePreview';
@@ -56,39 +56,140 @@ export function InkPicker({ value, onChange }: { value: InkColor; onChange: (v: 
   );
 }
 
-export function ProductVisual({ model, images, title }: { model: StampModel | null; images: ImageRef[]; title: string }) {
-  const [view, setView] = useState<'impression' | 'product'>(model ? 'impression' : 'product');
+type Slide = { kind: 'impression' } | { kind: 'image'; image: ImageRef };
+
+function Impression({ model }: { model: StampModel }) {
   return (
-    <div className="card overflow-hidden">
-      <div className="relative grid aspect-[4/3] place-items-center bg-gradient-to-b from-surface to-white p-8">
-        {view === 'impression' && model ? (
-          <div className="w-full max-w-md" style={{ filter: 'drop-shadow(0 18px 30px rgb(11 20 38 / .08))' }}>
-            <TemplatePreview
-              model={model}
-              className="w-full"
-              content={
-                model.shape === 'round'
-                  ? { arcTop: 'שם העסק שלכם', arcBottom: 'חותמות 2 דקות', lines: ['הטקסט', 'שלכם'] }
-                  : { lines: ['השם שלכם כאן', 'שורה שנייה לבחירתכם', 'טל׳ 03-1234567'].slice(0, Math.max(1, Math.min(3, model.maxLines ?? 3))) }
-              }
-            />
-            <p className="mt-4 text-center text-xs text-muted">תצוגת הטביעה במידות אמיתיות – {model.shape === 'round' ? `⌀${model.width}` : `${model.width}×${model.height}`} מ״מ</p>
+    <TemplatePreview
+      model={model}
+      className="w-full"
+      content={
+        model.shape === 'round'
+          ? { arcTop: 'שם העסק שלכם', arcBottom: 'חותמות 2 דקות', lines: ['הטקסט', 'שלכם'] }
+          : { lines: ['השם שלכם כאן', 'שורה שנייה לבחירתכם', 'טל׳ 03-1234567'].slice(0, Math.max(1, Math.min(3, model.maxLines ?? 3))) }
+      }
+    />
+  );
+}
+
+/** Interactive product gallery: impression + photos, thumbnails, arrows, swipe, keyboard, zoom. */
+export function ProductVisual({ model, images, title }: { model: StampModel | null; images: ImageRef[]; title: string }) {
+  const slides: Slide[] = [...(model ? [{ kind: 'impression' as const }] : []), ...images.map((image) => ({ kind: 'image' as const, image }))];
+  const [index, setIndex] = useState(0);
+  const [zoom, setZoom] = useState(false);
+  const touch = useRef<number | null>(null);
+  const count = slides.length;
+  const go = useCallback((d: number) => setIndex((i) => (i + d + count) % count), [count]);
+  const slide = slides[index];
+
+  useEffect(() => {
+    if (!zoom) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setZoom(false);
+      if (e.key === 'ArrowLeft') go(1);
+      if (e.key === 'ArrowRight') go(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [zoom, go]);
+
+  if (!slide) return <div className="card grid aspect-[4/3] place-items-center text-muted">{title}</div>;
+
+  const render = (s: Slide, big = false) =>
+    s.kind === 'impression' && model ? (
+      <div className={`w-full ${big ? 'max-w-3xl' : 'max-w-md'}`} style={{ filter: 'drop-shadow(0 18px 30px rgb(11 20 38 / .08))' }}>
+        <Impression model={model} />
+      </div>
+    ) : s.kind === 'image' ? (
+      <Img image={s.image} className={`max-h-full w-auto object-contain ${big ? '' : 'mix-blend-multiply'}`} priority={!big && index === 0} />
+    ) : null;
+
+  const arrows = count > 1 && (
+    <>
+      <button type="button" onClick={(e) => { e.stopPropagation(); go(-1); }} aria-label="הקודם" className="absolute top-1/2 right-3 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/95 shadow-soft transition hover:scale-105">
+        <Icon name="arrowRight" size={18} />
+      </button>
+      <button type="button" onClick={(e) => { e.stopPropagation(); go(1); }} aria-label="הבא" className="absolute top-1/2 left-3 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/95 shadow-soft transition hover:scale-105">
+        <Icon name="arrowLeft" size={18} />
+      </button>
+    </>
+  );
+
+  return (
+    <div>
+      <div
+        className="card relative overflow-hidden"
+        onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
+        onTouchEnd={(e) => {
+          if (touch.current == null) return;
+          const dx = e.changedTouches[0].clientX - touch.current;
+          if (Math.abs(dx) > 40) go(dx > 0 ? 1 : -1); // RTL: swipe right = next
+          touch.current = null;
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setZoom(true)}
+          className="relative grid aspect-[4/3] w-full cursor-zoom-in place-items-center bg-gradient-to-b from-surface to-white p-8"
+          aria-label="הגדלת תמונה"
+        >
+          <div key={index} className="grid h-full w-full animate-fade-up place-items-center">
+            {render(slide)}
           </div>
-        ) : images[0] ? (
-          <Img image={images[0]} className="max-h-full w-auto object-contain mix-blend-multiply" priority />
-        ) : (
-          <span className="text-muted">{title}</span>
+        </button>
+        {slide.kind === 'impression' && model && (
+          <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs text-muted">
+            תצוגת הטביעה במידות אמיתיות – {model.shape === 'round' ? `⌀${model.width}` : `${model.width}×${model.height}`} מ״מ
+          </p>
         )}
-        {model && images[0] && (
-          <div className="absolute top-4 left-4 flex gap-1 rounded-full border border-line bg-white p-1 text-sm shadow-soft">
-            {(['impression', 'product'] as const).map((v) => (
-              <button key={v} type="button" onClick={() => setView(v)} className={`rounded-full px-3.5 py-1.5 ${view === v ? 'bg-ink text-white' : 'text-ink-2'}`}>
-                {v === 'impression' ? 'טביעה' : 'המוצר'}
-              </button>
-            ))}
-          </div>
+        {arrows}
+        {count > 1 && (
+          <span className="absolute top-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-xs tabular-nums shadow-soft">
+            {index + 1}/{count}
+          </span>
         )}
       </div>
+
+      {count > 1 && (
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="תמונות המוצר">
+          {slides.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={i === index}
+              aria-label={s.kind === 'impression' ? 'תצוגת טביעה' : `תמונה ${i + 1}`}
+              onClick={() => setIndex(i)}
+              className={`grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 transition ${i === index ? 'border-blue' : 'border-line hover:border-ink/30'}`}
+            >
+              {s.kind === 'impression' && model ? (
+                <span className="grid h-full w-full place-items-center text-[10px] font-semibold text-blue">
+                  <Icon name="sparkles" size={18} />
+                  טביעה
+                </span>
+              ) : s.kind === 'image' ? (
+                <Img image={s.image} className="h-full w-full object-contain" />
+              ) : null}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {zoom && (
+        <div className="fixed inset-0 z-[95] grid place-items-center bg-ink/90 p-4" role="dialog" aria-modal="true" aria-label="תצוגה מוגדלת" onClick={() => setZoom(false)}>
+          <button type="button" onClick={() => setZoom(false)} aria-label="סגירה" className="absolute top-4 left-4 z-10 grid h-11 w-11 place-items-center rounded-full bg-white text-ink">
+            <Icon name="close" size={22} />
+          </button>
+          <div className="relative grid h-full max-h-[86vh] w-full max-w-5xl place-items-center rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
+            {render(slide, true)}
+            {arrows}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
