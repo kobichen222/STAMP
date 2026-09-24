@@ -325,7 +325,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
         {/* ------------------------------------------------ header */}
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-2 sm:px-3">
           <button type="button" onClick={() => setExitAsk(true)} className="hidden items-center sm:flex" aria-label="יציאה מהעורך">
-            <Logo className="scale-90" />
+            <Logo size="sm" />
           </button>
           <IconButton icon="arrowRight" label="חזרה" onClick={() => setExitAsk(true)} className="sm:hidden" />
           <span className="mx-1 hidden h-6 w-px bg-line sm:block" />

@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="sticky top-0 z-30 border-b border-line bg-white">
         <div className="flex h-14 items-center gap-6 px-4">
           <Link href="/admin/">
-            <Logo />
+            <Logo size="sm" />
           </Link>
           <nav className="flex gap-1">
             {nav.map((n) => (
