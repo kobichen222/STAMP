@@ -48,8 +48,19 @@ export const SCHEMA = [
 
 let ready: Promise<void> | null = null;
 
+/**
+ * The Vercel ↔ Neon integration may add a custom prefix to its variables
+ * (e.g. STAMOOO_DATABASE_URL), so prefixed names are accepted as well.
+ */
 export function databaseUrl(): string | undefined {
-  return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL || undefined;
+  const env = process.env;
+  const exact = env.DATABASE_URL || env.POSTGRES_URL || env.NEON_DATABASE_URL;
+  if (exact) return exact;
+  for (const suffix of ['_DATABASE_URL', '_POSTGRES_URL', '_DATABASE_URL_UNPOOLED', '_POSTGRES_URL_NON_POOLING']) {
+    const key = Object.keys(env).find((k) => k.endsWith(suffix) && env[k]?.startsWith('postgres'));
+    if (key) return env[key];
+  }
+  return undefined;
 }
 
 /** Shared SQL client; the schema is ensured once per server instance. */
