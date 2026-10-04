@@ -62,7 +62,7 @@ export default async function Dashboard() {
         <section className="card h-fit p-4">
           <h2 className="font-semibold">בריאות מערכת</h2>
           <ul className="mt-2 divide-y divide-line">
-            <Health label="מסד נתונים / אחסון" ok={store.durable} warn={store.kind === 'filesystem' ? 'זמני – הגדירו Supabase' : 'לא מוגדר'} />
+            <Health label={`מסד נתונים / אחסון${store.kind === 'neon' ? ' (Neon)' : ''}`} ok={store.durable} warn={store.kind === 'filesystem' ? 'זמני – הגדירו DATABASE_URL (Neon)' : 'לא מוגדר'} />
             <Health label="מנוע ייצור" ok />
             <Health label="אימייל (Resend)" ok={!!process.env.RESEND_API_KEY} warn="לא מוגדר" />
             <Health label="סליקה" ok={false} warn="ידני (טלפון/איסוף)" />

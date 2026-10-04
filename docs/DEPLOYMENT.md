@@ -8,13 +8,19 @@
    - סודות Production לא מוגדרים ל־Preview (spec §215) – ל־Preview השתמשו ב־Supabase נפרד (staging).
 3. כל Pull Request מקבל Preview Deployment; merge ל־main → Production.
 
-## 2. Supabase
+## 2. מסד נתונים – Neon (ברירת המחדל)
+1. ב־Vercel → Storage / Integrations → Neon → לחבר לפרויקט. האינטגרציה מגדירה `DATABASE_URL` אוטומטית.
+2. הטבלאות (`s2g_orders`, `s2g_files`, `s2g_contacts`) נוצרות לבד בבקשה הראשונה – אין צורך להריץ מיגרציה.
+3. נשמרים: הזמנות (כולל גרסאות עיצוב והיסטוריה), קבצי ייצור (SVG/PDF/EPS), ופניות מטופס יצירת קשר (מוצגות ב־/admin/leads/).
+4. Dashboard → "בריאות מערכת" מציג "מסד נתונים (Neon)" בירוק כשהחיבור פעיל.
+
+## 2א. חלופה: Supabase (רק אם DATABASE_URL לא מוגדר)
 1. פרויקט חדש (אזור אירופה). SQL Editor → להריץ `supabase/migrations/0001_init.sql`.
 2. הקובץ יוצר את טבלת `orders` ואת ה־bucket הפרטי `production-files`.
 3. להעתיק את `Project URL` ו־`service_role key` למשתני הסביבה (לעולם לא לחשוף בצד לקוח).
 4. גיבויים: Supabase Pro כולל גיבוי יומי + PITR. הקבצים ב־Storage אינם נמחקים אוטומטית.
 
-ללא Supabase האתר עובד, אבל ההזמנות נשמרות בדיסק זמני – מתאים לפיתוח בלבד (Dashboard מציג אזהרה).
+ללא Neon/Supabase האתר עובד, אבל ההזמנות נשמרות בדיסק זמני – מתאים לפיתוח בלבד (Dashboard מציג אזהרה).
 
 ## 3. אימייל (Resend)
 לאמת את הדומיין stamp2go.co.il ב־Resend (רשומות SPF/DKIM ב־DNS), ואז `MAIL_FROM="Stamp2Go <orders@stamp2go.co.il>"`.

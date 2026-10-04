@@ -7,8 +7,8 @@ export interface ListOptions {
 }
 
 export interface OrderStore {
-  kind: 'supabase' | 'filesystem';
-  /** True when data survives deployments/instances (Supabase). */
+  kind: 'neon' | 'supabase' | 'filesystem';
+  /** True when data survives deployments/instances (Neon / Supabase). */
   durable: boolean;
   findByIdempotencyKey(key: string): Promise<Order | null>;
   getOrder(id: string): Promise<Order | null>;

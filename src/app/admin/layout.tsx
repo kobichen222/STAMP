@@ -13,6 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const nav = [
     { href: '/admin/', label: 'Dashboard', icon: 'grid', roles: ['admin'] },
     { href: '/admin/orders/', label: 'הזמנות', icon: 'file', roles: ['admin'] },
+    { href: '/admin/leads/', label: 'פניות', icon: 'phone', roles: ['admin'] },
     { href: '/admin/production/', label: 'תור ייצור', icon: 'layers3d', roles: ['admin', 'production'] },
   ].filter((n) => n.roles.includes(role));
   return (
