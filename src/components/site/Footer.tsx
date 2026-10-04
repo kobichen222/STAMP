@@ -43,6 +43,11 @@ export function Footer() {
                 </Link>
               </li>
             ))}
+            <li>
+              <button type="button" data-a11y-open className="inline-block py-1 text-start hover:text-ink">
+                הגדרות נגישות (Alt+A)
+              </button>
+            </li>
           </ul>
         </div>
         <div>

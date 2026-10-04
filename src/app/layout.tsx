@@ -2,8 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import { Heebo } from 'next/font/google';
 import { Header } from '@/components/site/Header';
 import { Footer } from '@/components/site/Footer';
+import { AccessibilityMenu } from '@/components/a11y/AccessibilityMenu';
+import { BOOT_SCRIPT } from '@/components/a11y/settings';
 import { SITE } from '@/lib/config';
 import './globals.css';
+import './a11y.css';
 
 const heebo = Heebo({ subsets: ['hebrew', 'latin'], weight: ['300', '400', '500', '600', '700', '800', '900'], display: 'swap', variable: '--font-heebo' });
 
@@ -37,7 +40,10 @@ const organization = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="he" dir="rtl" className={heebo.variable}>
+    <html lang="he" dir="rtl" className={heebo.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-dvh">
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:right-2 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:shadow-lift">
           דלג לתוכן
@@ -45,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         <main id="main">{children}</main>
         <Footer />
+        <AccessibilityMenu />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organization) }} />
       </body>
     </html>

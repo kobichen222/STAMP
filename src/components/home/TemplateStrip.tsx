@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { motionReduced } from '@/lib/motion';
 import { LazyTemplatePreview as TemplatePreview } from '@/designer/LazyTemplatePreview';
 import { TEMPLATE_CATEGORIES, TEMPLATES, type TemplateCategory } from '@/designer/templates';
 import type { StampModel } from '@/designer/types';
@@ -51,13 +52,12 @@ export function TemplateStrip() {
 
   // Gentle autoplay – only while visible, never during interaction or with reduced motion.
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const el = track.current;
     if (!el) return;
     const io = new IntersectionObserver(([e]) => (inView.current = e.isIntersecting), { threshold: 0.4 });
     io.observe(el);
     const t = window.setInterval(() => {
-      if (!paused.current && inView.current && !document.hidden) go(1);
+      if (!paused.current && inView.current && !document.hidden && !motionReduced()) go(1);
     }, AUTOPLAY_MS);
     return () => {
       io.disconnect();

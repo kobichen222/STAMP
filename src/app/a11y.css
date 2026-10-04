@@ -1,0 +1,168 @@
+/*
+ * Accessibility menu – page adjustments driven by data-a11y-* attributes on <html>.
+ * The menu itself (#a11y-ui) and SVG artwork (stamp previews, icons) are never altered.
+ */
+
+/* ---------------------------------------------------------------- text spacing */
+html[data-a11y-lh] body :where(*:not(svg, svg *, #a11y-ui, #a11y-ui *)) {
+  line-height: var(--a11y-lh) !important;
+}
+html[data-a11y-ls] body :where(*:not(svg, svg *, #a11y-ui, #a11y-ui *)) {
+  letter-spacing: var(--a11y-ls) !important;
+}
+html[data-a11y-ws] body :where(*:not(svg, svg *, #a11y-ui, #a11y-ui *)) {
+  word-spacing: var(--a11y-ws) !important;
+}
+html[data-a11y-lh='1'] { --a11y-lh: 1.7; }
+html[data-a11y-lh='2'] { --a11y-lh: 2; }
+html[data-a11y-lh='3'] { --a11y-lh: 2.4; }
+html[data-a11y-ls='1'] { --a11y-ls: 0.06em; }
+html[data-a11y-ls='2'] { --a11y-ls: 0.12em; }
+html[data-a11y-ls='3'] { --a11y-ls: 0.18em; }
+html[data-a11y-ws='1'] { --a11y-ws: 0.16em; }
+html[data-a11y-ws='2'] { --a11y-ws: 0.32em; }
+
+/* Readable font (font previews that set their own family are kept). */
+html[data-a11y-font='readable'] body :where(*:not(svg, svg *, #a11y-ui, #a11y-ui *, [style*='font-family'])) {
+  font-family: Arial, Helvetica, 'Heebo', sans-serif !important;
+}
+html[data-a11y-font='dyslexia'] body :where(*:not(svg, svg *, #a11y-ui, #a11y-ui *, [style*='font-family'])) {
+  font-family: Verdana, Tahoma, Arial, sans-serif !important;
+  font-weight: 500 !important;
+}
+
+/* Text alignment */
+html[data-a11y-align='right'] body :where(p, li, h1, h2, h3, h4, h5, h6, dd, dt, td, th, label, blockquote):not(#a11y-ui *) {
+  text-align: right !important;
+}
+html[data-a11y-align='center'] body :where(p, li, h1, h2, h3, h4, h5, h6, dd, dt, td, th, label, blockquote):not(#a11y-ui *) {
+  text-align: center !important;
+}
+html[data-a11y-align='left'] body :where(p, li, h1, h2, h3, h4, h5, h6, dd, dt, td, th, label, blockquote):not(#a11y-ui *) {
+  text-align: left !important;
+}
+
+/* ---------------------------------------------------------------- highlighting */
+html[data-a11y-links] body a:not(#a11y-ui *) {
+  text-decoration: underline !important;
+  text-decoration-thickness: 2px !important;
+  text-underline-offset: 3px !important;
+  outline: 2px solid #ffb300 !important;
+  outline-offset: 2px;
+  background-color: #fff6cc !important;
+  color: #001a80 !important;
+}
+html[data-a11y-headings] body :is(h1, h2, h3, h4, h5, h6, [role='heading']):not(#a11y-ui *) {
+  outline: 2px dashed #2457ff !important;
+  outline-offset: 4px;
+  background-color: rgb(36 87 255 / 0.07) !important;
+}
+html[data-a11y-focus] body *:focus-visible,
+html[data-a11y-focus] body *:focus {
+  outline: 4px solid #ffd400 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 8px #0b1426 !important;
+  border-radius: 4px;
+}
+
+/* ---------------------------------------------------------------- contrast */
+html[data-a11y-contrast='dark'],
+html[data-a11y-contrast='dark'] body { background: #000 !important; }
+html[data-a11y-contrast='dark'] body *:not(svg, svg *, #a11y-ui, #a11y-ui *, img, video, canvas) {
+  background-color: #000 !important;
+  background-image: none !important;
+  color: #fff !important;
+  border-color: #7a7a7a !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+html[data-a11y-contrast='dark'] body a:not(#a11y-ui *),
+html[data-a11y-contrast='dark'] body a *:not(svg, svg *) { color: #ffe066 !important; }
+html[data-a11y-contrast='dark'] body :is(button, [role='button'], input, select, textarea):not(#a11y-ui *) { border: 1px solid #fff !important; }
+
+html[data-a11y-contrast='light'],
+html[data-a11y-contrast='light'] body { background: #fff !important; }
+html[data-a11y-contrast='light'] body *:not(svg, svg *, #a11y-ui, #a11y-ui *, img, video, canvas) {
+  background-color: #fff !important;
+  background-image: none !important;
+  color: #000 !important;
+  border-color: #000 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+html[data-a11y-contrast='light'] body a:not(#a11y-ui *),
+html[data-a11y-contrast='light'] body a *:not(svg, svg *) { color: #0000c8 !important; }
+html[data-a11y-contrast='light'] body :is(button, [role='button'], input, select, textarea):not(#a11y-ui *) { border: 1px solid #000 !important; }
+
+html[data-a11y-contrast='high'],
+html[data-a11y-contrast='high'] body { background: #000 !important; }
+html[data-a11y-contrast='high'] body *:not(svg, svg *, #a11y-ui, #a11y-ui *, img, video, canvas) {
+  background-color: #000 !important;
+  background-image: none !important;
+  color: #ffff00 !important;
+  border-color: #ffff00 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+html[data-a11y-contrast='high'] body a:not(#a11y-ui *),
+html[data-a11y-contrast='high'] body a *:not(svg, svg *) { color: #00ffff !important; }
+html[data-a11y-contrast='high'] body :is(button, [role='button'], input, select, textarea):not(#a11y-ui *) { border: 2px solid #ffff00 !important; }
+
+/* Link highlighting on top of a contrast mode: keep the contrast colours, mark links by outline + underline. */
+html[data-a11y-contrast][data-a11y-links] body a:not(#a11y-ui *) {
+  background-color: transparent !important;
+  outline-color: currentColor !important;
+}
+
+/* Colour filters are applied by a backdrop layer (#a11y-filter) so fixed elements keep working. */
+#a11y-filter { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000; display: none; }
+html[data-a11y-filter] #a11y-filter { display: block; }
+html[data-a11y-filter='mono'] #a11y-filter { backdrop-filter: grayscale(1); -webkit-backdrop-filter: grayscale(1); }
+html[data-a11y-filter='lowsat'] #a11y-filter { backdrop-filter: saturate(0.4); -webkit-backdrop-filter: saturate(0.4); }
+html[data-a11y-filter='highsat'] #a11y-filter { backdrop-filter: saturate(2.2); -webkit-backdrop-filter: saturate(2.2); }
+html[data-a11y-filter='invert'] #a11y-filter { backdrop-filter: invert(1) hue-rotate(180deg); -webkit-backdrop-filter: invert(1) hue-rotate(180deg); }
+
+/* ---------------------------------------------------------------- media & motion */
+html[data-a11y-images] body :is(img, video, picture, canvas):not(#a11y-ui *) { visibility: hidden !important; }
+html[data-a11y-images] body [style*='background-image']:not(#a11y-ui *) { background-image: none !important; }
+
+html[data-a11y-motion='off'] *,
+html[data-a11y-motion='off'] *::before,
+html[data-a11y-motion='off'] *::after {
+  animation-duration: 0.001s !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.001s !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+/* ---------------------------------------------------------------- cursor */
+html[data-a11y-cursor='dark'],
+html[data-a11y-cursor='dark'] * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cpath d='M6 3l30 27H21l9 15-6 3-9-15-9 9z' fill='%23000' stroke='%23fff' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E") 6 3, auto !important;
+}
+html[data-a11y-cursor='light'],
+html[data-a11y-cursor='light'] * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cpath d='M6 3l30 27H21l9 15-6 3-9-15-9 9z' fill='%23fff' stroke='%23000' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E") 6 3, auto !important;
+}
+
+/* ---------------------------------------------------------------- reading aids */
+.a11y-guide {
+  position: fixed; inset-inline: 0; height: 12px; pointer-events: none; z-index: 2147483100;
+  background: #ffd400; border-block: 2px solid #0b1426; opacity: 0.85; transform: translateY(-50%);
+}
+.a11y-mask { position: fixed; inset-inline: 0; pointer-events: none; z-index: 2147483100; background: rgb(0 0 0 / 0.62); }
+.a11y-mag {
+  position: fixed; z-index: 2147483200; pointer-events: none; max-width: min(560px, calc(100vw - 24px));
+  background: #0b1426; color: #fff; font: 600 26px/1.45 Arial, 'Heebo', sans-serif; padding: 12px 16px;
+  border-radius: 14px; box-shadow: 0 12px 40px rgb(0 0 0 / 0.35); direction: rtl; white-space: pre-wrap;
+}
+.a11y-reading { outline: 3px solid #2457ff !important; outline-offset: 3px; background-color: rgb(36 87 255 / 0.1) !important; }
+html[data-a11y-tts] body :is(p, li, h1, h2, h3, h4, h5, h6, td, dd, blockquote, label, summary):not(#a11y-ui *):hover {
+  outline: 2px dotted #2457ff; outline-offset: 2px; cursor: help;
+}
+
+/* The menu keeps its own look whatever the page settings are. */
+#a11y-ui, #a11y-ui * { font-family: 'Heebo', Arial, sans-serif; letter-spacing: normal; word-spacing: normal; line-height: 1.4; }
+@media print { #a11y-ui, #a11y-filter, .a11y-guide, .a11y-mask, .a11y-mag { display: none !important; } }

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { motionReduced, useMotionReduced } from '@/lib/motion';
 import type { StampScene } from './stamp-scene';
 import { PART_LABELS } from './stamp-labels';
 
@@ -44,8 +45,11 @@ export function StampHero() {
   const [ready, setReady] = useState(false);
   const [staticMode, setStaticMode] = useState(false);
 
+  // Re-evaluated when the accessibility menu stops / restarts animations.
+  const motionOff = useMotionReduced();
+
   useEffect(() => {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced = motionReduced();
     const canvas = canvasRef.current!;
     const hasGL = (() => {
       try {
@@ -58,6 +62,7 @@ export function StampHero() {
       setStaticMode(true);
       return;
     }
+    setStaticMode(false);
     let scene: StampScene | null = null;
     let raf = 0;
     let disposed = false;
@@ -169,7 +174,7 @@ export function StampHero() {
       cleanup.forEach((f) => f());
       scene?.dispose();
     };
-  }, []);
+  }, [motionOff]);
 
   const animated = !staticMode;
   return (
