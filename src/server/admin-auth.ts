@@ -12,10 +12,59 @@ export type StaffRole = 'admin' | 'production';
 
 const enc = new TextEncoder();
 
+/**
+ * Fallback when the passwords are not in the environment: a temporary admin
+ * password stored as a SHA-256 hash (never in plain text, never in the code)
+ * with an expiry date, plus a random cookie-signing secret – both in the
+ * database row s2g_settings.auth. Cached briefly.
+ */
+interface DbAuth {
+  secret: string;
+  tempHash?: string;
+  tempExpires?: string;
+}
+let dbAuthCache: { at: number; value: DbAuth | null } | null = null;
+
+async function dbAuth(): Promise<DbAuth | null> {
+  if (dbAuthCache && Date.now() - dbAuthCache.at < 60_000) return dbAuthCache.value;
+  let value: DbAuth | null = null;
+  try {
+    const { databaseUrl, db } = await import('./store/neon');
+    if (databaseUrl()) {
+      const sql = await db();
+      const rows = await sql`select value from s2g_settings where key = 'auth' limit 1`;
+      value = (rows[0]?.value as DbAuth) ?? null;
+    }
+  } catch (e) {
+    console.error('[admin-auth]', e);
+  }
+  dbAuthCache = { at: Date.now(), value };
+  return value;
+}
+
+async function secret(): Promise<string> {
+  return process.env.ADMIN_SECRET || process.env.ADMIN_PASSWORD || (await dbAuth())?.secret || '';
+}
+
+async function sha256(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(text));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function tempPasswordActive(a: DbAuth | null): Promise<boolean> {
+  return !!a?.tempHash && (!a.tempExpires || new Date(a.tempExpires) > new Date());
+}
+
+/** True when staff can log in at all (env passwords or an active temporary password). */
+export async function authConfigured(): Promise<boolean> {
+  if (process.env.ADMIN_PASSWORD) return true;
+  return tempPasswordActive(await dbAuth());
+}
+
 async function hmac(data: string): Promise<string> {
-  const secret = process.env.ADMIN_SECRET || process.env.ADMIN_PASSWORD || '';
-  if (!secret) return '';
-  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const key0 = await secret();
+  if (!key0) return '';
+  const key = await crypto.subtle.importKey('raw', enc.encode(key0), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
   return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' })[c]!);
 }
@@ -33,15 +82,19 @@ export async function createAdminToken(role: StaffRole): Promise<string> {
 }
 
 export async function verifyAdminToken(token?: string): Promise<StaffRole | null> {
-  if (!token || !process.env.ADMIN_PASSWORD) return null;
+  if (!token || !(await authConfigured())) return null;
   const [exp, role, sig] = token.split('.');
   if (!exp || !sig || (role !== 'admin' && role !== 'production') || Number(exp) < Date.now() / 1000) return null;
   return safeEqual(sig, await hmac(`${exp}.${role}`)) ? role : null;
 }
 
-export function roleForPassword(password: string): StaffRole | null {
+export async function roleForPassword(password: string): Promise<StaffRole | null> {
   if (process.env.ADMIN_PASSWORD && safeEqual(password, process.env.ADMIN_PASSWORD)) return 'admin';
   if (process.env.PRODUCTION_PASSWORD && safeEqual(password, process.env.PRODUCTION_PASSWORD)) return 'production';
+  if (!process.env.ADMIN_PASSWORD) {
+    const a = await dbAuth();
+    if ((await tempPasswordActive(a)) && safeEqual(await sha256(password), a!.tempHash!)) return 'admin';
+  }
   return null;
 }
 

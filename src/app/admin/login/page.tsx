@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Logo } from '@/components/Logo';
-import { ADMIN_COOKIE, ADMIN_MAX_AGE, createAdminToken, roleForPassword } from '@/server/admin-auth';
+import { ADMIN_COOKIE, ADMIN_MAX_AGE, authConfigured, createAdminToken, roleForPassword } from '@/server/admin-auth';
 import { rateLimit } from '@/server/rate-limit';
 
 // Reads ADMIN_PASSWORD at request time – a password added after the build must work too.
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: 'כניסת צוות', robots: { inde
 async function login(formData: FormData) {
   'use server';
   if (!rateLimit('admin-login', 20, 10 * 60_000)) redirect('/admin/login/?e=rate');
-  const role = roleForPassword(String(formData.get('password') ?? ''));
+  const role = await roleForPassword(String(formData.get('password') ?? ''));
   if (!role) redirect('/admin/login/?e=1');
   (await cookies()).set(ADMIN_COOKIE, await createAdminToken(role), { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: ADMIN_MAX_AGE });
   redirect(role === 'production' ? '/admin/production/' : '/admin/');
@@ -21,7 +21,7 @@ async function login(formData: FormData) {
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const { e } = await searchParams;
-  const configured = !!process.env.ADMIN_PASSWORD;
+  const configured = await authConfigured();
   return (
     <div className="grid min-h-dvh place-items-center bg-surface p-4">
       <form action={login} className="card w-full max-w-sm p-8 shadow-soft">

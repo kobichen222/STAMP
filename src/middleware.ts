@@ -29,5 +29,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
+  // Node runtime: staff auth may read its temporary credentials from the database.
+  runtime: 'nodejs',
   matcher: ['/((?!_next/|fonts/|wp-content/|favicon|robots.txt|sitemap.xml|api/(?!admin)).*)'],
 };
