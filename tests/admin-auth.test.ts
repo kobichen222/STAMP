@@ -34,11 +34,13 @@ describe('temporary admin password', () => {
     expect(await auth.roleForPassword('KOBI2100')).toBeNull();
   });
 
-  it('the environment password wins over the temporary one', async () => {
+  it('works next to an environment password, ignoring case and spaces', async () => {
     row = { secret: 'x', tempHash: HASH };
     process.env.ADMIN_PASSWORD = 'env-pass';
     const auth = await import('@/server/admin-auth');
-    expect(await auth.roleForPassword('KOBI2100')).toBeNull();
     expect(await auth.roleForPassword('env-pass')).toBe('admin');
+    expect(await auth.roleForPassword('KOBI2100')).toBe('admin');
+    expect(await auth.roleForPassword(' kobi2100 ')).toBe('admin');
+    expect(await auth.roleForPassword('KOBI2101')).toBeNull();
   });
 });

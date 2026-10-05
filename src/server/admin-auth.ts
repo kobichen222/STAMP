@@ -91,9 +91,14 @@ export async function verifyAdminToken(token?: string): Promise<StaffRole | null
 export async function roleForPassword(password: string): Promise<StaffRole | null> {
   if (process.env.ADMIN_PASSWORD && safeEqual(password, process.env.ADMIN_PASSWORD)) return 'admin';
   if (process.env.PRODUCTION_PASSWORD && safeEqual(password, process.env.PRODUCTION_PASSWORD)) return 'production';
-  if (!process.env.ADMIN_PASSWORD) {
-    const a = await dbAuth();
-    if ((await tempPasswordActive(a)) && safeEqual(await sha256(password), a!.tempHash!)) return 'admin';
+  // The temporary password works alongside the environment one until it expires.
+  // Forgiving input: surrounding spaces and letter case (phones auto-capitalise) are ignored.
+  const a = await dbAuth();
+  if (await tempPasswordActive(a)) {
+    const typed = password.trim();
+    for (const variant of new Set([typed, typed.toUpperCase(), typed.toLowerCase()])) {
+      if (safeEqual(await sha256(variant), a!.tempHash!)) return 'admin';
+    }
   }
   return null;
 }
