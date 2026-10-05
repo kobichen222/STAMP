@@ -182,9 +182,9 @@ export function StampHero() {
   return (
     <section ref={sectionRef} className="relative overflow-x-clip" aria-label="מעצבים חותמת אונליין">
       {/* Shorter than the screen on purpose: the next section peeks in, so it's clear the page goes on. */}
-      <div className="relative flex items-center overflow-hidden bg-gradient-to-b from-white via-white to-surface lg:min-h-[calc(100dvh-12rem)]">
+      <div className="relative flex items-start overflow-hidden bg-gradient-to-b from-white via-white to-surface lg:min-h-[calc(100dvh-12rem)]">
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
-        <div className={`container-x relative grid w-full gap-2 pt-20 pb-16 lg:grid-cols-2 lg:items-center lg:gap-6 lg:pt-24 lg:pb-14 ${animated ? 'content-start' : ''}`}>
+        <div className={`container-x relative grid w-full gap-2 pt-[4.5rem] pb-16 lg:grid-cols-2 lg:items-center lg:gap-6 lg:pt-28 lg:pb-16 ${animated ? 'content-start' : ''}`}>
           <div ref={introRef} className="relative z-10 max-w-xl will-change-transform">
             <h1 className="animate-fade-up text-[1.85rem] leading-[1.15] font-extrabold max-[360px]:text-[1.65rem] sm:text-5xl lg:text-[3.4rem] lg:leading-[1.1] xl:text-6xl">
               מעצבים חותמת אונליין,
@@ -251,7 +251,7 @@ export function StampHero() {
           className="group absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-blue/25 bg-white/90 py-1.5 ps-4 pe-1.5 text-sm font-semibold whitespace-nowrap text-blue shadow-soft backdrop-blur transition hover:bg-blue hover:text-white sm:py-2 sm:ps-5 sm:pe-2 sm:text-base sm:font-bold"
         >
           איך זה עובד? גללו למטה
-          <span className="grid h-7 w-7 animate-bounce place-items-center rounded-full bg-blue sm:h-8 sm:w-8 text-white group-hover:bg-white group-hover:text-blue">
+          <span className="cue-nudge grid h-7 w-7 place-items-center rounded-full bg-blue sm:h-8 sm:w-8 text-white group-hover:bg-white group-hover:text-blue">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M6 9l6 6 6-6" />
             </svg>

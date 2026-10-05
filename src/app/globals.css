@@ -38,6 +38,10 @@
   ::selection { @apply bg-blue/15; }
 }
 
+/* Soft downward nudge for the "scroll on" cue. */
+.cue-nudge { animation: cue-nudge 2.2s ease-in-out infinite; }
+@keyframes cue-nudge { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(3px); } }
+
 /* Gentle attention pulse for the main call to action (and first-time hints). */
 .cta-glow { animation: cta-glow 2.6s ease-in-out infinite; }
 @keyframes cta-glow {
@@ -49,7 +53,7 @@
   0%, 100% { box-shadow: 0 0 0 0 rgb(36 87 255 / 0); }
   50% { box-shadow: 0 0 0 6px rgb(36 87 255 / 0.28), 0 0 32px 4px rgb(36 87 255 / 0.25); }
 }
-@media (prefers-reduced-motion: reduce) { .cta-glow, .attention-pulse { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .cta-glow, .attention-pulse, .cue-nudge { animation: none; } }
 
 .hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); opacity: 0; pointer-events: none; }
 @utility container-x {
