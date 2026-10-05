@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Logo } from '@/components/Logo';
+import { lastPage } from '@/components/site/RouteMemory';
 import { Icon } from '@/components/ui/Icon';
 import { clearActiveDraft, setActiveDraft } from '@/lib/active-draft';
 import { addToCart } from '@/lib/cart-store';
@@ -551,7 +552,7 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
       >
         {/* ------------------------------------------------ header */}
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-2 sm:px-3">
-          <button type="button" onClick={() => setExitAsk(true)} className="hidden items-center sm:flex" aria-label="יציאה מהעורך">
+          <button type="button" onClick={() => leave(lastPage())} className="hidden items-center sm:flex" aria-label="סגירת העורך – חזרה לדף הקודם">
             <Logo size="sm" />
           </button>
           <button type="button" onClick={() => stepBackRef.current()} className="flex h-10 items-center gap-1 rounded-full px-2.5 text-sm font-semibold text-ink-2 hover:bg-surface sm:order-none" aria-label="חזרה צעד אחד אחורה">
@@ -604,7 +605,7 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
             <Link href="/faq/#design" target="_blank" className="hidden md:block" aria-label="עזרה">
               <IconButton icon="help" label="עזרה" />
             </Link>
-            <IconButton icon="close" label="יציאה מהעורך" onClick={() => setExitAsk(true)} className="hidden sm:grid" />
+            <IconButton icon="close" label="סגירת העורך – חזרה לדף הקודם" onClick={() => leave(lastPage())} className="hidden sm:grid" />
           </div>
         </header>
 
@@ -986,7 +987,7 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
                 <Link href="/account/#designs" className="btn-primary">
                   שמירה ומעבר לעיצובים שלי
                 </Link>
-                <button type="button" className="btn-outline" onClick={() => leave(`/stamp/${product.slug}/`)}>
+                <button type="button" className="btn-outline" onClick={() => leave(lastPage())}>
                   יציאה
                 </button>
                 <button type="button" className="btn-ghost" onClick={() => setExitAsk(false)}>

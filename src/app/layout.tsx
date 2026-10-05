@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Heebo } from 'next/font/google';
 import { Header } from '@/components/site/Header';
 import { Footer } from '@/components/site/Footer';
+import { RouteMemory } from '@/components/site/RouteMemory';
+import { Suspense } from 'react';
 import { AccessibilityMenu } from '@/components/a11y/AccessibilityMenu';
 import { BOOT_SCRIPT } from '@/components/a11y/settings';
 import { SITE } from '@/lib/config';
@@ -52,6 +54,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main id="main">{children}</main>
         <Footer />
         <AccessibilityMenu />
+        <Suspense>
+          <RouteMemory />
+        </Suspense>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organization) }} />
       </body>
     </html>

@@ -182,21 +182,21 @@ export function StampHero() {
   return (
     <section ref={sectionRef} className="relative overflow-x-clip" aria-label="מעצבים חותמת אונליין">
       {/* Shorter than the screen on purpose: the next section peeks in, so it's clear the page goes on. */}
-      <div className="relative flex min-h-[calc(100svh-6rem)] items-center overflow-hidden bg-gradient-to-b from-white via-white to-surface max-lg:min-h-[640px] lg:min-h-[calc(100dvh-5rem)]">
+      <div className="relative flex items-center overflow-hidden bg-gradient-to-b from-white via-white to-surface lg:min-h-[calc(100dvh-12rem)]">
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
-        <div className={`container-x relative grid w-full gap-6 lg:grid-cols-2 lg:items-center lg:pt-24 ${animated ? 'h-full content-start pt-24 max-lg:pb-[44svh]' : 'pt-24 pb-10'}`}>
+        <div className={`container-x relative grid w-full gap-6 lg:grid-cols-2 lg:items-center lg:pt-24 ${animated ? 'h-full content-start pt-24 max-lg:pb-[calc(30svh+4rem)]' : 'pt-24 pb-10'}`}>
           <div ref={introRef} className="relative z-10 max-w-xl will-change-transform">
             <h1 className="animate-fade-up text-[2.15rem] leading-[1.12] font-extrabold max-[390px]:text-[1.9rem] sm:text-5xl lg:text-[3.4rem] lg:leading-[1.1] xl:text-6xl">
               מעצבים חותמת אונליין,
               <br />
               <span className="grad-text">החותמת מוכנה תוך&nbsp;2&nbsp;דקות.</span>
             </h1>
-            <ul className="mt-4 flex animate-fade-up flex-wrap items-center gap-x-3 gap-y-1.5 text-[15px] font-semibold text-ink-2 sm:mt-6 sm:text-lg">
+            <ul className="mt-2 flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-1 text-lg font-bold text-ink-2 sm:mt-3 sm:text-2xl">
               <li className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-blue" aria-hidden /> איסוף עצמי ברמת גן
+                <span className="h-2.5 w-2.5 rounded-full bg-blue" aria-hidden /> איסוף עצמי ברמת גן
               </li>
               <li className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-blue" aria-hidden /> משלוחים לכל הארץ
+                <span className="h-2.5 w-2.5 rounded-full bg-blue" aria-hidden /> משלוחים לכל הארץ
               </li>
             </ul>
             <div className="mt-6 flex animate-fade-up flex-col gap-3 sm:mt-9 sm:flex-row sm:flex-wrap sm:items-center">
@@ -222,7 +222,7 @@ export function StampHero() {
               ))}
             </div>
           </div>
-          <div className={animated ? 'absolute inset-x-0 bottom-9 h-[44svh] min-h-[260px] lg:relative lg:inset-auto lg:h-[72vh] lg:min-h-[320px]' : 'relative h-[46vh] min-h-[300px] lg:h-[72vh]'}>
+          <div className={animated ? 'absolute inset-x-0 bottom-14 h-[30svh] min-h-[210px] lg:relative lg:inset-auto lg:h-[60vh] lg:min-h-[320px]' : 'relative h-[46vh] min-h-[300px] lg:h-[72vh]'}>
             {!ready && (
               <div className={`absolute inset-0 grid place-items-center p-10 ${animated ? 'max-lg:p-4' : ''}`}>
                 <div className="h-full max-h-[420px] w-full max-w-[420px]">
@@ -248,13 +248,14 @@ export function StampHero() {
 
         <a
           href="#how"
-          className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-muted transition hover:text-blue"
-          aria-label="גללו להמשך"
+          className="group absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full whitespace-nowrap border border-blue/25 bg-white/90 py-2 ps-5 pe-2 text-[15px] font-bold text-blue shadow-soft backdrop-blur transition hover:bg-blue hover:text-white sm:text-base"
         >
-          להמשך
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="animate-bounce" aria-hidden>
-            <path d="M6 9l6 6 6-6" />
-          </svg>
+          איך זה עובד? גללו למטה
+          <span className="grid h-8 w-8 animate-bounce place-items-center rounded-full bg-blue text-white group-hover:bg-white group-hover:text-blue">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </span>
         </a>
       </div>
     </section>

@@ -46,28 +46,26 @@ export function LogoMark({ className = '', size = 40 }: { className?: string; si
   );
 }
 
+/**
+ * Wordmark "חותמות תוך 2 דקות" in a compact two-line block next to the stamp
+ * mark: "חותמות" large, "תוך 2 דקות" under it with the 2 on a solid blue badge
+ * (solid colours only – never clipped gradients that can vanish).
+ */
 export function Logo({ className = '', size = 'md', markOnly = false }: { className?: string; size?: 'sm' | 'md' | 'lg'; markOnly?: boolean }) {
-  const h = { sm: 30, md: 38, lg: 52 }[size];
-  const text = { sm: 'text-[21px]', md: 'text-[27px]', lg: 'text-[38px]' }[size];
+  const t = { sm: 22, md: 27, lg: 32 }[size];
   return (
-    <span className={`inline-flex items-center gap-1 select-none ${className}`} dir="ltr" aria-label="חותמות 2 דקות">
-      <LogoMark size={Math.round(h * 1.25)} className="-me-1 shrink-0" />
+    <span className={`inline-flex items-center gap-1.5 select-none ${className}`} dir="ltr" aria-label="חותמות תוך 2 דקות" role="img">
+      <LogoMark size={Math.round(t * 1.55)} className="shrink-0" />
       {!markOnly && (
-        <span className="relative inline-flex flex-col overflow-visible leading-none whitespace-nowrap">
-          <span dir="rtl" className={`${text} px-[0.12em] pt-[0.12em] font-black tracking-tight text-ink italic`} style={{ fontStyle: 'italic' }}>
+        <span dir="rtl" className="flex flex-col items-stretch leading-none whitespace-nowrap" aria-hidden>
+          <span className="font-black tracking-tight text-ink italic" style={{ fontSize: t, lineHeight: 0.95 }}>
             חותמות
-            <span className="-mx-[0.1em] -my-[0.15em] inline-block bg-gradient-to-b from-[#3b82f6] to-[#1d3fbf] bg-clip-text px-[0.16em] py-[0.15em] align-[-0.06em] text-[1.35em] leading-none text-transparent [-webkit-box-decoration-break:clone]">2</span>
-            דקות
           </span>
-          <svg viewBox="0 0 200 8" preserveAspectRatio="none" className="-mt-[0.1em] h-[0.3em] w-full" aria-hidden>
-            <defs>
-              <linearGradient id="lg-swoosh" x1="0" x2="1">
-                <stop offset="0" stopColor="#1d4ed8" />
-                <stop offset="1" stopColor="#1d4ed8" stopOpacity=".15" />
-              </linearGradient>
-            </defs>
-            <path d="M0 7 Q100 2 200 1 L200 2.5 Q100 4 0 8 Z" fill="url(#lg-swoosh)" />
-          </svg>
+          <span className="mt-[0.18em] flex items-center justify-between gap-[0.22em] font-extrabold text-ink-2" style={{ fontSize: Math.round(t * 0.5) }}>
+            <span>תוך</span>
+            <span className="grid h-[1.45em] min-w-[1.3em] place-items-center rounded-[0.35em] bg-[#2457ff] px-[0.2em] text-[1.15em] font-black text-white italic shadow-[0_2px_6px_-2px_rgba(36,87,255,.7)]">2</span>
+            <span>דקות</span>
+          </span>
         </span>
       )}
     </span>

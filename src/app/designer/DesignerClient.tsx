@@ -27,7 +27,8 @@ export function DesignerClient({ product: requested, products, generic = false }
   const [ok, setOk] = useState<boolean | null>(null);
   const designParam = params.get('design');
   // No explicit instruction (a design, template, upload or "new")? Continue the draft in progress.
-  const explicit = !!designParam || !!params.get('template') || params.get('upload') === '1' || params.get('new') === '1';
+  // Plain /designer/ always opens on the default stamp (PRINT 20); the last design is offered on the start screen.
+  const explicit = generic || !!designParam || !!params.get('template') || params.get('upload') === '1' || params.get('new') === '1';
   const [draft] = useState(() => {
     if (explicit) return undefined;
     const id = getActiveDraft();
