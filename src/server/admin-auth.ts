@@ -46,4 +46,4 @@ export function roleForPassword(password: string): StaffRole | null {
 }
 
 /** Paths the production role may access. */
-export const productionAllowed = (path: string) => /^\/admin\/(production|login|logout)(\/|$)|^\/api\/admin\/files(\/|$)/.test(path);
+export const productionAllowed = (path: string) => /^\/admin\/(production|login|logout)(\/|$)|^\/api\/admin\/(files|export)(\/|$)/.test(path);

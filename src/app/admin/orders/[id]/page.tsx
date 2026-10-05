@@ -7,6 +7,7 @@ import { loadOrder } from '@/server/orders/service';
 import { STATUS_LABEL, TRANSITIONS } from '@/server/orders/types';
 import { addNote, markPaid, retryProduction, setStatus, setTracking, toggleUrgent } from '../../actions';
 import { Preview, StatusBadge } from '../../components';
+import { ExportMenu } from '../../ExportMenu';
 
 const KIND_LABEL: Record<string, string> = {
   'production-svg': 'SVG ייצור',
@@ -81,6 +82,10 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
                     </a>
                   ))}
                 {!it.files.length && <span className="text-sm text-muted">קבצי ייצור עוד לא נוצרו</span>}
+              </div>
+              <div className="mt-3">
+                <p className="mb-1.5 text-sm font-semibold">הורדה בכל פורמט (CorelDRAW / לייזר)</p>
+                <ExportMenu orderId={o.id} index={i} mirror={it.mirror} hasRasterLogo={it.design.elements.some((e) => e.type === 'image' && !e.vector)} />
               </div>
               <div className="mt-4 rounded-xl bg-surface p-3 text-sm">
                 <p className={it.preflight.ready ? 'font-semibold text-ok' : 'font-semibold text-bad'}>

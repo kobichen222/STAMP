@@ -1,6 +1,7 @@
 import { INK_COLORS } from '@/designer/types';
 import { getStore } from '@/server/store';
 import { Preview } from '../components';
+import { ExportMenu } from '../ExportMenu';
 import { ProductionControls, WorkerName } from './ProductionControls';
 
 export const metadata = { title: 'תור ייצור' };
@@ -67,14 +68,8 @@ export default async function ProductionQueue({ searchParams }: { searchParams: 
                             דיו {INK_COLORS[it.ink]?.label} · כמות <strong>{it.quantity}</strong>
                           </dd>
                           <dd className="text-muted">Mirror: {it.mirror ? 'כן' : 'לא'} · Black</dd>
-                          <dd className="mt-1 flex gap-1.5">
-                            {it.files
-                              .filter((f) => f.kind === 'production-svg' || f.kind === 'production-pdf' || f.kind === 'production-eps')
-                              .map((f) => (
-                                <a key={f.path} href={`/api/admin/files/?path=${encodeURIComponent(f.path)}`} className="btn-outline btn-sm !px-2.5">
-                                  {f.name.split('.').pop()?.toUpperCase()}
-                                </a>
-                              ))}
+                          <dd className="mt-1.5">
+                            <ExportMenu orderId={o.id} index={i} mirror={it.mirror} compact hasRasterLogo={it.design.elements.some((e) => e.type === 'image' && !e.vector)} />
                           </dd>
                         </dl>
                       </div>
