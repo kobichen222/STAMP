@@ -95,7 +95,7 @@ export function StampHero() {
       const mobile = mq.matches;
 
       // The stage has its own area under the headline on every screen size.
-      scene.setFraming(mobile ? 0.04 : 0, mobile ? 0.92 : 1);
+      scene.setFraming(0, 1);
       scene.setProgress(p);
       const introEl = introRef.current;
       if (introEl) {
@@ -184,32 +184,32 @@ export function StampHero() {
       {/* Shorter than the screen on purpose: the next section peeks in, so it's clear the page goes on. */}
       <div className="relative flex items-center overflow-hidden bg-gradient-to-b from-white via-white to-surface lg:min-h-[calc(100dvh-12rem)]">
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
-        <div className={`container-x relative grid w-full gap-6 lg:grid-cols-2 lg:items-center lg:pt-24 ${animated ? 'h-full content-start pt-24 max-lg:pb-[calc(30svh+4rem)]' : 'pt-24 pb-10'}`}>
+        <div className={`container-x relative grid w-full gap-2 pt-20 pb-16 lg:grid-cols-2 lg:items-center lg:gap-6 lg:pt-24 lg:pb-14 ${animated ? 'content-start' : ''}`}>
           <div ref={introRef} className="relative z-10 max-w-xl will-change-transform">
-            <h1 className="animate-fade-up text-[2.15rem] leading-[1.12] font-extrabold max-[390px]:text-[1.9rem] sm:text-5xl lg:text-[3.4rem] lg:leading-[1.1] xl:text-6xl">
+            <h1 className="animate-fade-up text-[1.85rem] leading-[1.15] font-extrabold max-[360px]:text-[1.65rem] sm:text-5xl lg:text-[3.4rem] lg:leading-[1.1] xl:text-6xl">
               מעצבים חותמת אונליין,
               <br />
               <span className="grad-text">החותמת מוכנה תוך&nbsp;2&nbsp;דקות.</span>
             </h1>
-            <ul className="mt-2 flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-1 text-lg font-bold text-ink-2 sm:mt-3 sm:text-2xl">
+            <ul className="mt-3 flex animate-fade-up flex-wrap items-center gap-x-3 gap-y-1 text-[15px] font-semibold text-ink-2 sm:gap-x-4 sm:text-2xl sm:font-bold">
               <li className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-blue" aria-hidden /> איסוף עצמי ברמת גן
+                <span className="h-2 w-2 rounded-full bg-blue sm:h-2.5 sm:w-2.5" aria-hidden /> איסוף עצמי ברמת גן
               </li>
               <li className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-blue" aria-hidden /> משלוחים לכל הארץ
+                <span className="h-2 w-2 rounded-full bg-blue sm:h-2.5 sm:w-2.5" aria-hidden /> משלוחים לכל הארץ
               </li>
             </ul>
-            <div className="mt-5 flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-3 sm:mt-9">
+            <div className="mt-6 flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-3 sm:mt-9">
               <Link
                 href="/designer/"
-                className="btn-primary cta-glow group !h-12 !rounded-xl !px-6 !text-[17px] font-extrabold shadow-[0_14px_30px_-12px_rgba(36,87,255,.8)] sm:!h-[4.25rem] sm:!rounded-2xl sm:!px-9 sm:!text-[1.35rem]"
+                className="btn-primary cta-glow group !h-12 !rounded-xl !px-6 !text-base font-bold shadow-[0_14px_30px_-12px_rgba(36,87,255,.8)] sm:!h-[4.25rem] sm:!rounded-2xl sm:!px-9 sm:!text-[1.35rem]"
               >
                 עצבו חותמת עכשיו
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:-translate-x-1" aria-hidden>
                   <path d="M19 12H5M11 6l-6 6 6 6" />
                 </svg>
               </Link>
-              <Link href="/how-it-works/" className="font-semibold text-blue underline-offset-4 hover:underline sm:px-3">
+              <Link href="/how-it-works/" className="font-semibold text-blue underline-offset-4 hover:underline max-sm:hidden sm:px-3">
                 איך זה עובד?
               </Link>
             </div>
@@ -222,7 +222,7 @@ export function StampHero() {
               ))}
             </div>
           </div>
-          <div className={animated ? 'absolute inset-x-0 bottom-14 h-[30svh] min-h-[210px] lg:relative lg:inset-auto lg:h-[60vh] lg:min-h-[320px]' : 'relative h-[46vh] min-h-[300px] lg:h-[72vh]'}>
+          <div className={animated ? 'relative -mx-4 h-[300px] max-[380px]:h-[260px] sm:mx-0 sm:h-[380px] lg:h-[60vh] lg:min-h-[320px]' : 'relative h-[46vh] min-h-[300px] lg:h-[72vh]'}>
             {!ready && (
               <div className={`absolute inset-0 grid place-items-center p-10 ${animated ? 'max-lg:p-4' : ''}`}>
                 <div className="h-full max-h-[420px] w-full max-w-[420px]">
@@ -248,10 +248,10 @@ export function StampHero() {
 
         <a
           href="#how"
-          className="group absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full whitespace-nowrap border border-blue/25 bg-white/90 py-2 ps-5 pe-2 text-[15px] font-bold text-blue shadow-soft backdrop-blur transition hover:bg-blue hover:text-white sm:text-base"
+          className="group absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-blue/25 bg-white/90 py-1.5 ps-4 pe-1.5 text-sm font-semibold whitespace-nowrap text-blue shadow-soft backdrop-blur transition hover:bg-blue hover:text-white sm:py-2 sm:ps-5 sm:pe-2 sm:text-base sm:font-bold"
         >
           איך זה עובד? גללו למטה
-          <span className="grid h-8 w-8 animate-bounce place-items-center rounded-full bg-blue text-white group-hover:bg-white group-hover:text-blue">
+          <span className="grid h-7 w-7 animate-bounce place-items-center rounded-full bg-blue sm:h-8 sm:w-8 text-white group-hover:bg-white group-hover:text-blue">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M6 9l6 6 6-6" />
             </svg>
