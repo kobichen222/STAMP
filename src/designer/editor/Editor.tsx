@@ -9,7 +9,7 @@ import { clearActiveDraft, setActiveDraft } from '@/lib/active-draft';
 import { addToCart } from '@/lib/cart-store';
 import { saveDesign } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
-import { lineInputFor, quoteLine } from '@/lib/pricing';
+import { lineInputFor, quoteLine, type AddonSelection } from '@/lib/pricing';
 import { autoFix, composeForProduction } from '../autofix';
 import { composeLayout, improveLayout, newDesign } from '../compose';
 import { formatSize } from '../models';
@@ -178,6 +178,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   const [preview, setPreview] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [qty, setQty] = useState(initialQty);
+  const [addons, setAddons] = useState<AddonSelection>({});
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'offline'>('saved');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [resumeBar, setResumeBar] = useState(!!resumed);
@@ -220,7 +221,11 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   }, [issues]);
 
   const hasLogo = design.elements.some((e) => e.type === 'image');
-  const quote = quoteLine(lineInputFor({ basePrice: product.price, quantity: qty, design, ink: design.inkColor, body: bodyColor }));
+  const quote = quoteLine(lineInputFor({ basePrice: product.price, quantity: qty, design, ink: design.inkColor, body: bodyColor, addons }));
+  // Professional stamps (lawyers, accountants, notaries) are offered the "נאמן למקור" stamp.
+  const proStamp = /עורך|עו״ד|עו"ד|רו״ח|רו"ח|רואה חשבון|נוטריון|עורכת/.test(
+    `${product.title} ${design.elements.map((e) => (e.type === 'text' ? e.text : '')).join(' ')}`,
+  );
 
   const toast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -447,6 +452,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
       quantity: qty,
       unitPrice: product.price,
       designId,
+      addons: Object.values(addons).some(Boolean) ? addons : undefined,
     });
     clearActiveDraft(); // done – the next stamp starts fresh
     router.push('/cart/?added=1');
@@ -848,6 +854,10 @@ export function Editor({ product, products, initialDesign, designId, templateId,
             ink={design.inkColor}
             onInk={(ink) => actions.set({ ...design, inkColor: ink })}
             total={quote.total}
+            lines={quote.lines}
+            addons={addons}
+            onAddons={setAddons}
+            pro={proStamp}
             onRequest={quote.onRequest}
             onFix={fixAll}
             onConfirm={confirmAdd}

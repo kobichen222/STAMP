@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { formatPrice } from '@/lib/format';
+import { ADDONS, type AddonSelection, type PriceLine } from '@/lib/pricing';
 import { formatSize } from '../models';
 import type { RenderResult } from '../render';
 import { INK_COLORS, type InkColor } from '../types';
@@ -20,6 +21,10 @@ export function AddToCartModal({
   ink,
   onInk,
   total,
+  lines,
+  addons,
+  onAddons,
+  pro,
   onRequest,
   onFix,
   onConfirm,
@@ -33,6 +38,10 @@ export function AddToCartModal({
   ink: InkColor;
   onInk: (i: InkColor) => void;
   total: number;
+  lines: PriceLine[];
+  addons: AddonSelection;
+  onAddons: (a: AddonSelection) => void;
+  pro: boolean;
   onRequest: boolean;
   onFix: () => void;
   onConfirm: () => void;
@@ -61,7 +70,7 @@ export function AddToCartModal({
           </button>
         </div>
         <div className="mt-4 grid place-items-center rounded-xl bg-[#fdfcf8] p-5">
-          <InkImpression render={render} ink={ink} className="max-h-48 w-full" />
+          <InkImpression render={render} ink={ink} soft className="max-h-48 w-full" />
         </div>
         <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
           <dt className="text-muted">מוצר</dt>
@@ -85,6 +94,54 @@ export function AddToCartModal({
             </button>
           </dd>
         </dl>
+        {!onRequest && (
+          <section className="mt-5" aria-labelledby="addons-title">
+            <h3 id="addons-title" className="text-sm font-bold">
+              מוצרים נוספים
+            </h3>
+            <ul className="mt-2 space-y-2">
+              {ADDONS.filter((a) => !a.pro || pro).map((a) => {
+                const n = addons[a.id] ?? 0;
+                const price = a.pctOfUnit ? '10% הנחה' : formatPrice(a.price ?? 0);
+                return (
+                  <li key={a.id} className={`flex items-center gap-3 rounded-xl border p-3 transition ${n ? 'border-blue bg-blue-50/60' : 'border-line'}`}>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">
+                        {a.label} <span className="font-normal text-blue">· {price}</span>
+                      </p>
+                      <p className="text-xs text-muted">{a.description}</p>
+                    </div>
+                    {n ? (
+                      <div className="flex items-center gap-1.5">
+                        <button type="button" className="btn-outline !h-7 !w-7 !p-0" aria-label={`הפחתת ${a.label}`} onClick={() => onAddons({ ...addons, [a.id]: n - 1 })}>
+                          −
+                        </button>
+                        <span className="w-5 text-center text-sm font-semibold">{n}</span>
+                        <button type="button" className="btn-outline !h-7 !w-7 !p-0" aria-label={`הוספת ${a.label}`} onClick={() => onAddons({ ...addons, [a.id]: n + 1 })}>
+                          +
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" className="btn-outline btn-sm shrink-0" onClick={() => onAddons({ ...addons, [a.id]: 1 })}>
+                        <Icon name="plus" size={15} /> הוספה
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+        {!onRequest && lines.length > 1 && (
+          <dl className="mt-4 space-y-1 rounded-xl bg-surface p-3 text-sm">
+            {lines.map((l, i) => (
+              <div key={i} className="flex justify-between gap-3">
+                <dt className={l.amount < 0 ? 'text-ok' : 'text-ink-2'}>{l.label}</dt>
+                <dd className={`tabular-nums ${l.amount < 0 ? 'text-ok' : ''}`}>{l.amount < 0 ? `−${formatPrice(-l.amount)}` : formatPrice(l.amount)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
         <ul className="mt-5 space-y-1.5 rounded-xl bg-surface p-4 text-sm">
           {checks.map((c) => (
             <li key={c.label} className={`flex items-center gap-2 ${c.ok ? 'text-ok' : 'text-bad'}`}>

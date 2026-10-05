@@ -8,21 +8,34 @@ import { INK_COLORS, type InkColor } from '../types';
 
 type Tab = 'paper' | 'file' | 'product';
 
-export function InkImpression({ render, ink, className, rough = true }: { render: RenderResult; ink: InkColor; className?: string; rough?: boolean }) {
+export function InkImpression({
+  render,
+  ink,
+  className,
+  rough = true,
+  soft = false,
+}: {
+  render: RenderResult;
+  ink: InkColor;
+  className?: string;
+  rough?: boolean;
+  /** A light paper texture that keeps every letter crisp (order summary). */
+  soft?: boolean;
+}) {
   const pad = 2;
-  const id = `ink-${ink}`;
+  const id = `ink-${ink}${soft ? '-soft' : ''}`;
   return (
     <svg viewBox={`${-pad} ${-pad} ${render.width + 2 * pad} ${render.height + 2 * pad}`} className={className} aria-label="טביעת החותמת על נייר">
       <defs>
         <filter id={id} x="-5%" y="-5%" width="110%" height="110%">
           <feTurbulence type="fractalNoise" baseFrequency="2.2" numOctaves="2" seed="3" result="noise" />
-          <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.55" result="speckle" />
+          <feColorMatrix in="noise" type="matrix" values={soft ? '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.7 1.45' : '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.55'} result="speckle" />
           <feComposite in="SourceGraphic" in2="speckle" operator="in" result="inked" />
           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="8" result="warp" />
-          <feDisplacementMap in="inked" in2="warp" scale="0.12" xChannelSelector="R" yChannelSelector="G" />
+          <feDisplacementMap in="inked" in2="warp" scale={soft ? 0.03 : 0.12} xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </defs>
-      <g fill={INK_COLORS[ink].hex} filter={rough ? `url(#${id})` : undefined} opacity={0.92}>
+      <g fill={INK_COLORS[ink].hex} filter={rough ? `url(#${id})` : undefined} opacity={soft ? 1 : 0.92}>
         {render.items.map((it, i) =>
           it.kind === 'path' ? (
             <path key={i} d={toSvgD(it.path)} fillRule={it.fillRule} />

@@ -9,7 +9,7 @@ import { INK_COLORS } from '@/designer/types';
 import { removeCartItem, updateCartItem, duplicateCartItem, useCart, type CartItem } from '@/lib/cart-store';
 import { saveDesign } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
-import { lineInputFor, quoteCart, quoteLine } from '@/lib/pricing';
+import { ADDONS, lineInputFor, quoteCart, quoteLine } from '@/lib/pricing';
 
 export function CartView() {
   const items = useCart();
@@ -57,6 +57,11 @@ export function CartView() {
                     {i.size} · דיו {INK_COLORS[i.ink].label}
                     {i.bodyColor ? ` · גוף ${i.bodyColor}` : ''}
                   </p>
+                  {i.addons && Object.values(i.addons).some(Boolean) && (
+                    <p className="mt-1 text-sm text-blue">
+                      + {ADDONS.filter((a) => i.addons?.[a.id]).map((a) => `${a.label}${(i.addons?.[a.id] ?? 0) > 1 ? ` × ${i.addons?.[a.id]}` : ''}`).join(' · ')}
+                    </p>
+                  )}
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                     <button type="button" className="btn-ghost btn-sm" onClick={() => edit(i)}>
                       <Icon name="text" size={15} /> עריכה
