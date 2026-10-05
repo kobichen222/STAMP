@@ -28,7 +28,8 @@ type Action =
   | { type: 'begin' }
   | { type: 'commit' }
   | { type: 'undo' }
-  | { type: 'redo' };
+  | { type: 'redo' }
+  | { type: 'reset'; design: Design };
 
 function pushPast(state: EditorState, prev: Design): Pick<EditorState, 'past' | 'future'> {
   return { past: [...state.past, prev].slice(-MAX_HISTORY), future: [] };
@@ -84,6 +85,9 @@ function reducer(state: EditorState, a: Action): EditorState {
       const prev = state.past[state.past.length - 1];
       return { ...state, design: prev, past: state.past.slice(0, -1), future: [state.design, ...state.future], txn: null, revision: state.revision + 1, selection: state.selection.filter((id) => prev.elements.some((e) => e.id === id)) };
     }
+    case 'reset':
+      // A new starting point (e.g. another stamp size): history from the old size no longer applies.
+      return { ...state, design: a.design, selection: [], past: [], future: [], txn: null, revision: state.revision + 1 };
     case 'redo': {
       if (!state.future.length) return state;
       const next = state.future[0];
@@ -114,6 +118,7 @@ export function useEditorStore(initial: Design) {
       commit: () => dispatch({ type: 'commit' }),
       undo: () => dispatch({ type: 'undo' }),
       redo: () => dispatch({ type: 'redo' }),
+      reset: (design: Design) => dispatch({ type: 'reset', design }),
     }),
     [set, patch],
   );

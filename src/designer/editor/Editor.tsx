@@ -11,7 +11,7 @@ import { saveDesign } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
 import { lineInputFor, quoteLine, type AddonSelection } from '@/lib/pricing';
 import { autoFix, composeForProduction } from '../autofix';
-import { composeLayout, improveLayout, newDesign } from '../compose';
+import { composeLayout, contentOf, improveLayout, newDesign } from '../compose';
 import { formatSize } from '../models';
 import { profileForModel } from '../profiles';
 import { renderDesign } from '../render';
@@ -32,7 +32,7 @@ import { Onboarding } from './Onboarding';
 import { PreflightBadge } from './PreflightBadge';
 import { PreviewMode } from './PreviewMode';
 import { SettingsPanel } from './SettingsPanel';
-import { ElementsPanel, FramesPanel, IconsPanel, LayersPanel, LogoPanel, ShapesPanel, TemplatesPanel, TextPanel } from './panels';
+import { ElementsPanel, FramesPanel, IconsPanel, LayersPanel, LogoPanel, ShapesPanel, TemplatesPanel, TextDock, TextPanel } from './panels';
 import { useEditorStore } from './store';
 
 export interface DesignerProduct {
@@ -148,8 +148,10 @@ export interface EditorProps {
   resumed?: boolean;
 }
 
-export function Editor({ product, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice, resumed }: EditorProps) {
+export function Editor({ product: initialProduct, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice, resumed }: EditorProps) {
   const router = useRouter();
+  // Product / size changes happen in place – the customer stays in the editor with their design.
+  const [product, setProduct] = useState(initialProduct);
   const model = product.model;
   const profile = useMemo(() => profileForModel(model), [model]);
 
@@ -164,7 +166,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   const { state, actions, selected, canUndo, canRedo } = useEditorStore(initial);
   const design = state.design;
   const templateFitted = useRef(false);
-  const [panel, setPanel] = useState<PanelId | null>(initialDesign || templateId ? 'text' : startWithUpload ? 'logo' : 'templates');
+  const [panel, setPanel] = useState<PanelId | null>(initialDesign ? 'text' : startWithUpload ? 'logo' : 'templates');
   const [panelOpen, setPanelOpen] = useState(true);
   const [sheet, setSheet] = useState<'closed' | 'half' | 'full'>('closed');
   const [advanced, setAdvanced] = useState(false);
@@ -191,6 +193,23 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   const [readyFile, setReadyFile] = useState(!!startWithUpload);
   const [exitAsk, setExitAsk] = useState(false);
   const [firstDragDone, setFirstDragDone] = useState(true);
+  // "Click to edit" stays until the customer selects something for the first time.
+  const [everSelected, setEverSelected] = useState(false);
+  // The side panel glows on a customer's first visit so it reads as "the next step".
+  const [panelGlow, setPanelGlow] = useState(false);
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem('s2g-panel-seen')) {
+        setPanelGlow(true);
+        localStorage.setItem('s2g-panel-seen', '1');
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    if (state.selection.length) setEverSelected(true);
+  }, [state.selection.length]);
   const [focusTextId, setFocusTextId] = useState<string | null>(null);
   const [autoFit, setAutoFit] = useState(true);
   const [dragH, setDragH] = useState<number | null>(null);
@@ -330,7 +349,8 @@ export function Editor({ product, products, initialDesign, designId, templateId,
     if (selected.length !== 1) return;
     const t = selected[0].type;
     setPanel((p) => {
-      if (t === 'text') return 'text';
+      // Desktop edits text in the bar under the stamp – the side panel (templates) stays put.
+      if (t === 'text') return isMobile ? 'text' : p;
       if (t === 'image') return 'logo';
       if (t === 'shape') return isMobile ? 'elements' : (selected[0] as { kind: string }).kind === 'icon' ? 'icons' : 'shapes';
       return p;
@@ -386,11 +406,62 @@ export function Editor({ product, products, initialDesign, designId, templateId,
     toast('תיקנו את מה שאפשר אוטומטית');
   };
 
+  // ---------------------------------------------------------------- "back" = one step back inside the design
+  const startedEmpty = useRef(!initialDesign && !templateId && !startWithUpload);
+  const stepBackRef = useRef<() => void>(() => undefined);
+  stepBackRef.current = () => {
+    if (cartOpen) return setCartOpen(false);
+    if (preview) return setPreview(false);
+    const prev = state.past[state.past.length - 1];
+    if (canUndo && !(startedEmpty.current && prev && prev.elements.length === 0)) {
+      actions.undo();
+      toast('חזרנו צעד אחד אחורה');
+      return;
+    }
+    if (startedEmpty.current && (!showEmpty || design.elements.length > 0)) {
+      // Back to "how do you want to start?"
+      actions.reset({ ...newDesign(model), inkColor: design.inkColor });
+      setShowEmpty(true);
+      if (isMobile) setSheet('closed');
+      else openPanel('templates');
+      return;
+    }
+    setExitAsk(true);
+  };
+  // The browser / phone back button steps back inside the editor too, instead of leaving the page.
+  const editorUrl = useRef('');
+  useEffect(() => {
+    editorUrl.current = window.location.href;
+    window.history.pushState({ s2gEditor: true }, '');
+    const onPop = () => {
+      window.history.pushState({ s2gEditor: true }, '', editorUrl.current);
+      stepBackRef.current();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  /** Leave the editor for real (skips the in-editor history guard). */
+  const leave = (href: string) => {
+    setExitAsk(false);
+    router.push(href);
+  };
+
   const changeProduct = (slug: string) => {
-    // Keep the work: save now and carry this design over to the new product.
-    const hasWork = design.elements.length > 0;
-    if (hasWork) persist(true);
-    router.push(`/designer/${slug}/?${hasWork ? `design=${designId}&` : ''}ink=${design.inkColor}&qty=${qty}`);
+    const next = products.find((p) => p.slug === slug);
+    if (!next || next.slug === product.slug) return;
+    // Keep the work: the same content is re-laid out for the new size, right here.
+    if (design.elements.length > 0) {
+      const style = design.border.style === 'none' ? 'modern' : design.border.style === 'minimal' ? 'minimal' : 'classic';
+      const { design: d } = composeForProduction(next.model, contentOf(design), style, resolve, profileForModel(next.model));
+      actions.reset({ ...d, inkColor: design.inkColor });
+    } else actions.reset({ ...newDesign(next.model), inkColor: design.inkColor });
+    setProduct(next);
+    setAutoFit(true);
+    setFitSignal((s) => s + 1);
+    const url = `/designer/${next.slug}/?design=${designId}&ink=${design.inkColor}&qty=${qty}`;
+    window.history.replaceState(window.history.state, '', url);
+    editorUrl.current = new URL(url, window.location.origin).href;
+    toast(`עברתם ל${next.title} – העיצוב הותאם למידה החדשה`);
   };
 
   const ctx: EditorContextValue = {
@@ -459,6 +530,8 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   };
 
   const visiblePanels = PANELS.filter((p) => advanced || !p.advanced);
+  // Desktop: the selected text is edited in a bar under the stamp (unless the full text panel is open).
+  const textDock = !isMobile && selected.length === 1 && selected[0].type === 'text' && !(panelOpen && panel === 'text');
   const activePanel = PANELS.find((p) => p.id === panel);
   const elementsCount = design.elements.filter((e) => !e.hidden).length;
   const isEmpty = issues.some((i) => i.code === 'empty');
@@ -481,7 +554,10 @@ export function Editor({ product, products, initialDesign, designId, templateId,
           <button type="button" onClick={() => setExitAsk(true)} className="hidden items-center sm:flex" aria-label="יציאה מהעורך">
             <Logo size="sm" />
           </button>
-          <IconButton icon="arrowRight" label="חזרה" onClick={() => setExitAsk(true)} className="sm:hidden" />
+          <button type="button" onClick={() => stepBackRef.current()} className="flex h-10 items-center gap-1 rounded-full px-2.5 text-sm font-semibold text-ink-2 hover:bg-surface sm:order-none" aria-label="חזרה צעד אחד אחורה">
+            <Icon name="arrowRight" size={18} />
+            <span className="hidden sm:inline">חזרה</span>
+          </button>
           <span className="mx-1 hidden h-6 w-px bg-line sm:block" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{product.title}</p>
@@ -534,7 +610,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
 
         <div className="relative flex min-h-0 flex-1">
           {/* ------------------------------------------------ desktop rail + panel (right side in RTL) */}
-          <nav className="hidden w-[76px] shrink-0 flex-col items-stretch gap-1 border-l border-line bg-white py-2 lg:flex" aria-label="כלים">
+          <nav className="hidden w-[84px] shrink-0 flex-col items-stretch gap-1 border-l border-line bg-white py-2 lg:flex" aria-label="כלים">
             {visiblePanels.map((p) => (
               <button
                 key={p.id}
@@ -547,9 +623,9 @@ export function Editor({ product, products, initialDesign, designId, templateId,
                   }
                 }}
                 aria-pressed={panel === p.id && panelOpen}
-                className={`mx-1.5 flex flex-col items-center gap-1 rounded-xl py-2.5 text-[11px] transition ${panel === p.id && panelOpen ? 'bg-blue-50 text-blue' : 'text-ink-2 hover:bg-surface'}`}
+                className={`mx-1.5 flex flex-col items-center gap-1 rounded-xl py-2.5 text-[13px] font-medium transition ${panel === p.id && panelOpen ? 'bg-blue-50 font-bold text-blue' : 'text-ink-2 hover:bg-surface'}`}
               >
-                <Icon name={p.icon} size={21} />
+                <Icon name={p.icon} size={24} />
                 {p.label}
               </button>
             ))}
@@ -567,9 +643,9 @@ export function Editor({ product, products, initialDesign, designId, templateId,
           </nav>
 
           {panelOpen && panel && (
-            <aside className="hidden w-[320px] shrink-0 flex-col border-l border-line bg-white lg:flex" aria-label={activePanel?.label}>
-              <div className="flex h-12 items-center justify-between border-b border-line px-4">
-                <h2 className="text-sm font-semibold">{activePanel?.label}</h2>
+            <aside className={`relative z-[1] hidden w-[360px] shrink-0 flex-col border-l border-line bg-white text-[15px] lg:flex ${panelGlow ? 'attention-pulse' : ''}`} aria-label={activePanel?.label}>
+              <div className="flex h-14 items-center justify-between border-b border-line px-4">
+                <h2 className="text-lg font-bold">{activePanel?.label}</h2>
                 <IconButton icon="chevronLeft" label="סגירת הפאנל" onClick={() => setPanelOpen(false)} />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
@@ -615,8 +691,9 @@ export function Editor({ product, products, initialDesign, designId, templateId,
                 onFirstDrag={dismissDragTip}
               />
             </div>
+            {textDock && <TextDock onClose={() => actions.select([])} />}
             {/* Mobile: the open panel already holds every action – the bar only appears with the panel closed. */}
-            {selected.length > 0 && (isMobile ? sheet === 'closed' && <MobileEditBar /> : <FloatingToolbar />)}
+            {selected.length > 0 && (isMobile ? sheet === 'closed' && <MobileEditBar /> : !textDock && <FloatingToolbar />)}
             {resumeBar && (
               <div role="status" className="absolute inset-x-3 top-16 z-30 mx-auto flex w-fit max-w-full animate-fade-up items-center gap-2 rounded-2xl border border-blue/20 bg-white/95 py-1.5 ps-3 pe-1.5 text-sm shadow-lift backdrop-blur lg:top-3">
                 <Icon name="history" size={16} className="shrink-0 text-blue" />
@@ -659,10 +736,31 @@ export function Editor({ product, products, initialDesign, designId, templateId,
                 <Icon name="fit" size={15} /> התאמה למסך
               </button>
             )}
-            {!firstDragDone && design.elements.length > 0 && (
+            {!firstDragDone && !toastMsg && design.elements.length > 0 && !(selected.length === 1 && selected[0].type === 'text' && !isMobile) && (
               <div className="pointer-events-none absolute bottom-5 left-1/2 w-max max-w-[90%] -translate-x-1/2 animate-fade-up rounded-full bg-ink px-4 py-2 text-center text-sm text-white shadow-lift">
-                {isMobile ? 'הקישו על אלמנט כדי לבחור · אחר כך גררו אותו או השתמשו בחיצים' : 'גררו אלמנטים כדי למקם אותם · לחיצה כפולה לעריכת טקסט'}
+                {isMobile ? 'הקישו על אלמנט כדי לבחור · אחר כך גררו אותו או השתמשו בחיצים' : 'לחצו על טקסט כדי לערוך אותו · גררו כדי להזיז'}
               </div>
+            )}
+            {!everSelected && !showEmpty && ready && design.elements.some((e) => e.type === 'text') && (
+              <button
+                type="button"
+                onClick={() => {
+                  const first = design.elements.find((e) => e.type === 'text');
+                  if (!first) return;
+                  actions.select([first.id]);
+                  if (isMobile) {
+                    setPanel('text');
+                    setSheet('half');
+                  }
+                  setFocusTextId(first.id);
+                }}
+                className={`attention-pulse absolute ${resumeBar ? 'top-20' : 'top-4'} left-1/2 z-20 flex -translate-x-1/2 animate-fade-up items-center gap-2 rounded-full bg-blue px-4 py-2 text-[15px] font-bold text-white shadow-lift`}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />
+                </svg>
+                {isMobile ? 'הקישו על הטקסט כדי לערוך' : 'לחצו על הטקסט כדי לערוך'}
+              </button>
             )}
             {showEmpty && design.elements.length === 0 && (
               <EmptyState
@@ -673,7 +771,20 @@ export function Editor({ product, products, initialDesign, designId, templateId,
                 }}
                 onBlank={() => {
                   setShowEmpty(false);
-                  openPanel('text');
+                  // Never a blank white stamp: start with sample lines the customer simply types over.
+                  const n = Math.max(1, Math.min(3, model.maxLines ?? 3));
+                  const content =
+                    model.shape === 'round'
+                      ? { arcTop: 'ישראל ישראלי', arcBottom: 'עיר', lines: ['טל׳ 050-1234567'] }
+                      : { lines: ['ישראל ישראלי', 'רחוב הרצל 1, תל אביב', 'טל׳ 050-1234567'].slice(0, n) };
+                  const { design: d } = composeForProduction(model, content, 'classic', resolve, profile);
+                  actions.set({ ...d, inkColor: design.inkColor });
+                  const first = d.elements.find((e) => e.type === 'text');
+                  if (isMobile) openPanel('text');
+                  if (first) {
+                    actions.select([first.id]);
+                    setFocusTextId(first.id);
+                  }
                 }}
                 onUpload={() => {
                   setShowEmpty(false);
@@ -875,7 +986,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
                 <Link href="/account/#designs" className="btn-primary">
                   שמירה ומעבר לעיצובים שלי
                 </Link>
-                <button type="button" className="btn-outline" onClick={() => router.push(`/stamp/${product.slug}/`)}>
+                <button type="button" className="btn-outline" onClick={() => leave(`/stamp/${product.slug}/`)}>
                   יציאה
                 </button>
                 <button type="button" className="btn-ghost" onClick={() => setExitAsk(false)}>
@@ -885,7 +996,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
             </div>
           </div>
         )}
-        <Onboarding paused={showEmpty && design.elements.length === 0} />
+        <Onboarding paused={(showEmpty && design.elements.length === 0) || textDock} />
         <ProductSwitcherHost products={products} current={product.slug} onChange={changeProduct} />
       </div>
     </EditorContext.Provider>

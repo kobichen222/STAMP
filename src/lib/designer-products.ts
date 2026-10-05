@@ -11,5 +11,5 @@ export function designerProducts(): DesignerProduct[] {
     .filter((x): x is DesignerProduct => !!x);
 }
 
-export const DEFAULT_RECT = 'חותמת-פרינט-40';
+export const DEFAULT_RECT = 'חותמת-פרינט-20';
 export const DEFAULT_ROUND = 'print-r-540';

@@ -153,7 +153,7 @@ export function SettingsPanel() {
             </option>
           ))}
         </select>
-        <p className="mt-1.5 text-xs text-muted">החלפת מוצר פותחת עיצוב חדש במידות המוצר. העיצוב הנוכחי נשמר ב״העיצובים שלי״.</p>
+        <p className="mt-1.5 text-xs text-muted">העיצוב שלכם עובר למוצר החדש ומותאם אוטומטית למידה שלו.</p>
       </Section>
       <Section title="צבע דיו">
         <div className="flex flex-wrap gap-2">

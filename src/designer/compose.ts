@@ -230,7 +230,7 @@ export function composeLayout(model: StampModel, content: LayoutContent, style: 
 
 /** Keeps the user's text and logo but recomputes a clean layout ("שפר את הסידור"). */
 /** The customer's content (text, arcs, logo, font) pulled out of a design. */
-function contentOf(design: Design): LayoutContent {
+export function contentOf(design: Design): LayoutContent {
   const texts = design.elements
     .filter((e): e is TextElement => e.type === 'text' && !e.hidden && !!e.text.trim())
     .sort((a, b) => a.y - b.y);

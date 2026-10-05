@@ -139,3 +139,6 @@ export function sampleLogo(id: keyof typeof RAW | string): ImageElement {
     source: { name: `לוגו לדוגמה – ${raw.label}`, mime: 'image/svg+xml', pxWidth: 24, pxHeight: 24, isVector: true },
   };
 }
+
+/** True for a template's placeholder logo (not something the customer uploaded). */
+export const isSampleLogo = (el: { id: string; source?: { name?: string } }) => el.id.startsWith('img-sample-') || !!el.source?.name?.startsWith('לוגו לדוגמה');

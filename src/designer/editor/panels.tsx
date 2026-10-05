@@ -8,6 +8,7 @@ import { ICONS } from '../icons';
 import { DEFAULT_PROCESS, LogoError, loadLogoFile, logoQualityFromPixels, processLogo, vectorize, type LoadedLogo, type ProcessOptions } from '../logo';
 import { renderDesign } from '../render';
 import { StampSvg } from '../StampSvg';
+import { isSampleLogo } from '../sampleLogos';
 import { TEMPLATE_CATEGORIES, TEMPLATES, type StampTemplate } from '../templates';
 import type { BorderStyle, Design, ImageElement, ShapeElement, TextElement } from '../types';
 import { PT_TO_MM } from '../types';
@@ -39,7 +40,8 @@ export function TemplatesPanel() {
   );
 
   const apply = (t: StampTemplate) => {
-    const logo = design.elements.find((e): e is ImageElement => e.type === 'image') ?? null;
+    // Only a logo the customer added is carried over – a previous template's sample logo is not.
+    const logo = design.elements.find((e): e is ImageElement => e.type === 'image' && !isSampleLogo(e)) ?? null;
     // The customer's own logo wins; otherwise the template's sample logo is used.
     const { design: next, dropped } = composeForProduction(model, { ...t.content, logo: t.withLogo ? (logo ?? t.content.logo ?? null) : null }, t.style, resolveFace, profile);
     actions.set({
@@ -61,14 +63,14 @@ export function TemplatesPanel() {
       <Section>
         <label className="relative block">
           <Icon name="search" size={16} className="absolute top-1/2 right-3 -translate-y-1/2 text-muted" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש תבנית" className="input !py-2 !pr-9 text-sm" aria-label="חיפוש תבנית" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש תבנית" className="input !py-2.5 !pr-9 text-[15px]" aria-label="חיפוש תבנית" />
         </label>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <button type="button" className={`chip !px-2.5 !py-1 !text-xs ${cat === 'all' ? 'chip-on' : ''}`} onClick={() => setCat('all')}>
+          <button type="button" className={`chip !px-3 !py-1.5 !text-sm ${cat === 'all' ? 'chip-on' : ''}`} onClick={() => setCat('all')}>
             הכול
           </button>
           {TEMPLATE_CATEGORIES.map((c) => (
-            <button key={c.id} type="button" className={`chip !px-2.5 !py-1 !text-xs ${cat === c.id ? 'chip-on' : ''}`} onClick={() => setCat(c.id)}>
+            <button key={c.id} type="button" className={`chip !px-3 !py-1.5 !text-sm ${cat === c.id ? 'chip-on' : ''}`} onClick={() => setCat(c.id)}>
               {c.label}
             </button>
           ))}
@@ -80,8 +82,8 @@ export function TemplatesPanel() {
             <div className="grid aspect-[4/3] place-items-center rounded-lg bg-surface p-1.5">
               <TemplateThumb t={t} />
             </div>
-            <span className="mt-1.5 block truncate text-xs font-medium">{t.name}</span>
-            <span className="text-[11px] text-blue opacity-0 transition group-hover:opacity-100">החל תבנית</span>
+            <span className="mt-1.5 block truncate text-sm font-semibold">{t.name}</span>
+            <span className="text-xs font-medium text-blue opacity-0 transition group-hover:opacity-100">החל תבנית</span>
           </button>
         ))}
       </div>
@@ -93,6 +95,8 @@ export function TemplatesPanel() {
 
 const NEW_TEXT_FIRST = 'השם שלכם כאן';
 const NEW_TEXT_MORE = 'טקסט נוסף';
+/** Sample copy from templates / a new design – selected on focus so typing replaces it. */
+const SAMPLE_TEXT = /^(ישראל ישראלי|רחוב הרצל 1, תל אביב|טל׳ 050-1234567|עיר|השם שלכם כאן|שם העסק|שם החברה בע״מ)$/;
 
 function LinesEditor() {
   const { design, actions, selection, focusTextId, setFocusTextId, profile, render } = useEditor();
@@ -108,7 +112,7 @@ function LinesEditor() {
       el.focus({ preventScroll: true });
       el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       // Placeholder copy is selected so typing simply replaces it.
-      if (el.value === NEW_TEXT_FIRST || el.value === NEW_TEXT_MORE) el.select();
+      if (el.value === NEW_TEXT_FIRST || el.value === NEW_TEXT_MORE || SAMPLE_TEXT.test(el.value)) el.select();
       else el.setSelectionRange?.(el.value.length, el.value.length);
     }
     setFocusTextId(null);
@@ -932,5 +936,126 @@ export function LayersPanel() {
       </ul>
       {!design.elements.length && <p className="py-4 text-center text-sm text-muted">אין עדיין אלמנטים.</p>}
     </Section>
+  );
+}
+
+// ------------------------------------------------------------------ desktop text bar
+
+/**
+ * Desktop: editing the selected text happens in a bar under the stamp, so the
+ * side panel (templates) stays where it is. Clicking a text focuses its field.
+ */
+export function TextDock({ onClose }: { onClose: () => void }) {
+  const { design, selected, actions, profile, render } = useEditor();
+  const text = selected.length === 1 && selected[0].type === 'text' ? (selected[0] as TextElement) : null;
+  const ref = useRef<HTMLInputElement>(null);
+  const id = text?.id;
+
+  // Clicking a text on the stamp puts the cursor straight into its field.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    // The whole line is selected: typing replaces it, a click inside places the cursor.
+    el.select();
+  }, [id]);
+
+  if (!text) return null;
+  const up = (p: Partial<TextElement>, history = true) => actions.patch(text.id, p, history);
+  const eff = render?.info[text.id]?.effectiveSize;
+  const small = eff != null && eff < profile.minFontPt;
+  const step = (d: number) => up({ size: Math.max(4, Math.min(36, Math.round((text.size + d) * 2) / 2)) });
+
+  const addLine = () => {
+    const el = newText(design, NEW_TEXT_MORE, { font: text.font, size: Math.max(profile.minFontPt + 1, Math.round(text.size * 0.9)), align: text.align, x: text.x, y: text.y + 1, maxWidth: text.maxWidth });
+    actions.set(restackLines({ ...design, elements: [...design.elements, el] }));
+    actions.select([el.id]);
+  };
+
+  return (
+    <div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-w-[920px] animate-fade-up rounded-2xl border border-blue/25 bg-white/97 p-3 shadow-lift backdrop-blur" role="group" aria-label="עריכת הטקסט הנבחר">
+      <div className="flex items-center gap-2">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue">
+          <Icon name="text" size={20} />
+        </span>
+        {text.text.includes('\n') ? (
+          <textarea
+            value={text.text}
+            dir="auto"
+            rows={Math.min(3, text.text.split('\n').length)}
+            onFocus={actions.begin}
+            onBlur={actions.commit}
+            onChange={(e) => up({ text: e.target.value }, false)}
+            className="input min-w-0 flex-1 !py-2 text-[17px]"
+            aria-label="הטקסט"
+          />
+        ) : (
+          <input
+            ref={ref}
+            value={text.text}
+            dir="auto"
+            onFocus={actions.begin}
+            onBlur={actions.commit}
+            onChange={(e) => up({ text: e.target.value }, false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addLine();
+              }
+              if (e.key === 'Escape') onClose();
+            }}
+            placeholder="הקלידו כאן…"
+            className="input min-w-0 flex-1 !h-11 !py-2 text-[17px] font-medium"
+            aria-label="הטקסט"
+          />
+        )}
+        <button type="button" className="btn-outline btn-sm shrink-0" onClick={addLine} title="שורה חדשה (Enter)">
+          <Icon name="plus" size={16} /> שורה
+        </button>
+        <IconButton icon="trash" label="מחיקת הטקסט" onClick={() => actions.set(restackLines({ ...design, elements: design.elements.filter((e) => e.id !== text.id) }))} disabled={text.locked} />
+        <IconButton icon="close" label="סיום עריכה" onClick={onClose} />
+      </div>
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <select
+          value={text.font}
+          onChange={(e) => up({ font: e.target.value })}
+          className="input !h-9 !w-auto !py-1 text-sm"
+          aria-label="גופן"
+          style={{ fontFamily: FONT_FAMILIES.find((f) => f.id === text.font)?.css }}
+        >
+          {FONT_FAMILIES.map((f) => (
+            <option key={f.id} value={f.id} style={{ fontFamily: f.css }}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+        <div className="flex items-center rounded-full border border-line" role="group" aria-label="גודל טקסט">
+          <button type="button" className="grid h-9 w-9 place-items-center rounded-full hover:bg-surface" onClick={() => step(-0.5)} aria-label="הקטנת טקסט">
+            <Icon name="minus" size={15} />
+          </button>
+          <span className="w-14 text-center text-sm tabular-nums">{(eff ?? text.size).toFixed(1)}pt</span>
+          <button type="button" className="grid h-9 w-9 place-items-center rounded-full hover:bg-surface" onClick={() => step(0.5)} aria-label="הגדלת טקסט">
+            <Icon name="plus" size={15} />
+          </button>
+        </div>
+        <IconToggle icon="bold" label="מודגש" on={text.bold} onClick={() => up({ bold: !text.bold })} />
+        <IconToggle icon="italic" label="נטוי" on={!!text.italic} onClick={() => up({ italic: !text.italic })} />
+        <IconToggle icon="underline" label="קו תחתון" on={!!text.underline} onClick={() => up({ underline: !text.underline })} />
+        {!text.curve && (
+          <Segmented
+            label="יישור"
+            value={text.align}
+            onChange={(v) => up({ align: v })}
+            options={[
+              { value: 'right', icon: 'alignRight', title: 'ימין' },
+              { value: 'center', icon: 'alignCenter', title: 'מרכז' },
+              { value: 'left', icon: 'alignLeft', title: 'שמאל' },
+            ]}
+          />
+        )}
+        {small && <span className="text-xs font-medium text-bad">קטן מדי לייצור – הגדילו או קצרו</span>}
+        {!small && eff != null && eff < text.size - 0.05 && <span className="text-xs text-muted">הוקטן אוטומטית כדי להיכנס ברוחב</span>}
+      </div>
+    </div>
   );
 }
