@@ -24,7 +24,6 @@ const LINES = [
   { id: '4-5', label: '4–5', test: (n: number) => n >= 4 && n <= 5 },
   { id: '6+', label: '6+', test: (n: number) => n >= 6 },
 ];
-type Sort = 'recommended' | 'price-asc' | 'price-desc' | 'size';
 
 function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -39,12 +38,9 @@ export function CatalogBrowser({ products, initialSeries }: { products: ProductS
   const [shape, setShape] = useState<string[]>([]);
   const [size, setSize] = useState<string[]>([]);
   const [lines, setLines] = useState<string[]>([]);
-  const [maxPrice, setMaxPrice] = useState<number>(0);
   const [onlyDesignable, setOnlyDesignable] = useState(false);
-  const [sort, setSort] = useState<Sort>('recommended');
   const [open, setOpen] = useState(false);
 
-  const priceCap = useMemo(() => Math.max(0, ...products.map((p) => p.price ?? 0)), [products]);
   const flip = (list: string[], set: (v: string[]) => void, v: string) => set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
   const available = (key: 'series' | 'shape') => [...new Set(products.map((p) => p[key]).filter(Boolean) as string[])];
@@ -56,22 +52,17 @@ export function CatalogBrowser({ products, initialSeries }: { products: ProductS
         (!shape.length || (p.shape && shape.includes(p.shape))) &&
         (!size.length || (p.width != null && SIZES.filter((s) => size.includes(s.id)).some((s) => s.test(p.width!)))) &&
         (!lines.length || (p.maxLines != null && LINES.filter((l) => lines.includes(l.id)).some((l) => l.test(p.maxLines!)))) &&
-        (!maxPrice || (p.price != null && p.price <= maxPrice)) &&
         (!onlyDesignable || p.designable),
     );
-    if (sort === 'price-asc') list.sort((a, b) => (a.price ?? 1e9) - (b.price ?? 1e9));
-    if (sort === 'price-desc') list.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-    if (sort === 'size') list.sort((a, b) => (a.width ?? 0) * (a.height ?? 0) - (b.width ?? 0) * (b.height ?? 0));
     return list;
-  }, [products, series, shape, size, lines, maxPrice, onlyDesignable, sort]);
+  }, [products, series, shape, size, lines, onlyDesignable]);
 
-  const activeCount = series.length + shape.length + size.length + lines.length + (maxPrice ? 1 : 0) + (onlyDesignable ? 1 : 0);
+  const activeCount = series.length + shape.length + size.length + lines.length + (onlyDesignable ? 1 : 0);
   const reset = () => {
     setSeries([]);
     setShape([]);
     setSize([]);
     setLines([]);
-    setMaxPrice(0);
     setOnlyDesignable(false);
   };
 
@@ -121,14 +112,6 @@ export function CatalogBrowser({ products, initialSeries }: { products: ProductS
           ))}
         </div>
       </fieldset>
-      {priceCap > 0 && (
-        <label className="block">
-          <span className="mb-2 flex justify-between text-sm font-semibold">
-            מחיר עד <span className="font-normal text-muted">{maxPrice ? `₪${maxPrice}` : 'ללא הגבלה'}</span>
-          </span>
-          <input type="range" min={0} max={priceCap} step={10} value={maxPrice} onChange={(e) => setMaxPrice(+e.target.value)} className="w-full accent-blue" />
-        </label>
-      )}
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={onlyDesignable} onChange={(e) => setOnlyDesignable(e.target.checked)} className="h-4 w-4 accent-blue" />
         רק מוצרים לעיצוב אונליין
@@ -153,12 +136,6 @@ export function CatalogBrowser({ products, initialSeries }: { products: ProductS
             <button type="button" className="btn-outline btn-sm lg:hidden" onClick={() => setOpen(true)}>
               <Icon name="settings" size={16} /> סינון {activeCount > 0 && `(${activeCount})`}
             </button>
-            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="input !w-auto !py-1.5 text-sm" aria-label="מיון">
-              <option value="recommended">מומלץ</option>
-              <option value="price-asc">מחיר: מהנמוך</option>
-              <option value="price-desc">מחיר: מהגבוה</option>
-              <option value="size">מידה</option>
-            </select>
           </div>
         </div>
         {filtered.length ? (

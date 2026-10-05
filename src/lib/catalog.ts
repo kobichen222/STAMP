@@ -41,19 +41,39 @@ export function productsForCategory(cat: StampCategory): Product[] {
   });
 }
 
-/** The old page's editorial content, without its WooCommerce widgets. */
+/**
+ * The old page's editorial (SEO) text only: headings and paragraphs. Product
+ * grids, sample images, captions, buttons and repeated headings from the old
+ * WooCommerce layout are dropped – the live catalogue above replaces them.
+ */
 export function editorialBlocks(blocks: Block[]): Block[] {
-  const keep = (b: Block): Block | null => {
-    if (b.type === 'products' || b.type === 'form' || b.type === 'button' || b.type === 'divider') return null;
-    if (b.type === 'image' && /order-stamps\.png$/.test(b.image.src)) return null;
-    if (b.type === 'heading' && /כל מחירי החותמות כוללים/.test(b.text)) return null;
+  const out: Block[] = [];
+  const seen = new Set<string>();
+  const norm = (t: string) => t.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const visit = (b: Block, inGrid: boolean) => {
     if (b.type === 'section') {
-      const columns = b.columns.map((c) => ({ ...c, blocks: c.blocks.map(keep).filter((x): x is Block => !!x) })).filter((c) => c.blocks.length);
-      return columns.length ? { ...b, columns } : null;
+      // Several columns side by side were product / sample grids on the old site.
+      const grid = b.columns.length > 1;
+      for (const c of b.columns) for (const x of c.blocks) visit(x, inGrid || grid);
+      return;
     }
-    return b;
+    if (inGrid) return;
+    if (b.type === 'heading') {
+      const t = norm(b.text);
+      if (!t || seen.has(t) || /כל מחירי החותמות כוללים|לחצו כאן|דוגמ/.test(t)) return;
+      seen.add(t);
+      out.push({ ...b, href: undefined, level: Math.max(2, b.level) });
+    } else if (b.type === 'html') {
+      const t = norm(b.html);
+      // Real paragraphs only – not captions, prices or link lists.
+      if (t.length < 60 || seen.has(t) || /ש"ח|₪/.test(t) && t.length < 120) return;
+      seen.add(t);
+      out.push(b);
+    } else if (b.type === 'list' || b.type === 'accordion') out.push(b);
   };
-  return blocks.map(keep).filter((x): x is Block => !!x);
+  for (const b of blocks) visit(b, false);
+  // Drop headings that end up with no text under them.
+  return out.filter((b, i) => b.type !== 'heading' || (out[i + 1] && out[i + 1].type !== 'heading'));
 }
 
 // ---------------------------------------------------------------- product facets

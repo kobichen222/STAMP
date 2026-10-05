@@ -5,7 +5,7 @@ import { Blocks } from '@/components/Blocks';
 import { ProductCard } from '@/components/catalog/ProductCard';
 import { Breadcrumbs } from '@/components/site/Breadcrumbs';
 import { Icon } from '@/components/ui/Icon';
-import { ProductConfigurator, ProductVisual } from "@/components/catalog/ProductConfigurator";
+import { EditablePreview, ProductConfigurator, ProductVisual } from "@/components/catalog/ProductConfigurator";
 import { SITE } from '@/lib/config';
 import { CATEGORIES, editorialBlocks, productFacts, productsForCategory, SERIES_LABEL } from '@/lib/catalog';
 import { getProduct, site } from '@/lib/content';
@@ -78,7 +78,9 @@ export default async function ProductPage({ params }: Props) {
       </div>
       <div className="container-x grid gap-10 pb-16 lg:grid-cols-[1.15fr_1fr]">
         <div className="min-w-0">
-          <ProductVisual model={model} images={images} title={product.title} />
+          {/* The stamp body large; the impression gets its own, clearly editable card. */}
+          <ProductVisual model={images.length ? null : model} images={images} title={product.title} />
+          {model && images.length > 0 && <EditablePreview model={model} slug={product.slug} />}
         </div>
         <div>
           <p className="eyebrow">{SERIES_LABEL[facts.series]}</p>

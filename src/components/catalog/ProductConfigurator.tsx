@@ -253,3 +253,30 @@ export function ProductConfigurator({ slug, designable, price }: { slug: string;
   );
 }
 
+
+/**
+ * Big, obviously editable sample of the impression: the whole card opens the
+ * designer with this product.
+ */
+export function EditablePreview({ model, slug }: { model: StampModel; slug: string }) {
+  return (
+    <Link
+      href={`/designer/${slug}/`}
+      className="group relative mt-5 block rounded-3xl border-2 border-dashed border-blue/35 bg-gradient-to-b from-white to-blue-50/50 p-5 transition hover:border-blue hover:shadow-lift sm:p-7"
+      aria-label="לחצו כדי לעצב את החותמת שלכם"
+    >
+      <span className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-blue px-3 py-1.5 text-xs font-bold text-white shadow-soft">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />
+        </svg>
+        לחצו כדי לעצב
+      </span>
+      <div className={`mx-auto mt-6 ${model.shape === 'round' ? 'max-w-[300px]' : 'max-w-lg'} transition duration-300 group-hover:scale-[1.02]`} style={{ filter: 'drop-shadow(0 18px 30px rgb(11 20 38 / .1))' }}>
+        <Impression model={model} />
+      </div>
+      <p className="mt-4 text-center text-sm text-muted">
+        זו רק דוגמה – <span className="font-semibold text-blue group-hover:underline">מקלידים את הטקסט שלכם, מוסיפים לוגו ורואים את התוצאה מיד</span>
+      </p>
+    </Link>
+  );
+}
