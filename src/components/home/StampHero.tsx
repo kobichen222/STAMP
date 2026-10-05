@@ -199,17 +199,17 @@ export function StampHero() {
                 <span className="h-2.5 w-2.5 rounded-full bg-blue" aria-hidden /> משלוחים לכל הארץ
               </li>
             </ul>
-            <div className="mt-6 flex animate-fade-up flex-col gap-3 sm:mt-9 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="mt-5 flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-3 sm:mt-9">
               <Link
                 href="/designer/"
-                className="btn-primary cta-glow group !h-16 !rounded-2xl !px-9 !text-xl font-extrabold shadow-[0_18px_40px_-14px_rgba(36,87,255,.8)] sm:!h-[4.25rem] sm:!text-[1.35rem]"
+                className="btn-primary cta-glow group !h-12 !rounded-xl !px-6 !text-[17px] font-extrabold shadow-[0_14px_30px_-12px_rgba(36,87,255,.8)] sm:!h-[4.25rem] sm:!rounded-2xl sm:!px-9 sm:!text-[1.35rem]"
               >
                 עצבו חותמת עכשיו
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:-translate-x-1" aria-hidden>
                   <path d="M19 12H5M11 6l-6 6 6 6" />
                 </svg>
               </Link>
-              <Link href="/how-it-works/" className="text-center font-semibold text-blue underline-offset-4 hover:underline sm:px-3">
+              <Link href="/how-it-works/" className="font-semibold text-blue underline-offset-4 hover:underline sm:px-3">
                 איך זה עובד?
               </Link>
             </div>
