@@ -108,7 +108,7 @@ export function StampHero() {
         for (const pos of scene.labelPositions()) {
           const node = labels.querySelector<HTMLElement>(`[data-part="${pos.id}"]`);
           if (!node) continue;
-          node.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(0, -50%)`;
+          node.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-100%, -50%)`;
           node.style.opacity = String(pos.visible);
         }
       }
@@ -184,9 +184,9 @@ export function StampHero() {
       {/* Shorter than the screen on purpose: the next section peeks in, so it's clear the page goes on. */}
       <div className="relative flex items-start overflow-hidden bg-gradient-to-b from-white via-white to-surface lg:min-h-[calc(100dvh-12rem)]">
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
-        <div className={`container-x relative grid w-full gap-2 pt-[4.5rem] pb-16 lg:grid-cols-2 lg:items-center lg:gap-6 lg:pt-28 lg:pb-16 ${animated ? 'content-start' : ''}`}>
-          <div ref={introRef} className="relative z-10 max-w-xl will-change-transform">
-            <h1 className="animate-fade-up text-[1.85rem] leading-[1.15] font-extrabold max-[360px]:text-[1.65rem] sm:text-5xl lg:text-[3.4rem] lg:leading-[1.1] xl:text-6xl">
+        <div className={`container-x relative grid w-full gap-2 pt-[4.5rem] pb-16 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:gap-6 lg:pt-28 lg:pb-16 ${animated ? 'content-start' : ''}`}>
+          <div ref={introRef} className="relative z-10 max-w-xl will-change-transform lg:max-w-2xl">
+            <h1 className="animate-fade-up text-[1.85rem] leading-[1.15] font-extrabold max-[360px]:text-[1.65rem] sm:text-5xl lg:text-[2.6rem] lg:leading-[1.15] xl:text-[2.9rem]">
               מעצבים חותמת אונליין,
               <br />
               <span className="grad-text">החותמת מוכנה תוך&nbsp;2&nbsp;דקות.</span>
@@ -238,7 +238,7 @@ export function StampHero() {
                   data-part={l.id}
                   className="absolute top-0 left-0 flex items-center gap-2 text-[13px] font-medium whitespace-nowrap text-ink-2 opacity-0"
                 >
-                  <span className="h-px w-8 bg-ink/30" />
+                  <span className="h-px w-10 bg-ink/25" />
                   <span className="rounded-full border border-line bg-white/90 px-2.5 py-1 shadow-soft backdrop-blur">{l.text}</span>
                 </span>
               ))}

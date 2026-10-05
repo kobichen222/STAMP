@@ -216,16 +216,48 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   };
   const rbox = (w: number, h: number, d: number, r: number, mat: THREE.Material) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, RS, r), mat);
 
-  // Handle: ergonomic knob with a coloured ink-indicator insert and a neck.
+  // Handle: COLOP-style cap – as wide as the housing, gently domed top, sides
+  // tapering slightly towards the frame, with a recessed front label panel.
   const handle = new THREE.Group();
-  const knob = rbox(W * 0.82, 0.72, D * 1.04, 0.3, navy);
-  handle.add(knob);
-  const insert = rbox(W * 0.46, 0.08, D * 0.52, 0.035, blue);
-  insert.position.y = 0.36;
+  const capH = 0.92;
+  const capProfile = (() => {
+    const sh = new THREE.Shape();
+    const bw = W * 1.0; // bottom width
+    const tw = W * 0.9; // top width
+    const r = 0.16;
+    const y0 = -capH / 2;
+    const y1 = capH / 2;
+    sh.moveTo(-bw / 2 + r, y0);
+    sh.lineTo(bw / 2 - r, y0);
+    sh.quadraticCurveTo(bw / 2, y0, bw / 2, y0 + r);
+    sh.lineTo(tw / 2, y1 - 0.22);
+    sh.quadraticCurveTo(tw / 2, y1 - 0.02, tw / 2 - 0.25, y1);
+    // Domed top edge.
+    sh.quadraticCurveTo(0, y1 + 0.2, -tw / 2 + 0.25, y1);
+    sh.quadraticCurveTo(-tw / 2, y1 - 0.02, -tw / 2, y1 - 0.22);
+    sh.lineTo(-bw / 2, y0 + r);
+    sh.quadraticCurveTo(-bw / 2, y0, -bw / 2 + r, y0);
+    return sh;
+  })();
+  const capDepth = D * 1.02;
+  const capGeo = new THREE.ExtrudeGeometry(capProfile, {
+    depth: capDepth - 0.16,
+    bevelEnabled: true,
+    bevelThickness: 0.08,
+    bevelSize: 0.08,
+    bevelSegments: opts.lowPower ? 2 : 5,
+    curveSegments: opts.lowPower ? 8 : 20,
+  });
+  capGeo.translate(0, 0, -(capDepth - 0.16) / 2);
+  handle.add(new THREE.Mesh(capGeo, navy));
+  // Recessed label panel on the front, like the moulded "COLOP Printer" area.
+  const panel = rbox(W * 0.7, 0.34, 0.04, 0.06, new THREE.MeshPhysicalMaterial({ color: 0x1e2f55, roughness: 0.5, clearcoat: 0.3 }));
+  panel.position.set(0, -0.02, capDepth / 2 + 0.005);
+  handle.add(panel);
+  // Small ink-colour window on the top.
+  const insert = rbox(W * 0.32, 0.05, D * 0.34, 0.025, blue);
+  insert.position.y = capH / 2 + 0.07;
   handle.add(insert);
-  const neck = rbox(W * 0.58, 0.4, D * 0.72, 0.08, navy);
-  neck.position.y = -0.5;
-  handle.add(neck);
   add('handle', handle, 3.35, 6.6, 0);
 
   // Frame: hollow housing with rounded corners (extruded ring) + brand label.
@@ -441,7 +473,8 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
       const explode = seg(progress, 0.12, 0.3) * (1 - seg(progress, 0.58, 0.66));
       return Object.entries(parts).map(([id, { obj }]) => {
         obj.getWorldPosition(tmp);
-        tmp.x += 1.5;
+        // Labels sit to the left of the stamp, with a little breathing room.
+        tmp.x -= 1.85;
         tmp.project(camera);
         return { id, x: ((tmp.x + 1) / 2) * w, y: ((1 - tmp.y) / 2) * h, visible: explode };
       });
