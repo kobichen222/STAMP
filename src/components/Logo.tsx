@@ -1,22 +1,28 @@
+import { useId } from 'react';
+
 /**
  * "חותמות 2 דקות" brand logo – vector recreation (stamp with speed lines +
  * heavy italic wordmark, gradient "2", underline swoosh). Rendered inline so it
  * stays crisp at any size and uses the site font.
  */
 export function LogoMark({ className = '', size = 40 }: { className?: string; size?: number }) {
+  // Unique gradient ids per instance – a hidden copy (e.g. the mobile logo) must not own the only definition.
+  const uid = useId().replace(/:/g, '');
+  const speed = `lg-speed-${uid}`;
+  const handle = `lg-handle-${uid}`;
   return (
     <svg viewBox="0 0 170 150" width={(size * 170) / 150} height={size} className={className} aria-hidden>
       <defs>
-        <linearGradient id="lg-speed" x1="0" x2="1">
+        <linearGradient id={speed} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="80" y2="0">
           <stop offset="0" stopColor="#22d3ee" />
           <stop offset="1" stopColor="#1d4ed8" />
         </linearGradient>
-        <linearGradient id="lg-handle" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={handle} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#3b82f6" />
           <stop offset="1" stopColor="#1e3a8a" />
         </linearGradient>
       </defs>
-      <g stroke="url(#lg-speed)" strokeLinecap="round" strokeWidth="9">
+      <g stroke={`url(#${speed})`} strokeLinecap="round" strokeWidth="9">
         <line x1="30" y1="36" x2="72" y2="36" />
         <line x1="8" y1="54" x2="66" y2="54" />
         <line x1="22" y1="72" x2="64" y2="72" />
@@ -28,7 +34,7 @@ export function LogoMark({ className = '', size = 40 }: { className?: string; si
         {/* handle */}
         <path
           d="M96 70 C86 56 82 38 92 24 C101 12 128 10 140 18 C152 27 150 46 142 58 C137 66 137 72 144 78 Z"
-          fill="url(#lg-handle)"
+          fill={`url(#${handle})`}
           stroke="#0b1426"
           strokeWidth="6"
           strokeLinejoin="round"
@@ -63,7 +69,13 @@ export function Logo({ className = '', size = 'md', markOnly = false }: { classN
           </span>
           <span className="mt-[0.18em] flex items-center justify-between gap-[0.22em] font-extrabold text-ink-2" style={{ fontSize: Math.round(t * 0.5) }}>
             <span>תוך</span>
-            <span className="grid h-[1.45em] min-w-[1.3em] place-items-center rounded-[0.35em] bg-[#2457ff] px-[0.2em] text-[1.15em] font-black text-white italic shadow-[0_2px_6px_-2px_rgba(36,87,255,.7)]">2</span>
+            {/* SVG badge: the 2 is centred geometrically, whatever the font metrics. */}
+            <svg viewBox="0 0 20 22" className="h-[1.55em] w-auto shrink-0 drop-shadow-[0_2px_3px_rgba(36,87,255,.45)]" aria-hidden>
+              <rect width="20" height="22" rx="5" fill="#2457ff" />
+              <text x="10" y="11.6" textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="16" fontWeight="900" style={{ fontFamily: 'var(--font-heebo), Heebo, Arial, sans-serif' }}>
+                2
+              </text>
+            </svg>
             <span>דקות</span>
           </span>
         </span>
