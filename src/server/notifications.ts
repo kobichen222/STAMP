@@ -7,7 +7,7 @@ import { STATUS_LABEL, type Order } from './orders/types';
  * Notifications engine (spec §177–179): every event is sent at most once per
  * order+recipient+template, tracked in order.notificationsSent.
  */
-export type NotifyEvent = 'order.created' | 'order.awaiting_approval' | 'production.started' | 'order.ready_for_pickup' | 'order.shipped' | 'order.production_error';
+export type NotifyEvent = 'order.created' | 'order.awaiting_approval' | 'production.started' | 'order.ready_for_pickup' | 'order.shipped' | 'order.production_error' | 'order.reward';
 
 const TEMPLATES: Record<NotifyEvent, { subject: string; body: string; toCustomer: boolean; toStaff: boolean }> = {
   'order.created': {
@@ -40,6 +40,12 @@ const TEMPLATES: Record<NotifyEvent, { subject: string; body: string; toCustomer
     toCustomer: true,
     toStaff: false,
   },
+  'order.reward': {
+    subject: 'תודה! {{reward_pct}} הנחה להזמנה הבאה שלך',
+    body: 'שלום {{customer_name}},<br>תודה על ההזמנה {{order_number}}.<br>מחכה לך קוד אישי ל־{{reward_pct}} הנחה בהזמנה הבאה: <b style="font-size:20px;letter-spacing:2px">{{reward_code}}</b><br>הקוד לשימוש חד־פעמי באתר, בשלב התשלום.',
+    toCustomer: true,
+    toStaff: false,
+  },
   'order.production_error': {
     subject: '⚠ שגיאה ביצירת קובץ ייצור – {{order_number}}',
     body: 'יצירת קובץ הייצור נכשלה להזמנה {{order_number}}. יש לבדוק במערכת הניהול.',
@@ -61,6 +67,8 @@ function fill(tpl: string, o: Order) {
     tracking_link: `<a href="${trackingLink(o)}">${trackingLink(o)}</a>`,
     shipping_text: o.shipping.method === 'pickup' ? `לאיסוף ב${SITE.address}` : 'ויוצאת למשלוח',
     status: STATUS_LABEL[o.status],
+    reward_code: o.rewardCode ?? '',
+    reward_pct: o.rewardCode ? `${o.rewardCode.match(/^S2G(\d+)/)?.[1] ?? ''}%` : '',
   };
   return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '');
 }

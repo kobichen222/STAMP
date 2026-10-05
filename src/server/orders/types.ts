@@ -110,6 +110,10 @@ export interface OrderItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  /** Price breakdown as charged (base, ink, frame, discounts, extras). */
+  priceLines?: { label: string; amount: number }[];
+  /** Extras ordered with this stamp (ink bottle, pad, extra identical body, certified-copy stamp). */
+  addons?: Partial<Record<string, number>>;
   /** Locked design version that was paid for (spec §134–135). */
   designVersionId: string;
   design: Design;
@@ -148,6 +152,8 @@ export interface Order {
   subtotal: number;
   discount: number;
   couponCode?: string;
+  /** Personal next-order code issued after payment. */
+  rewardCode?: string;
   shippingPrice: number;
   total: number;
   notes?: string;

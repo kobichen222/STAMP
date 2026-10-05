@@ -8,7 +8,7 @@ import { Icon } from '@/components/ui/Icon';
 import { clearCart, useCart } from '@/lib/cart-store';
 import { ordersStore } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
-import { quoteCart, quoteLine, type CartQuote, type ShippingMethod } from '@/lib/pricing';
+import { lineInputFor, quoteCart, quoteLine, type CartQuote, type ShippingMethod } from '@/lib/pricing';
 
 const DRAFT_KEY = 's2g-checkout';
 
@@ -44,7 +44,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
     }
   }, [form]);
 
-  const lineTotals = useMemo(() => items.map((i) => (i.unitPrice == null ? 0 : quoteLine({ basePrice: i.unitPrice, quantity: i.quantity }).total)), [items]);
+  const lineTotals = useMemo(() => items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons })).total)), [items]);
   const localQuote = quoteCart(lineTotals, { shippingId: method });
   const q = serverQuote ?? localQuote;
 
@@ -76,7 +76,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
         shipping: { method, address: needsAddress ? { street: form.street, city: form.city, zip: form.zip } : undefined },
         couponCode: applied,
         notes: form.notes || undefined,
-        items: items.map((i) => ({ productSlug: i.productSlug, design: i.design, ink: i.ink, bodyColor: i.bodyColor, quantity: i.quantity })),
+        items: items.map((i) => ({ productSlug: i.productSlug, design: i.design, ink: i.ink, bodyColor: i.bodyColor, quantity: i.quantity, addons: i.addons })),
       }),
     }).catch(() => null);
     const data = await res?.json().catch(() => null);

@@ -9,7 +9,7 @@ import { clearActiveDraft, setActiveDraft } from '@/lib/active-draft';
 import { addToCart } from '@/lib/cart-store';
 import { saveDesign } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
-import { quoteLine } from '@/lib/pricing';
+import { lineInputFor, quoteLine } from '@/lib/pricing';
 import { autoFix, composeForProduction } from '../autofix';
 import { composeLayout, improveLayout, newDesign } from '../compose';
 import { formatSize } from '../models';
@@ -220,13 +220,7 @@ export function Editor({ product, products, initialDesign, designId, templateId,
   }, [issues]);
 
   const hasLogo = design.elements.some((e) => e.type === 'image');
-  const quote = quoteLine({
-    basePrice: product.price,
-    quantity: qty,
-    ink: design.inkColor,
-    body: bodyColor,
-    hasLogo,
-  });
+  const quote = quoteLine(lineInputFor({ basePrice: product.price, quantity: qty, design, ink: design.inkColor, body: bodyColor }));
 
   const toast = useCallback((msg: string) => {
     setToastMsg(msg);

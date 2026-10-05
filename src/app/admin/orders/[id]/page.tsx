@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { INK_COLORS } from '@/designer/types';
+import { ADDONS } from '@/lib/pricing';
 import { formatDate } from '@/lib/format';
 import { trackingLink } from '@/server/notifications';
 import { loadOrder } from '@/server/orders/service';
@@ -56,6 +57,22 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
                     <dd>{INK_COLORS[it.ink]?.label}</dd>
                     <dt className="text-muted">כמות</dt>
                     <dd className="font-semibold">{it.quantity}</dd>
+                    {it.addons && Object.values(it.addons).some(Boolean) && (
+                      <>
+                        <dt className="text-muted">תוספות</dt>
+                        <dd className="font-semibold text-blue">
+                          {ADDONS.filter((a) => it.addons?.[a.id])
+                            .map((a) => `${a.label} × ${it.addons![a.id]}`)
+                            .join(' · ')}
+                        </dd>
+                      </>
+                    )}
+                    {it.priceLines && (
+                      <>
+                        <dt className="text-muted">תמחור</dt>
+                        <dd className="text-xs text-muted">{it.priceLines.map((l) => `${l.label} ${l.amount < 0 ? '−' : ''}₪${Math.abs(l.amount)}`).join(' · ')}</dd>
+                      </>
+                    )}
                     <dt className="text-muted">Profile</dt>
                     <dd>{it.profileId}</dd>
                     <dt className="text-muted">Design version</dt>

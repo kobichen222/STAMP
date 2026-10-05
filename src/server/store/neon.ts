@@ -1,6 +1,6 @@
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 import type { Order } from '../orders/types';
-import type { ListOptions, OrderStore } from './types';
+import type { ListOptions, OrderStore, RewardCoupon } from './types';
 
 /**
  * Neon (serverless Postgres) store. Orders are a JSON document with indexed
@@ -44,6 +44,16 @@ export const SCHEMA = [
     mailed      boolean not null default false
   )`,
   `create index if not exists s2g_contacts_at_idx on s2g_contacts (at desc)`,
+  `create table if not exists s2g_coupons (
+    code           text primary key,
+    pct            numeric(5,2) not null,
+    order_id       text not null,
+    phone          text,
+    email          text,
+    created_at     timestamptz not null default now(),
+    used_at        timestamptz,
+    used_order_id  text
+  )`,
 ];
 
 let ready: Promise<void> | null = null;
@@ -129,6 +139,30 @@ export function neonStore(): OrderStore {
       const rows = await sql`select content_type, encode(data, 'base64') as b64 from s2g_files where path = ${path} limit 1`;
       if (!rows[0]) return null;
       return { data: new Uint8Array(Buffer.from(rows[0].b64 as string, 'base64')), contentType: rows[0].content_type as string };
+    },
+    async getCoupon(code) {
+      const sql = await db();
+      const rows = await sql`select * from s2g_coupons where upper(code) = upper(${code}) limit 1`;
+      const r = rows[0];
+      if (!r) return null;
+      const iso = (v: unknown) => (v ? new Date(v as string).toISOString() : undefined);
+      return {
+        code: r.code,
+        pct: Number(r.pct),
+        orderId: r.order_id,
+        phone: r.phone ?? undefined,
+        email: r.email ?? undefined,
+        createdAt: iso(r.created_at)!,
+        usedAt: iso(r.used_at),
+        usedOrderId: r.used_order_id ?? undefined,
+      } satisfies RewardCoupon;
+    },
+    async saveCoupon(c) {
+      const sql = await db();
+      await sql`
+        insert into s2g_coupons (code, pct, order_id, phone, email, created_at, used_at, used_order_id)
+        values (${c.code}, ${c.pct}, ${c.orderId}, ${c.phone ?? null}, ${c.email ?? null}, ${c.createdAt}, ${c.usedAt ?? null}, ${c.usedOrderId ?? null})
+        on conflict (code) do update set used_at = excluded.used_at, used_order_id = excluded.used_order_id`;
     },
   };
 }

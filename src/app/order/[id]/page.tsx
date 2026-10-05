@@ -112,6 +112,15 @@ export default async function OrderPage({ params, searchParams }: Props) {
           </p>
         )}
       </div>
+      {order.rewardCode && (
+        <div className="mt-6 rounded-2xl border-2 border-dashed border-blue/40 bg-blue-50 p-5 text-center">
+          <p className="font-bold text-blue">מתנה להזמנה הבאה שלכם</p>
+          <p className="mt-1 text-sm text-ink-2">קוד אישי לשימוש חד־פעמי – הקלידו אותו בשלב התשלום</p>
+          <p className="mt-3 inline-block rounded-xl bg-white px-5 py-2 text-2xl font-extrabold tracking-widest text-ink shadow-soft" dir="ltr">
+            {order.rewardCode}
+          </p>
+        </div>
+      )}
       <div className="mt-6 flex flex-wrap gap-3 print:hidden">
         <Link href={`/order/${order.id}/?t=${order.token}`} className="btn-primary">
           מעקב אחר ההזמנה

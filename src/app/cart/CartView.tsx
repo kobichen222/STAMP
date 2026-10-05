@@ -9,14 +9,14 @@ import { INK_COLORS } from '@/designer/types';
 import { removeCartItem, updateCartItem, duplicateCartItem, useCart, type CartItem } from '@/lib/cart-store';
 import { saveDesign } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
-import { quoteCart, quoteLine } from '@/lib/pricing';
+import { lineInputFor, quoteCart, quoteLine } from '@/lib/pricing';
 
 export function CartView() {
   const items = useCart();
   const router = useRouter();
   const added = useSearchParams().get('added');
   // unitPrice stored in the cart is the base unit price at design time; tiers apply on quantity.
-  const totals = items.map((i) => (i.unitPrice == null ? 0 : quoteLine({ basePrice: i.unitPrice, quantity: i.quantity }).total));
+  const totals = items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons })).total));
   const cart = quoteCart(totals);
 
   const edit = (i: CartItem) => {

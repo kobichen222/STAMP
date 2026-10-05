@@ -31,6 +31,29 @@ export interface Coupon {
 
 export type PriceTier = 'retail' | 'business' | 'partner' | 'vip';
 
+/** Extras offered in the order summary (per design line). */
+export type AddonId = 'ink-bottle' | 'pad' | 'extra-body' | 'certified';
+
+export interface Addon {
+  id: AddonId;
+  label: string;
+  description: string;
+  /** Fixed price (₪) – or, for extra-body, a percentage of the stamp's unit price. */
+  price?: number;
+  pctOfUnit?: number;
+  /** Offered only for professional stamps (lawyers / accountants / notaries). */
+  pro?: boolean;
+}
+
+export const ADDONS: Addon[] = [
+  { id: 'extra-body', label: 'גוף חותמת נוסף זהה', description: 'עותק נוסף של אותה חותמת – ב־10% הנחה', pctOfUnit: 90 },
+  { id: 'pad', label: 'כרית דיו חלופית', description: 'כרית רזרבית לאותו דגם', price: 25 },
+  { id: 'ink-bottle', label: 'בקבוקון דיו', description: 'דיו למילוי בצבע החותמת', price: 20 },
+  { id: 'certified', label: 'חותמת ״נאמן למקור״', description: 'חותמת מוכנה לאימות מסמכים', price: 49, pro: true },
+];
+
+export type AddonSelection = Partial<Record<AddonId, number>>;
+
 export interface PricingRules {
   /** Surcharge per ink colour (₪). */
   ink: Record<string, number>;
@@ -38,6 +61,12 @@ export interface PricingRules {
   body: Record<string, number>;
   /** One-time surcharge per item when a logo/graphic is used. */
   logo: number;
+  /** Surcharge per stamp when the design has a frame (border). */
+  frame: number;
+  /** Discount for designing the stamp on the site (percent). */
+  onlineDesignPct: number;
+  /** Personal next-order reward issued after payment (percent). */
+  rewardPct: number;
   quantityTiers: QuantityTier[];
   tierDiscountPct: Record<PriceTier, number>;
   shipping: ShippingMethod[];
@@ -45,9 +74,12 @@ export interface PricingRules {
 }
 
 export const DEFAULT_RULES: PricingRules = {
-  ink: { black: 0, blue: 0, red: 0, green: 0, purple: 0 },
+  ink: { black: 0, blue: 9, red: 9, green: 9, purple: 9 },
   body: { black: 0, grey: 0, blue: 0, red: 0 },
   logo: 0,
+  frame: 9,
+  onlineDesignPct: 5,
+  rewardPct: 7,
   quantityTiers: [
     { min: 2, discountPct: 5 },
     { min: 5, discountPct: 10 },
@@ -68,6 +100,10 @@ export interface LineInput {
   ink?: string;
   body?: string;
   hasLogo?: boolean;
+  hasFrame?: boolean;
+  /** Designed in the online designer (5% discount). */
+  designedOnline?: boolean;
+  addons?: AddonSelection;
 }
 
 export interface PriceLine {
@@ -100,7 +136,9 @@ export function quoteLine(input: LineInput, rules: PricingRules = DEFAULT_RULES,
   if (ink) lines.push({ label: 'צבע דיו', amount: ink });
   const body = rules.body[input.body ?? 'black'] ?? 0;
   if (body) lines.push({ label: 'צבע גוף', amount: body });
-  let unit = input.basePrice + ink + body;
+  const frame = input.hasFrame ? rules.frame : 0;
+  if (frame) lines.push({ label: 'מסגרת', amount: frame });
+  let unit = input.basePrice + ink + body + frame;
 
   const qTier = tierFor(q, rules);
   const pct = (qTier?.discountPct ?? 0) + (rules.tierDiscountPct[tier] ?? 0);
@@ -109,10 +147,22 @@ export function quoteLine(input: LineInput, rules: PricingRules = DEFAULT_RULES,
     lines.push({ label: qTier ? `הנחת כמות (${q}+ יח׳, ${pct}%)` : `הנחה עסקית (${pct}%)`, amount: -off });
     unit = round2(unit - off);
   }
+  if (input.designedOnline && rules.onlineDesignPct) {
+    const off = round2((unit * rules.onlineDesignPct) / 100);
+    lines.push({ label: `הנחת עיצוב באתר (${rules.onlineDesignPct}%)`, amount: -off });
+    unit = round2(unit - off);
+  }
   let total = round2(unit * q);
   if (input.hasLogo && rules.logo) {
     lines.push({ label: 'עיבוד לוגו', amount: rules.logo });
     total = round2(total + rules.logo);
+  }
+  for (const a of ADDONS) {
+    const n = Math.max(0, Math.min(50, Math.floor(input.addons?.[a.id] ?? 0)));
+    if (!n) continue;
+    const each = a.pctOfUnit ? round2((unit * a.pctOfUnit) / 100) : (a.price ?? 0);
+    lines.push({ label: n > 1 ? `${a.label} × ${n}` : a.label, amount: round2(each * n) });
+    total = round2(total + each * n);
   }
   return { unitPrice: unit, quantity: q, lines, total, onRequest: false };
 }
@@ -156,4 +206,30 @@ export function quoteCart(
   const shipping = shippingMethod.freeFrom != null && afterDiscount >= shippingMethod.freeFrom ? 0 : shippingMethod.price;
   const total = round2(afterDiscount + shipping);
   return { subtotal, discount, shipping, total, coupon, couponError, shippingMethod, vatIncluded: round2(total - total / (1 + VAT_RATE)) };
+}
+
+/**
+ * One source of truth for turning a designed stamp into pricing input – used
+ * by the editor, the cart, checkout and the server (which recomputes it).
+ * A frame on a rectangular stamp is an extra; the ring of a round stamp is
+ * part of the product and never charged.
+ */
+export function lineInputFor(x: {
+  basePrice: number | null;
+  quantity: number;
+  design: { shape: string; border: { style: string }; elements: { type: string }[] };
+  ink?: string;
+  body?: string;
+  addons?: AddonSelection;
+}): LineInput {
+  return {
+    basePrice: x.basePrice,
+    quantity: x.quantity,
+    ink: x.ink,
+    body: x.body,
+    hasLogo: x.design.elements.some((e) => e.type === 'image'),
+    hasFrame: x.design.shape === 'rect' && x.design.border.style !== 'none',
+    designedOnline: true,
+    addons: x.addons,
+  };
 }

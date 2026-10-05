@@ -58,6 +58,17 @@ export function filesystemStore(): OrderStore {
       await fs.writeFile(fp, data);
       await fs.writeFile(fp + '.type', contentType);
     },
+    async getCoupon(code) {
+      try {
+        return JSON.parse(await fs.readFile(path.join(root, 'coupons', `${code.toUpperCase().replace(/[^\w-]/g, '')}.json`), 'utf8'));
+      } catch {
+        return null;
+      }
+    },
+    async saveCoupon(c) {
+      await fs.mkdir(path.join(root, 'coupons'), { recursive: true });
+      await fs.writeFile(path.join(root, 'coupons', `${c.code.toUpperCase().replace(/[^\w-]/g, '')}.json`), JSON.stringify(c));
+    },
     async getFile(p) {
       try {
         const fp = filePath(p);

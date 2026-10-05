@@ -1,6 +1,7 @@
 'use client';
 
 import type { Design, InkColor } from '@/designer/types';
+import type { AddonSelection } from './pricing';
 import { createLocalStore } from './local-store';
 
 export interface CartItem {
@@ -17,6 +18,8 @@ export interface CartItem {
   quantity: number;
   /** Base list price per unit; quantity tiers are applied by the pricing engine. */
   unitPrice: number | null;
+  /** Extras chosen in the order summary (ink bottle, pad, extra body…). */
+  addons?: AddonSelection;
   /** Id of the design in "my designs", if saved. */
   designId?: string;
   addedAt: string;

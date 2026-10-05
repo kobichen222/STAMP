@@ -5,7 +5,7 @@ import { designerModelForProduct, formatSize } from '@/designer/models';
 import type { Design } from '@/designer/types';
 import { INK_COLORS } from '@/designer/types';
 import { getProduct } from '@/lib/content';
-import { DEFAULT_RULES, quoteCart, quoteLine, type PricingRules } from '@/lib/pricing';
+import { ADDONS, DEFAULT_RULES, lineInputFor, quoteCart, quoteLine, type PricingRules } from '@/lib/pricing';
 import { notify } from '../notifications';
 import { getPaymentProvider, manualAutoProduction } from '../payments';
 import { runProductionEngine } from '../production-engine';
@@ -53,6 +53,7 @@ export const checkoutSchema = z.object({
         bodyColor: z.string().max(20).optional(),
         quantity: z.number().int().min(1).max(500),
         designVersionId: z.string().max(80).optional(),
+        addons: z.record(z.string(), z.number().int().min(0).max(50)).optional(),
       }),
     )
     .min(1)
@@ -67,6 +68,36 @@ export function pricingRules(): PricingRules {
   } catch {
     return DEFAULT_RULES;
   }
+}
+
+/**
+ * Rules for a cart, including a personal one-time code (the 7% reward) when
+ * the customer typed one. Used / unknown codes fall through to the normal
+ * "invalid code" message.
+ */
+export async function pricingRulesFor(couponCode?: string): Promise<PricingRules> {
+  const rules = pricingRules();
+  const code = couponCode?.trim();
+  if (!code || rules.coupons.some((c) => c.code.toLowerCase() === code.toLowerCase())) return rules;
+  try {
+    const personal = await getStore().getCoupon(code);
+    if (personal && !personal.usedAt) return { ...rules, coupons: [...rules.coupons, { code: personal.code, type: 'percent', value: personal.pct }] };
+  } catch (e) {
+    console.error('[coupon]', e);
+  }
+  return rules;
+}
+
+/** After payment: a personal one-time code for the next order (7%), e-mailed and shown on the tracking page. */
+export async function issueReward(o: Order): Promise<void> {
+  if (o.rewardCode) return;
+  const rules = pricingRules();
+  if (!rules.rewardPct) return;
+  const code = `S2G${rules.rewardPct}-${crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6)}`;
+  await getStore().saveCoupon({ code, pct: rules.rewardPct, orderId: o.id, phone: o.customer.phone, email: o.customer.email, createdAt: now() });
+  o.rewardCode = code;
+  audit(o, 'system', 'reward_issued', { note: `${code} (${rules.rewardPct}%)` });
+  o.notificationsSent.push(...(await notify(o, 'order.reward')));
 }
 
 // ------------------------------------------------------------------ helpers
@@ -176,7 +207,7 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
   const existing = await store.findByIdempotencyKey(input.idempotencyKey);
   if (existing) return existing; // double click / refresh / retry (spec §146)
 
-  const rules = pricingRules();
+  const rules = await pricingRulesFor(input.couponCode);
   const items: OrderItem[] = input.items.map((it, i) => {
     const product = getProduct(it.productSlug);
     const model = product && designerModelForProduct(product);
@@ -185,9 +216,9 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
     if (Math.abs(design.width - model.width) > 0.01 || Math.abs(design.height - model.height) > 0.01 || design.shape !== model.shape) {
       throw new CheckoutError(`מידות העיצוב אינן תואמות למוצר ${product.title}`);
     }
-    const hasLogo = design.elements.some((e) => e.type === 'image');
     // Prices are always recomputed on the server – never trusted from the client.
-    const q = quoteLine({ basePrice: product.price, quantity: it.quantity, ink: it.ink, body: it.bodyColor, hasLogo }, rules);
+    const addons = it.addons ? Object.fromEntries(Object.entries(it.addons).filter(([k]) => ADDONS.some((a) => a.id === k))) : undefined;
+    const q = quoteLine(lineInputFor({ basePrice: product.price, quantity: it.quantity, design, ink: design.inkColor, body: it.bodyColor, addons }), rules);
     return {
       id: `${i + 1}`,
       productSlug: product.slug,
@@ -200,6 +231,8 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
       quantity: q.quantity,
       unitPrice: q.unitPrice,
       total: q.total,
+      priceLines: q.lines,
+      addons,
       designVersionId: it.designVersionId ?? `DV-${crypto.createHash('sha1').update(JSON.stringify(design)).digest('hex').slice(0, 12)}`,
       design,
       profileId: 'standard',
@@ -243,6 +276,12 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
     notificationsSent: [],
   };
   audit(order, 'customer', 'created', { to: 'PAYMENT_PENDING' });
+
+  // A personal code is single-use: mark it as redeemed by this order.
+  if (cart.coupon) {
+    const personal = await store.getCoupon(cart.coupon.code).catch(() => null);
+    if (personal && !personal.usedAt) await store.saveCoupon({ ...personal, usedAt: now(), usedOrderId: order.id });
+  }
 
   if (provider.id === 'manual' && manualAutoProduction()) {
     await runPreflight(order);

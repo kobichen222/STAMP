@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Order } from '../orders/types';
-import type { ListOptions, OrderStore } from './types';
+import type { ListOptions, OrderStore, RewardCoupon } from './types';
 
 const BUCKET = process.env.SUPABASE_BUCKET || 'production-files';
 
@@ -55,6 +55,16 @@ export function supabaseStore(url: string, serviceKey: string): OrderStore {
     async putFile(p, data, contentType) {
       const body = typeof data === 'string' ? new TextEncoder().encode(data) : data;
       const { error } = await db.storage.from(BUCKET).upload(p, body, { contentType, upsert: true });
+      if (error) throw error;
+    },
+    // Uses the phase-2 `coupons` table: one use per personal code.
+    async getCoupon(code) {
+      const { data } = await db.from('coupons').select('*').ilike('code', code).maybeSingle();
+      if (!data) return null;
+      return { code: data.code, pct: Number(data.value), orderId: '', createdAt: '', usedAt: data.used > 0 ? 'used' : undefined } as RewardCoupon;
+    },
+    async saveCoupon(c) {
+      const { error } = await db.from('coupons').upsert({ code: c.code, type: 'percent', value: c.pct, max_uses: 1, used: c.usedAt ? 1 : 0 }, { onConflict: 'code' });
       if (error) throw error;
     },
     async getFile(p) {

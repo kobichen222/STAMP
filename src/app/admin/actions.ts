@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { applyStatus, audit, loadOrder, runPreflight, saveOrder } from '@/server/orders/service';
+import { applyStatus, audit, issueReward, loadOrder, runPreflight, saveOrder } from '@/server/orders/service';
 import { ORDER_STATUSES, type OrderStatus } from '@/server/orders/types';
 import { requireStaff } from '@/server/staff';
 
@@ -48,6 +48,7 @@ export async function markPaid(id: string, formData: FormData) {
     o.paymentRef = String(formData.get('ref') ?? '').slice(0, 80) || undefined;
     audit(o, role, 'payment', { note: `סומן כשולם ${o.paymentRef ?? ''}` });
     if (o.status === 'PAYMENT_PENDING' || o.status === 'PAYMENT_FAILED') await applyStatus(o, 'PAID', role);
+    await issueReward(o);
   });
 }
 
