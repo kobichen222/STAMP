@@ -26,7 +26,7 @@ export default function HomePage() {
       <HowItWorks />
       <WhyUs />
 
-      <section className="py-20 sm:py-28">
+      <section className="py-12 sm:py-16">
         <div className="container-x">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -48,7 +48,7 @@ export default function HomePage() {
       <TemplateStrip />
       <AboutSection />
 
-      <section className="container-x py-20 sm:py-28">
+      <section className="container-x py-12 sm:py-16">
         <div className="grid gap-12 lg:grid-cols-2">
           <div>
             <p className="eyebrow">הבדיקה שלנו, לפני הייצור שלכם</p>
@@ -74,7 +74,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-line bg-surface py-20">
+      <section className="border-t border-line bg-surface py-14">
         <div className="container-x grid gap-10 lg:grid-cols-[1fr_1.4fr]">
           <div>
             <p className="eyebrow">שאלות נפוצות</p>
@@ -90,7 +90,7 @@ export default function HomePage() {
       {/* One FAQPage for the whole home page (why-us + general questions). */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd([...WHY_FAQ, ...faq])) }} />
 
-      <section className="container-x py-24 text-center">
+      <section className="container-x py-16 text-center">
         <h2 className="text-4xl font-extrabold sm:text-5xl">עכשיו תורכם לעצב.</h2>
         <p className="mx-auto mt-4 max-w-xl text-lg text-muted">בחרו תבנית או התחילו מדף ריק. תראו בדיוק מה תקבלו – לפני שאתם משלמים.</p>
         <Link href="/designer/" className="btn-primary btn-lg mt-8">

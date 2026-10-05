@@ -76,7 +76,7 @@ export function LaserArt() {
 
 export function WhyUs() {
   return (
-    <section id="why" className="container-x py-20 sm:py-28">
+    <section id="why" className="container-x py-12 sm:py-16">
       {/* Intro across the full width… */}
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div className="max-w-2xl">

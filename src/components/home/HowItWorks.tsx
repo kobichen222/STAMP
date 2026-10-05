@@ -109,7 +109,7 @@ function StepArt({ kind }: { kind: (typeof STEPS)[number]['art'] }) {
 
 export function HowItWorks({ compact }: { compact?: boolean }) {
   return (
-    <section id="how" className="container-x py-20 sm:py-28">
+    <section id="how" className="container-x py-12 sm:py-16">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="max-w-xl">
           <p className="eyebrow">איך זה עובד</p>

@@ -68,7 +68,7 @@ export function TemplateStrip() {
   const pause = (v: boolean) => () => (paused.current = v);
 
   return (
-    <section className="overflow-hidden py-20 sm:py-28" aria-roledescription="carousel" aria-label="תבניות חותמות">
+    <section className="overflow-hidden py-12 sm:py-16" aria-roledescription="carousel" aria-label="תבניות חותמות">
       <div className="container-x">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

@@ -18,7 +18,7 @@ const VALUES = [
 
 export function AboutSection() {
   return (
-    <section id="about" className="relative overflow-hidden border-y border-line bg-gradient-to-b from-white to-surface py-20 sm:py-28">
+    <section id="about" className="relative overflow-hidden border-y border-line bg-gradient-to-b from-white to-surface py-12 sm:py-16">
       <div aria-hidden className="pointer-events-none absolute -top-40 -right-40 h-[28rem] w-[28rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
       <div className="container-x relative">
         {/* Story */}
