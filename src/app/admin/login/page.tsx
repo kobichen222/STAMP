@@ -5,6 +5,9 @@ import { Logo } from '@/components/Logo';
 import { ADMIN_COOKIE, ADMIN_MAX_AGE, createAdminToken, roleForPassword } from '@/server/admin-auth';
 import { rateLimit } from '@/server/rate-limit';
 
+// Reads ADMIN_PASSWORD at request time – a password added after the build must work too.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = { title: 'כניסת צוות', robots: { index: false } };
 
 async function login(formData: FormData) {

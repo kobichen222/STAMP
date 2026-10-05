@@ -10,7 +10,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const orders = await getStore().listOrders({ q, status: statuses, limit: 300 });
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      <h1 className="text-2xl font-bold">הזמנות</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">הזמנות</h1>
+        <a href="/api/admin/orders.csv" className="btn-outline btn-sm">
+          ייצוא לאקסל (CSV)
+        </a>
+      </div>
       <form className="flex flex-wrap gap-2">
         <input name="q" defaultValue={q} placeholder="חיפוש: מספר הזמנה, שם, טלפון, אימייל, חברה, SKU…" className="input max-w-md" />
         <select name="status" defaultValue={status ?? ''} className="input !w-auto">

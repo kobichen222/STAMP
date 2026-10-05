@@ -8,10 +8,12 @@ import { FaqList } from '@/components/site/FaqList';
 import { CATEGORIES, categoryPage, editorialBlocks, getStampCategory, productsForCategory } from '@/lib/catalog';
 import { summarize } from '@/lib/summaries';
 import { FAQ } from '@/lib/faq';
+import { ensureSettings } from '@/server/settings';
 
 type Props = { params: Promise<{ category: string }> };
 
-export const dynamicParams = false;
+// Unknown params render notFound() themselves; a fixed list breaks Hebrew URLs after on-demand revalidation.
+export const dynamicParams = true;
 export const generateStaticParams = () => CATEGORIES.map((c) => ({ category: c.slug }));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -26,6 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CategoryPage({ params }: Props) {
+  await ensureSettings();
   const cat = getStampCategory((await params).category);
   if (!cat) notFound();
   const products = productsForCategory(cat).map(summarize);

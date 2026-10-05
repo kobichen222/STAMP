@@ -8,7 +8,8 @@ import { excerptFromBlocks, getPage } from '@/lib/content';
 type Props = { params: Promise<{ slug: string }> };
 
 /** WordPress content pages that keep their original URL (history, testimonials, accessibility…). */
-export const dynamicParams = false;
+// Unknown params render notFound() themselves; a fixed list breaks Hebrew URLs after on-demand revalidation.
+export const dynamicParams = true;
 export const generateStaticParams = () => remainingLegacyPages().map((p) => ({ slug: p.slug }));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

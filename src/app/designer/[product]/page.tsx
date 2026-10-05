@@ -4,10 +4,12 @@ import { Suspense } from 'react';
 import { normalizeSlug } from '@/lib/content';
 import { designerProducts } from '@/lib/designer-products';
 import { DesignerClient } from '../DesignerClient';
+import { ensureSettings } from '@/server/settings';
 
 type Props = { params: Promise<{ product: string }> };
 
-export const dynamicParams = false;
+// Unknown params render notFound() themselves; a fixed list breaks Hebrew URLs after on-demand revalidation.
+export const dynamicParams = true;
 export const generateStaticParams = () => designerProducts().map((p) => ({ product: p.slug }));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -21,6 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function DesignerProductPage({ params }: Props) {
+  await ensureSettings();
   const slug = normalizeSlug((await params).product);
   const products = designerProducts();
   const product = products.find((p) => p.slug === slug);

@@ -4,6 +4,7 @@ import { TEMPLATES } from '@/designer/templates';
 import { DEFAULT_RECT, DEFAULT_ROUND, designerProducts } from '@/lib/designer-products';
 import { DesignerClient } from './DesignerClient';
 import { DesignerRouter } from './DesignerRouter';
+import { ensureSettings } from '@/server/settings';
 
 export const metadata: Metadata = {
   title: 'מעצב החותמות – עיצוב חותמת אונליין',
@@ -11,7 +12,8 @@ export const metadata: Metadata = {
   alternates: { canonical: '/designer/' },
 };
 
-export default function DesignerPage() {
+export default async function DesignerPage() {
+  await ensureSettings();
   const products = designerProducts();
   const rect = products.find((p) => p.slug === DEFAULT_RECT) ?? products[0];
   const round = products.find((p) => p.slug === DEFAULT_ROUND) ?? rect;

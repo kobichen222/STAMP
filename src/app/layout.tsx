@@ -2,11 +2,14 @@ import type { Metadata, Viewport } from 'next';
 import { Heebo } from 'next/font/google';
 import { Header } from '@/components/site/Header';
 import { Footer } from '@/components/site/Footer';
+import { AnnouncementBar } from '@/components/site/AnnouncementBar';
 import { RouteMemory } from '@/components/site/RouteMemory';
 import { Suspense } from 'react';
 import { AccessibilityMenu } from '@/components/a11y/AccessibilityMenu';
 import { BOOT_SCRIPT } from '@/components/a11y/settings';
 import { SITE } from '@/lib/config';
+import { SettingsBoot } from '@/components/site/SettingsBoot';
+import { ensureSettings } from '@/server/settings';
 import './globals.css';
 import './a11y.css';
 
@@ -40,16 +43,22 @@ const organization = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// Admin changes (prices, contact details, products) reach every page within a minute, or at once on save.
+export const revalidate = 60;
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const settings = await ensureSettings();
   return (
     <html lang="he" dir="rtl" className={heebo.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
       </head>
       <body className="min-h-dvh">
+        <SettingsBoot settings={{ pricing: settings.pricing, site: settings.site }} />
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:right-2 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:shadow-lift">
           דלג לתוכן
         </a>
+        <AnnouncementBar />
         <Header />
         <main id="main">{children}</main>
         <Footer />

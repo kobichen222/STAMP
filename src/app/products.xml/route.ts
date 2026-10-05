@@ -1,13 +1,14 @@
 import { SITE } from '@/lib/config';
 import { productFacts, SERIES_LABEL } from '@/lib/catalog';
 import { site } from '@/lib/content';
+import { ensureSettings } from '@/server/settings';
 
 /**
  * Product feed for external stores and marketplaces (RSS 2.0 + Google
  * Merchant namespace – the format most marketplaces import). Built from the
  * catalogue, so it stays in sync with the site on every deploy.
  */
-export const dynamic = 'force-static';
+export const revalidate = 300;
 
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
@@ -26,9 +27,10 @@ function description(p: (typeof site.products)[number]) {
   return parts.filter(Boolean).join(' · ');
 }
 
-export function GET() {
+export async function GET() {
+  await ensureSettings();
   const items = site.products
-    .filter((p) => p.price != null && p.image)
+    .filter((p) => p.price != null && p.image && !p.hidden)
     .map((p) => {
       const f = productFacts(p);
       const images = p.gallery.filter((g) => g.src !== p.image!.src).slice(0, 10);

@@ -43,6 +43,8 @@ export interface Addon {
   pctOfUnit?: number;
   /** Offered only for professional stamps (lawyers / accountants / notaries). */
   pro?: boolean;
+  /** Turned off by the admin. */
+  active?: boolean;
 }
 
 export const ADDONS: Addon[] = [
@@ -158,6 +160,7 @@ export function quoteLine(input: LineInput, rules: PricingRules = DEFAULT_RULES,
     total = round2(total + rules.logo);
   }
   for (const a of ADDONS) {
+    if (a.active === false) continue;
     const n = Math.max(0, Math.min(50, Math.floor(input.addons?.[a.id] ?? 0)));
     if (!n) continue;
     const each = a.pctOfUnit ? round2((unit * a.pctOfUnit) / 100) : (a.price ?? 0);

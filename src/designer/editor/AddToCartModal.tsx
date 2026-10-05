@@ -100,7 +100,7 @@ export function AddToCartModal({
               מוצרים נוספים
             </h3>
             <ul className="mt-2 space-y-2">
-              {ADDONS.filter((a) => !a.pro || pro).map((a) => {
+              {ADDONS.filter((a) => a.active !== false && (!a.pro || pro)).map((a) => {
                 const n = addons[a.id] ?? 0;
                 const price = a.pctOfUnit ? '10% הנחה' : formatPrice(a.price ?? 0);
                 return (

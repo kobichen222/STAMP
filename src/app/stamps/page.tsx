@@ -5,6 +5,7 @@ import { PageHero } from '@/components/site/PageHero';
 import { CATEGORIES, categoryCard } from '@/lib/catalog';
 import { site } from '@/lib/content';
 import { summarize } from '@/lib/summaries';
+import { ensureSettings } from '@/server/settings';
 
 export const metadata: Metadata = {
   title: 'כל החותמות – קטלוג חותמות לעיצוב אונליין',
@@ -12,7 +13,8 @@ export const metadata: Metadata = {
   alternates: { canonical: '/stamps/' },
 };
 
-export default function StampsPage() {
+export default async function StampsPage() {
+  await ensureSettings();
   const featured = CATEGORIES.filter((c) => c.featured).map(categoryCard);
   return (
     <>

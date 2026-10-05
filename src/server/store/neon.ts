@@ -44,6 +44,12 @@ export const SCHEMA = [
     mailed      boolean not null default false
   )`,
   `create index if not exists s2g_contacts_at_idx on s2g_contacts (at desc)`,
+  `create table if not exists s2g_settings (
+    key         text primary key,
+    value       jsonb not null,
+    updated_at  timestamptz not null default now()
+  )`,
+  `alter table s2g_contacts add column if not exists handled boolean not null default false`,
   `create table if not exists s2g_coupons (
     code           text primary key,
     pct            numeric(5,2) not null,
@@ -178,7 +184,7 @@ export async function saveContact(c: { name: string; phone: string; email?: stri
 export async function listContacts(limit = 200) {
   if (!databaseUrl()) return [];
   const sql = await db();
-  return (await sql`select id, at, name, phone, email, message, page, mailed from s2g_contacts order by at desc limit ${limit}`) as {
+  return (await sql`select id, at, name, phone, email, message, page, mailed, handled from s2g_contacts order by at desc limit ${limit}`) as {
     id: number;
     at: string;
     name: string;
@@ -187,5 +193,30 @@ export async function listContacts(limit = 200) {
     message: string | null;
     page: string | null;
     mailed: boolean;
+    handled: boolean;
   }[];
+}
+
+export async function setContactHandled(id: number, handled: boolean) {
+  if (!databaseUrl()) return;
+  const sql = await db();
+  await sql`update s2g_contacts set handled = ${handled} where id = ${id}`;
+}
+
+/** Personal reward codes issued after payment (newest first). */
+export async function listRewardCoupons(limit = 200): Promise<RewardCoupon[]> {
+  if (!databaseUrl()) return [];
+  const sql = await db();
+  const rows = await sql`select * from s2g_coupons order by created_at desc limit ${limit}`;
+  const iso = (v: unknown) => (v ? new Date(v as string).toISOString() : undefined);
+  return rows.map((r) => ({
+    code: r.code,
+    pct: Number(r.pct),
+    orderId: r.order_id,
+    phone: r.phone ?? undefined,
+    email: r.email ?? undefined,
+    createdAt: iso(r.created_at)!,
+    usedAt: iso(r.used_at),
+    usedOrderId: r.used_order_id ?? undefined,
+  }));
 }

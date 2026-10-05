@@ -1,7 +1,9 @@
 import { requireStaff } from '@/server/staff';
 import { databaseUrl, listContacts } from '@/server/store/neon';
+import { LeadToggle } from './LeadToggle';
 
 export const metadata = { title: 'פניות' };
+export const dynamic = 'force-dynamic';
 
 /** Contact-form leads kept in the database (also those whose e-mail failed). */
 export default async function LeadsPage() {
@@ -11,10 +13,13 @@ export default async function LeadsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <h1 className="text-2xl font-bold">פניות מהאתר</h1>
+      <p className="text-sm text-muted">
+        {leads.filter((l) => !l.handled).length} פתוחות · {leads.length} בסך הכול
+      </p>
       {!databaseUrl() && <p className="card p-4 text-sm text-muted">מסד הנתונים לא מוגדר (DATABASE_URL) – פניות נשלחות באימייל בלבד.</p>}
       <section className="card divide-y divide-line overflow-hidden">
         {leads.map((l) => (
-          <div key={l.id} className="grid gap-1 px-4 py-3 sm:grid-cols-[9rem_1fr_auto] sm:items-start sm:gap-4">
+          <div key={l.id} className={`grid gap-1 px-4 py-3 sm:grid-cols-[9rem_1fr_auto] sm:items-start sm:gap-4 ${l.handled ? 'opacity-60' : ''}`}>
             <p className="text-xs text-muted tabular-nums">{fmt.format(new Date(l.at))}</p>
             <div className="min-w-0">
               <p className="font-semibold">
@@ -31,7 +36,10 @@ export default async function LeadsPage() {
               {l.message && <p className="mt-1 whitespace-pre-line text-sm text-ink-2">{l.message}</p>}
               {l.page && <p className="mt-1 truncate text-xs text-muted" dir="ltr">{l.page}</p>}
             </div>
-            {!l.mailed && <span className="h-fit rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 ring-1 ring-amber-200">לא נשלח במייל</span>}
+            <div className="flex flex-wrap items-center gap-2">
+              {!l.mailed && <span className="h-fit rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 ring-1 ring-amber-200">לא נשלח במייל</span>}
+              <LeadToggle id={l.id} handled={l.handled} />
+            </div>
           </div>
         ))}
         {!leads.length && <p className="p-8 text-center text-sm text-muted">אין עדיין פניות.</p>}

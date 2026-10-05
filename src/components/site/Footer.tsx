@@ -56,7 +56,7 @@ export function Footer() {
             <li className="flex items-center gap-2"><Icon name="phone" size={16} /><a href={SITE.phoneHref} className="inline-block py-1 hover:text-ink" dir="ltr">{SITE.phone}</a></li>
             <li className="flex items-center gap-2"><Icon name="mail" size={16} /><a href={`mailto:${SITE.email}`} className="inline-block py-1 hover:text-ink">{SITE.email}</a></li>
             <li className="flex items-center gap-2"><Icon name="pin" size={16} /><a href={SITE.waze} target="_blank" rel="noopener" className="inline-block py-1 hover:text-ink">{SITE.address}</a></li>
-            <li className="flex items-center gap-2"><Icon name="clock" size={16} />א׳–ה׳ 09:00–17:00</li>
+            <li className="flex items-center gap-2"><Icon name="clock" size={16} />{SITE.hours}</li>
             <li className="flex items-center gap-2"><Icon name="whatsapp" size={16} /><a href={SITE.whatsapp} target="_blank" rel="noopener" className="inline-block py-1 hover:text-ink">וואטסאפ</a></li>
           </ul>
         </div>

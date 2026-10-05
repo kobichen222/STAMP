@@ -7,6 +7,7 @@ import { INK_COLORS } from '@/designer/types';
 import { getProduct } from '@/lib/content';
 import { ADDONS, DEFAULT_RULES, lineInputFor, quoteCart, quoteLine, type PricingRules } from '@/lib/pricing';
 import { notify } from '../notifications';
+import { ensureSettings } from '../settings';
 import { getPaymentProvider, manualAutoProduction } from '../payments';
 import { runProductionEngine } from '../production-engine';
 import { getStore } from '../store';
@@ -62,12 +63,14 @@ export const checkoutSchema = z.object({
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
 export function pricingRules(): PricingRules {
+  // Coupons: the admin's (applied by ensureSettings) plus any from the environment.
+  let env: PricingRules['coupons'] = [];
   try {
-    const coupons = process.env.PRICING_COUPONS ? JSON.parse(process.env.PRICING_COUPONS) : [];
-    return { ...DEFAULT_RULES, coupons };
+    env = process.env.PRICING_COUPONS ? JSON.parse(process.env.PRICING_COUPONS) : [];
   } catch {
-    return DEFAULT_RULES;
+    /* ignore malformed env */
   }
+  return { ...DEFAULT_RULES, coupons: [...DEFAULT_RULES.coupons, ...env] };
 }
 
 /**
@@ -76,6 +79,7 @@ export function pricingRules(): PricingRules {
  * "invalid code" message.
  */
 export async function pricingRulesFor(couponCode?: string): Promise<PricingRules> {
+  await ensureSettings();
   const rules = pricingRules();
   const code = couponCode?.trim();
   if (!code || rules.coupons.some((c) => c.code.toLowerCase() === code.toLowerCase())) return rules;
@@ -91,6 +95,7 @@ export async function pricingRulesFor(couponCode?: string): Promise<PricingRules
 /** After payment: a personal one-time code for the next order (7%), e-mailed and shown on the tracking page. */
 export async function issueReward(o: Order): Promise<void> {
   if (o.rewardCode) return;
+  await ensureSettings();
   const rules = pricingRules();
   if (!rules.rewardPct) return;
   const code = `S2G${rules.rewardPct}-${crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6)}`;
@@ -211,7 +216,7 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
   const items: OrderItem[] = input.items.map((it, i) => {
     const product = getProduct(it.productSlug);
     const model = product && designerModelForProduct(product);
-    if (!product || !model) throw new CheckoutError(`מוצר לא זמין: ${it.productSlug}`);
+    if (!product || !model || product.hidden) throw new CheckoutError(`מוצר לא זמין: ${it.productSlug}`);
     const design = it.design as unknown as Design;
     if (Math.abs(design.width - model.width) > 0.01 || Math.abs(design.height - model.height) > 0.01 || design.shape !== model.shape) {
       throw new CheckoutError(`מידות העיצוב אינן תואמות למוצר ${product.title}`);

@@ -30,6 +30,7 @@ export function productsForCategory(cat: StampCategory): Product[] {
   const page = categoryPage(cat);
   const fromPage = new Set(page ? productIdsInBlocks(page.blocks) : []);
   return site.products.filter((p) => {
+    if (p.hidden) return false;
     const t = p.title;
     if (cat.titleIncludes) return cat.titleIncludes.some((x) => t.includes(x));
     if (cat.titleExcludes?.some((x) => t.includes(x))) return false;

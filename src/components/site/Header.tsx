@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Logo } from '@/components/Logo';
 import { useCartCount } from '@/lib/cart-store';
 import { MobileMenu } from './MobileMenu';
+import { showAnnouncement } from './AnnouncementBar';
 import { MAIN_NAV, STAMP_MENU } from './nav';
 
 export function Header() {
@@ -33,7 +34,7 @@ export function Header() {
   const solid = scrolled || !overHero || mega;
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+      className={`fixed inset-x-0 z-50 transition-all duration-300 ${showAnnouncement(pathname) ? 'top-8' : 'top-0'} ${
         solid ? 'border-b border-line/80 bg-white/80 backdrop-blur-xl backdrop-saturate-150' : 'bg-transparent'
       }`}
     >

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getStore } from '@/server/store';
+import { listContacts } from '@/server/store/neon';
 import { OrderRow } from './components';
 
 function Kpi({ label, value, tone = '', href }: { label: string; value: string | number; tone?: string; href?: string }) {
@@ -35,9 +36,24 @@ export default async function Dashboard() {
   const toShip = orders.filter((o) => o.status === 'READY_FOR_SHIPPING').length;
   const valid = orders.filter((o) => o.status !== 'CANCELLED');
   const aov = valid.length ? Math.round(valid.reduce((s, o) => s + o.total, 0) / valid.length) : 0;
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const month = valid.filter((o) => new Date(o.createdAt) >= monthStart);
+  const revenueMonth = month.reduce((s, o) => s + o.total, 0);
+  const unpaid = orders.filter((o) => o.paymentStatus !== 'paid' && o.status !== 'CANCELLED').length;
+  const openLeads = (await listContacts(500).catch(() => [])).filter((l) => !l.handled).length;
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">לוח בקרה</h1>
+        <div className="flex gap-2">
+          <Link href="/admin/reports/" className="btn-outline btn-sm">
+            דוחות
+          </Link>
+          <Link href="/designer/?new=1" target="_blank" className="btn-primary btn-sm">
+            הזמנה טלפונית – לעורך
+          </Link>
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
         <Kpi label="הזמנות היום" value={todays.length} />
         <Kpi label="הכנסות היום" value={`₪${revenueToday.toLocaleString('he-IL')}`} />
@@ -45,6 +61,12 @@ export default async function Dashboard() {
         <Kpi label="שגיאות קבצים" value={errors} tone={errors ? 'text-bad' : ''} href="/admin/orders/?status=PRODUCTION_FILE_ERROR" />
         <Kpi label="למשלוח" value={toShip} href="/admin/orders/?status=READY_FOR_SHIPPING" />
         <Kpi label="ממוצע הזמנה" value={`₪${aov}`} />
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Kpi label="הכנסות החודש" value={`₪${Math.round(revenueMonth).toLocaleString('he-IL')}`} href="/admin/reports/" />
+        <Kpi label="הזמנות החודש" value={month.length} href="/admin/reports/" />
+        <Kpi label="ממתינות לתשלום" value={unpaid} tone={unpaid ? 'text-warn' : ''} href="/admin/orders/?status=PAYMENT_PENDING" />
+        <Kpi label="פניות פתוחות" value={openLeads} tone={openLeads ? 'text-blue' : ''} href="/admin/leads/" />
       </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <section className="card overflow-hidden">

@@ -11,4 +11,9 @@ export const SITE = {
     encodeURIComponent('היי, הגעתי מאתר stamp2go, אשמח שתכינו לי חותמת עכשיו :) תודה'),
   waze: 'https://waze.com/ul?q=' + encodeURIComponent('הרא"ה 3 רמת גן'),
   logo: '/wp-content/uploads/2022/11/stamp2go-logo.png',
+  hours: 'א׳–ה׳ 09:00–17:00',
+  /** Studio inbox for order notifications (admin → settings). */
+  ordersEmail: '',
+  /** Optional site-wide announcement (set in admin → settings). */
+  announcement: '',
 };

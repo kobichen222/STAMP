@@ -58,6 +58,8 @@ export interface Product {
   seo: Seo;
   menuOrder: number;
   modified: string;
+  /** Hidden by the admin (not listed / not orderable). */
+  hidden?: boolean;
 }
 
 export interface Category {

@@ -10,12 +10,14 @@ import { FaqList } from '@/components/site/FaqList';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES, categoryCard } from '@/lib/catalog';
 import { FAQ, faqJsonLd, WHY_FAQ } from '@/lib/faq';
+import { ensureSettings } from '@/server/settings';
 
 export const metadata: Metadata = { alternates: { canonical: '/' } };
 
 const HOME_CATEGORIES = ['business', 'personal', 'doctors', 'lawyers', 'company', 'round', 'date', 'numbering', 'logo', 'signature', 'large', 'pocket'];
 
-export default function HomePage() {
+export default async function HomePage() {
+  await ensureSettings();
   const cats = HOME_CATEGORIES.map((s) => CATEGORIES.find((c) => c.slug === s)!).map(categoryCard);
   const faq = FAQ.filter((f) => f.id !== 'why')
     .flatMap((f) => f.items.slice(0, 1))

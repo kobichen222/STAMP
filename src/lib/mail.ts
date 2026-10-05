@@ -1,3 +1,4 @@
+import { SITE } from './config';
 /**
  * Minimal e-mail sender for form submissions, using the Resend HTTP API
  * (https://resend.com) so no SMTP server or extra dependency is needed.
@@ -26,7 +27,9 @@ export class MailNotConfiguredError extends Error {}
 
 export async function sendMail(mail: Mail): Promise<void> {
   const key = process.env.RESEND_API_KEY;
-  const to = mail.to ?? (process.env.ORDERS_EMAIL_TO || 'mira@stamp2go.co.il').split(',').map((s) => s.trim());
+  // Studio inbox: admin settings → ORDERS_EMAIL_TO → default.
+  const studio = SITE.ordersEmail || process.env.ORDERS_EMAIL_TO || 'mira@stamp2go.co.il';
+  const to = mail.to ?? studio.split(',').map((s) => s.trim()).filter(Boolean);
   const from = process.env.MAIL_FROM || 'Stamp2Go <onboarding@resend.dev>';
 
   if (!key) {

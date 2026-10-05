@@ -12,10 +12,12 @@ import { getProduct, site } from '@/lib/content';
 import { formatPrice } from '@/lib/format';
 import { summarize } from '@/lib/summaries';
 import { designerModelForProduct } from '@/designer/models';
+import { ensureSettings } from '@/server/settings';
 
 type Props = { params: Promise<{ slug: string }> };
 
-export const dynamicParams = false;
+// Unknown params render notFound() themselves; a fixed list breaks Hebrew URLs after on-demand revalidation.
+export const dynamicParams = true;
 export const generateStaticParams = () => site.products.map((p) => ({ slug: p.slug }));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -36,8 +38,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductPage({ params }: Props) {
+  await ensureSettings();
   const product = getProduct((await params).slug);
-  if (!product) notFound();
+  if (!product || product.hidden) notFound();
   const facts = productFacts(product);
   const model = designerModelForProduct(product);
   const inCats = CATEGORIES.filter((c) => productsForCategory(c).some((p) => p.id === product.id));
