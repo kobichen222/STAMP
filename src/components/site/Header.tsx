@@ -37,13 +37,16 @@ export function Header() {
         solid ? 'border-b border-line/80 bg-white/80 backdrop-blur-xl backdrop-saturate-150' : 'bg-transparent'
       }`}
     >
-      <div className="container-x flex h-16 items-center gap-2 sm:gap-6">
+      <div className="container-x flex h-16 items-center gap-2 sm:gap-6 lg:h-[4.75rem]">
         <Link href="/" aria-label="חותמות 2 דקות – דף הבית" className="min-w-0 shrink text-ink sm:shrink-0">
           <span className="sm:hidden">
             <Logo size="sm" />
           </span>
-          <span className="hidden sm:inline">
+          <span className="hidden sm:inline lg:hidden">
             <Logo />
+          </span>
+          <span className="hidden lg:inline">
+            <Logo size="lg" />
           </span>
         </Link>
 
@@ -51,7 +54,7 @@ export function Header() {
           <div className="relative" onMouseEnter={() => setMega(true)} onMouseLeave={() => setMega(false)}>
             <button
               type="button"
-              className="flex items-center gap-1 rounded-full px-2.5 py-2 text-[14.5px] whitespace-nowrap text-ink-2 hover:text-ink"
+              className="flex items-center gap-1 rounded-full px-2.5 py-2 text-[15.5px] font-medium whitespace-nowrap text-ink-2 hover:text-ink"
               aria-expanded={mega}
               onClick={() => setMega((m) => !m)}
             >
@@ -77,7 +80,7 @@ export function Header() {
               key={m.href}
               href={m.href}
               // The two category shortcuts also live in the "חותמות" menu – only shown when there is room.
-              className={`rounded-full px-2.5 py-2 text-[14.5px] whitespace-nowrap hover:text-ink ${i < 2 ? 'hidden 2xl:inline-block' : ''} ${pathname.startsWith(m.href) ? 'text-ink font-medium' : 'text-ink-2'}`}
+              className={`rounded-full px-2.5 py-2 text-[15.5px] font-medium whitespace-nowrap hover:text-ink ${i < 2 ? 'hidden 2xl:inline-block' : ''} ${pathname.startsWith(m.href) ? 'text-ink font-medium' : 'text-ink-2'}`}
             >
               {m.label}
             </Link>
@@ -97,8 +100,8 @@ export function Header() {
               </span>
             )}
           </Link>
-          <Link href="/designer/" className="btn-primary hidden sm:inline-flex">
-            עיצוב חותמת
+          <Link href="/designer/" className="btn-primary hidden !px-5 sm:inline-flex lg:!h-12 lg:!px-6 lg:!text-base lg:font-bold">
+            עצבו חותמת
           </Link>
           <button type="button" className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface xl:hidden" aria-label="פתיחת תפריט" aria-expanded={drawer} onClick={() => setDrawer(true)}>
             <Icon name="menu" size={22} />

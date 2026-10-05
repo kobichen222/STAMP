@@ -38,6 +38,19 @@
   ::selection { @apply bg-blue/15; }
 }
 
+/* Gentle attention pulse for the main call to action (and first-time hints). */
+.cta-glow { animation: cta-glow 2.6s ease-in-out infinite; }
+@keyframes cta-glow {
+  0%, 100% { box-shadow: 0 18px 40px -14px rgb(36 87 255 / 0.8), 0 0 0 0 rgb(36 87 255 / 0.45); }
+  55% { box-shadow: 0 18px 40px -14px rgb(36 87 255 / 0.8), 0 0 0 14px rgb(36 87 255 / 0); }
+}
+.attention-pulse { animation: attention-pulse 1.6s ease-in-out 3; }
+@keyframes attention-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(36 87 255 / 0); }
+  50% { box-shadow: 0 0 0 6px rgb(36 87 255 / 0.28), 0 0 32px 4px rgb(36 87 255 / 0.25); }
+}
+@media (prefers-reduced-motion: reduce) { .cta-glow, .attention-pulse { animation: none; } }
+
 .hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); opacity: 0; pointer-events: none; }
 @utility container-x {
   @apply mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8;

@@ -26,7 +26,7 @@ export default function HomePage() {
       <HowItWorks />
       <WhyUs />
 
-      <section className="border-y border-line bg-surface py-20 sm:py-28">
+      <section className="py-20 sm:py-28">
         <div className="container-x">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>

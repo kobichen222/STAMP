@@ -39,9 +39,7 @@ export function StampHero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
   const storyRef = useRef<HTMLDivElement>(null);
-  const mobileStoryRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
-  const barRef = useRef<HTMLSpanElement>(null);
   const [ready, setReady] = useState(false);
   const [staticMode, setStaticMode] = useState(false);
 
@@ -69,52 +67,41 @@ export function StampHero() {
     const lowPower = window.innerWidth < 768 || (navigator.hardwareConcurrency ?? 8) <= 4;
     const mq = window.matchMedia('(max-width: 1023px)');
     const ease = (x: number) => x * x * (3 - 2 * x);
-    const seg = (p: number, a: number, b: number) => ease(Math.min(1, Math.max(0, (p - a) / (b - a))));
 
+    // Plays by itself (no scroll-jacking): forward, hold on the finished
+    // impression, gently back, hold – and again. Paused when off-screen.
+    const FWD = 15000;
+    const HOLD_END = 2600;
+    const BACK = 5200;
+    const HOLD_START = 1400;
+    const CYCLE = FWD + HOLD_END + BACK + HOLD_START;
+    let elapsed = 0;
+    let last = 0;
+    let visible = true;
     const progress = () => {
-      const el = sectionRef.current!;
-      const r = el.getBoundingClientRect();
-      const total = el.offsetHeight - window.innerHeight;
-      return total > 0 ? Math.min(1, Math.max(0, -r.top / total)) : 0;
+      const t = elapsed % CYCLE;
+      if (t < FWD) return t / FWD;
+      if (t < FWD + HOLD_END) return 1;
+      if (t < FWD + HOLD_END + BACK) return 1 - ease((t - FWD - HOLD_END) / BACK);
+      return 0;
     };
 
-    const frame = () => {
+    const frame = (now: number) => {
       raf = 0;
       if (!scene) return;
+      if (last) elapsed += Math.min(64, now - last);
+      last = now;
       const p = progress();
       const mobile = mq.matches;
-      // Mobile: the headline sits over the top of the stage and fades out as
-      // the stamp slides up to the centre and takes over the screen.
-      const intro = mobile ? seg(p, 0.015, 0.09) : 1;
-      if (mobile) {
-        // Fit the closed stamp into the space actually left under the headline
-        // and buttons (headline height varies with screen width and font).
-        const h = canvas.clientHeight || 1;
-        const introEl = introRef.current;
-        const canvasTop = canvas.parentElement?.offsetTop ?? 64;
-        const freeTop = introEl ? Math.max(0, introEl.offsetTop + introEl.offsetHeight - canvasTop + 64) : h * 0.5;
-        const freeH = Math.max(120, h - freeTop - 16);
-        const startShift = (freeTop + freeH / 2 - h / 2) / h;
-        const startZoom = Math.min(0.55, Math.max(0.28, (freeH / h) * 1.15));
-        scene.setFraming(startShift * (1 - intro), startZoom + (0.72 - startZoom) * intro);
-      } else scene.setFraming(0, 1);
+
+      // The stage has its own area under the headline on every screen size.
+      scene.setFraming(mobile ? 0.04 : 0, mobile ? 0.92 : 1);
       scene.setProgress(p);
       const introEl = introRef.current;
       if (introEl) {
-        introEl.style.opacity = mobile ? String(1 - intro) : '';
-        introEl.style.transform = mobile ? `translateY(${-24 * intro}px)` : '';
-        introEl.style.pointerEvents = mobile && intro > 0.5 ? 'none' : '';
-      }
-      if (barRef.current) barRef.current.style.transform = `scaleX(${p})`;
-      const ms = mobileStoryRef.current;
-      if (ms) {
-        ms.style.opacity = String(seg(p, 0.08, 0.12));
-        ms.querySelectorAll<HTMLElement>('[data-from]').forEach((n) => {
-          const on = p >= +n.dataset.from! && p < +n.dataset.to!;
-          n.style.opacity = on ? '1' : '0';
-          n.style.transform = on ? 'none' : 'translateY(8px)';
-          n.style.pointerEvents = on ? 'auto' : 'none';
-        });
+        introEl.style.opacity = '';
+        introEl.style.transform = '';
+        introEl.style.pointerEvents = '';
       }
       const labels = labelsRef.current;
       if (labels) {
@@ -139,6 +126,14 @@ export function StampHero() {
     const request = () => {
       if (!raf) raf = requestAnimationFrame(frame);
     };
+    const loop = (now: number) => {
+      frame(now);
+      if (visible && !document.hidden && !disposed) raf = requestAnimationFrame(loop);
+      else last = 0;
+    };
+    const play = () => {
+      if (!raf && visible && !document.hidden) raf = requestAnimationFrame(loop);
+    };
 
     const start = async () => {
       const { createStampScene } = await import('./stamp-scene');
@@ -153,13 +148,20 @@ export function StampHero() {
       resize();
       window.addEventListener('resize', resize);
       mq.addEventListener('change', resize);
-      window.addEventListener('scroll', request, { passive: true });
+      const io = new IntersectionObserver(([e]) => {
+        visible = e.isIntersecting;
+        if (visible) play();
+      });
+      io.observe(sectionRef.current!);
+      const onVis = () => play();
+      document.addEventListener('visibilitychange', onVis);
       setReady(true);
-      request();
+      play();
       cleanup.push(() => {
+        io.disconnect();
+        document.removeEventListener('visibilitychange', onVis);
         window.removeEventListener('resize', resize);
         mq.removeEventListener('change', resize);
-        window.removeEventListener('scroll', request);
       });
     };
     const cleanup: (() => void)[] = [];
@@ -178,26 +180,37 @@ export function StampHero() {
 
   const animated = !staticMode;
   return (
-    <section ref={sectionRef} className={`relative overflow-x-clip ${animated ? 'h-[420vh] max-lg:h-[340vh]' : ''}`} aria-label="החותמת שלכם, מבפנים">
-      <div className={`${animated ? 'sticky top-0 h-svh max-lg:min-h-[560px] lg:min-h-dvh lg:h-auto' : 'min-h-dvh'} flex items-center overflow-hidden bg-gradient-to-b from-white via-white to-surface`}>
+    <section ref={sectionRef} className="relative overflow-x-clip" aria-label="מעצבים חותמת אונליין">
+      {/* Shorter than the screen on purpose: the next section peeks in, so it's clear the page goes on. */}
+      <div className="relative flex min-h-[calc(100svh-6rem)] items-center overflow-hidden bg-gradient-to-b from-white via-white to-surface max-lg:min-h-[640px] lg:min-h-[calc(100dvh-5rem)]">
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
-        <div className={`container-x relative grid w-full gap-6 lg:h-auto lg:grid-cols-2 lg:items-center lg:pt-20 ${animated ? 'h-full content-start pt-20' : 'pt-24 pb-10'}`}>
+        <div className={`container-x relative grid w-full gap-6 lg:grid-cols-2 lg:items-center lg:pt-24 ${animated ? 'h-full content-start pt-24 max-lg:pb-[44svh]' : 'pt-24 pb-10'}`}>
           <div ref={introRef} className="relative z-10 max-w-xl will-change-transform">
-            <p className="eyebrow animate-fade-up">חותמות בהתאמה אישית · מוכנות תוך 2 דקות</p>
-            <h1 className="mt-2 animate-fade-up text-[2.15rem] leading-[1.1] max-[390px]:text-[1.9rem] font-extrabold sm:mt-3 sm:text-5xl lg:text-6xl lg:leading-[1.08]">
-              מעצבים חותמת אונליין.
+            <h1 className="animate-fade-up text-[2.15rem] leading-[1.12] font-extrabold max-[390px]:text-[1.9rem] sm:text-5xl lg:text-[3.4rem] lg:leading-[1.1] xl:text-6xl">
+              מעצבים חותמת אונליין,
               <br />
-              <span className="grad-text">אנחנו הופכים אותה למוצר אמיתי.</span>
+              <span className="grad-text">החותמת מוכנה תוך&nbsp;2&nbsp;דקות.</span>
             </h1>
-            <p className="mt-3 animate-fade-up text-base leading-7 text-muted max-[390px]:text-[15px] max-[390px]:leading-6 sm:mt-5 sm:text-lg sm:leading-8">
-              בחרו חותמת, הוסיפו טקסט או לוגו, ראו את התוצאה בזמן אמת והזמינו ישירות לייצור.
-            </p>
-            <div className="mt-5 flex animate-fade-up gap-2.5 sm:mt-8 sm:flex-wrap sm:gap-3">
-              <Link href="/designer/" className="btn-primary max-sm:flex-1 sm:btn-lg">
-                עיצוב חותמת עכשיו
+            <ul className="mt-4 flex animate-fade-up flex-wrap items-center gap-x-3 gap-y-1.5 text-[15px] font-semibold text-ink-2 sm:mt-6 sm:text-lg">
+              <li className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-blue" aria-hidden /> איסוף עצמי ברמת גן
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-blue" aria-hidden /> משלוחים לכל הארץ
+              </li>
+            </ul>
+            <div className="mt-6 flex animate-fade-up flex-col gap-3 sm:mt-9 sm:flex-row sm:flex-wrap sm:items-center">
+              <Link
+                href="/designer/"
+                className="btn-primary cta-glow group !h-16 !rounded-2xl !px-9 !text-xl font-extrabold shadow-[0_18px_40px_-14px_rgba(36,87,255,.8)] sm:!h-[4.25rem] sm:!text-[1.35rem]"
+              >
+                עצבו חותמת עכשיו
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:-translate-x-1" aria-hidden>
+                  <path d="M19 12H5M11 6l-6 6 6 6" />
+                </svg>
               </Link>
-              <Link href="/how-it-works/" className="btn-outline max-sm:flex-1 sm:btn-lg">
-                איך זה עובד
+              <Link href="/how-it-works/" className="text-center font-semibold text-blue underline-offset-4 hover:underline sm:px-3">
+                איך זה עובד?
               </Link>
             </div>
             <div ref={storyRef} className="relative mt-10 hidden h-20 lg:block" aria-hidden={!ready}>
@@ -209,9 +222,9 @@ export function StampHero() {
               ))}
             </div>
           </div>
-          <div className={animated ? 'absolute inset-x-0 top-16 bottom-0 lg:relative lg:inset-auto lg:h-[78vh] lg:min-h-[320px]' : 'relative h-[46vh] min-h-[300px] lg:h-[78vh]'}>
+          <div className={animated ? 'absolute inset-x-0 bottom-9 h-[44svh] min-h-[260px] lg:relative lg:inset-auto lg:h-[72vh] lg:min-h-[320px]' : 'relative h-[46vh] min-h-[300px] lg:h-[72vh]'}>
             {!ready && (
-              <div className={`absolute inset-0 grid place-items-center p-10 ${animated ? 'max-lg:top-auto max-lg:h-[42%] max-lg:p-4' : ''}`}>
+              <div className={`absolute inset-0 grid place-items-center p-10 ${animated ? 'max-lg:p-4' : ''}`}>
                 <div className="h-full max-h-[420px] w-full max-w-[420px]">
                   <StaticStamp />
                 </div>
@@ -233,40 +246,16 @@ export function StampHero() {
           </div>
         </div>
 
-        {/* Mobile story: a caption card under the stamp, with scroll progress. */}
-        {animated && (
-          <div ref={mobileStoryRef} className="absolute inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] opacity-0 lg:hidden" aria-hidden={!ready}>
-            <div className="relative h-[92px] overflow-hidden rounded-2xl border border-line bg-white/85 shadow-soft backdrop-blur-md">
-              {STORY.filter((s) => s.title).map((s, i, arr) => (
-                <div key={s.from} data-from={s.from} data-to={i === arr.length - 1 ? 1.01 : arr[i + 1].from} className="absolute inset-0 flex items-center gap-3 px-4 opacity-0 transition duration-300">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-blue">
-                      {s.eyebrow} <span className="font-normal text-muted">· {i + 1}/{arr.length}</span>
-                    </p>
-                    <p className="mt-0.5 text-[17px] leading-snug font-bold">{s.title}</p>
-                  </div>
-                  {i === arr.length - 1 && (
-                    <Link href="/designer/" className="btn-primary btn-sm shrink-0">
-                      לעיצוב
-                    </Link>
-                  )}
-                </div>
-              ))}
-              <span className="absolute inset-x-0 bottom-0 h-1 bg-line/60">
-                <span ref={barRef} className="block h-full origin-right bg-blue" style={{ transform: 'scaleX(0)' }} />
-              </span>
-            </div>
-          </div>
-        )}
-
-        {animated && (
-          <div className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-xs text-muted lg:flex" aria-hidden>
-            גללו כדי לראות מבפנים
-            <span className="h-8 w-5 rounded-full border border-ink/20 p-1">
-              <span className="block h-2 w-full animate-bounce rounded-full bg-ink/40" />
-            </span>
-          </div>
-        )}
+        <a
+          href="#how"
+          className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-muted transition hover:text-blue"
+          aria-label="גללו להמשך"
+        >
+          להמשך
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="animate-bounce" aria-hidden>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </a>
       </div>
     </section>
   );
