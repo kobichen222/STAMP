@@ -14,7 +14,7 @@ const STORY = [
   { from: 0.84, to: 1.01, eyebrow: 'עכשיו תורכם', title: 'עכשיו תורכם לעצב.' },
 ];
 
-/** Static fallback shown before WebGL loads, on reduced motion and without WebGL. */
+/** Static stamp for reduced motion and devices without WebGL (never as a loading placeholder). */
 function StaticStamp() {
   return (
     <svg viewBox="0 0 320 300" className="h-full w-full" aria-hidden>
@@ -223,7 +223,7 @@ export function StampHero() {
             </div>
           </div>
           <div className={animated ? 'relative -mx-4 h-[300px] max-[380px]:h-[260px] sm:mx-0 sm:h-[380px] lg:h-[60vh] lg:min-h-[320px]' : 'relative h-[46vh] min-h-[300px] lg:h-[72vh]'}>
-            {!ready && (
+            {!animated && (
               <div className={`absolute inset-0 grid place-items-center p-10 ${animated ? 'max-lg:p-4' : ''}`}>
                 <div className="h-full max-h-[420px] w-full max-w-[420px]">
                   <StaticStamp />
