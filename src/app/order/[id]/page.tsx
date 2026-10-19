@@ -7,7 +7,9 @@ import { SITE } from '@/lib/config';
 import { formatDate, formatPrice } from '@/lib/format';
 import { loadOrder, verifyToken } from '@/server/orders/service';
 import { STATUS_LABEL, TIMELINE } from '@/server/orders/types';
-import { ApprovalBox, PaymentWatcher, PrintButton } from './OrderActions';
+import { headers } from 'next/headers';
+import { getPaymentProvider } from '@/server/payments';
+import { ApprovalBox, PaymentWatcher, PayNow, PrintButton } from './OrderActions';
 
 export const metadata: Metadata = { title: 'ההזמנה שלי', robots: { index: false } };
 export const dynamic = 'force-dynamic';
@@ -25,7 +27,12 @@ export default async function OrderPage({ params, searchParams }: Props) {
   const card = order.paymentMethod !== 'manual';
   const unpaid = card && order.paymentStatus !== 'paid' && ['PAYMENT_PENDING', 'PAYMENT_FAILED'].includes(order.status);
   const verifying = unpaid && isNew && order.status === 'PAYMENT_PENDING';
-  const payHref = `/api/payments/tranzila/start/?id=${order.id}&t=${order.token}`;
+  let payUrl: string | undefined;
+  if (unpaid && !verifying && getPaymentProvider().id === order.paymentMethod) {
+    const h = await headers();
+    const origin = `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('x-forwarded-host') ?? h.get('host')}`;
+    payUrl = (await getPaymentProvider().start(order, origin)).redirectUrl;
+  }
 
   return (
     <div className="container-x max-w-3xl pt-24 pb-20 print:pt-4">
@@ -34,9 +41,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
         <div role={pay === 'failed' ? 'alert' : undefined} className={`mb-6 rounded-2xl border p-5 text-center ${pay === 'failed' || order.status === 'PAYMENT_FAILED' ? 'border-bad/30 bg-bad/5' : 'border-blue/30 bg-blue-50'}`}>
           <p className="font-bold">{pay === 'failed' || order.status === 'PAYMENT_FAILED' ? 'התשלום לא הושלם' : 'ההזמנה ממתינה לתשלום'}</p>
           <p className="mt-1 text-sm text-muted">ההזמנה והעיצוב שמורים. אפשר לנסות שוב בכרטיס אחר, או להתקשר אלינו {SITE.phone}.</p>
-          <a href={payHref} className="btn-primary mt-4">
-            לתשלום מאובטח
-          </a>
+          {payUrl && <PayNow url={payUrl} />}
         </div>
       )}
       {isNew && !(unpaid && !verifying) && (

@@ -56,6 +56,9 @@ const tranzila: PaymentProvider = {
       email: order.customer.email ?? '',
       company: order.customer.company ?? '',
       pdesc: `Stamp2Go ${order.id}`,
+      // Shown inside the checkout (iframe): no Tranzila logo, our button colour.
+      nologo: '1',
+      trButtonColor: '2457ff',
       // Custom fields – Tranzila sends them back with the result.
       order_id: order.id,
       otk: order.token,

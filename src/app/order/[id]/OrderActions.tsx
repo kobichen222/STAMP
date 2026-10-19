@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { PaymentFrame } from '@/components/PaymentFrame';
 import { Icon } from '@/components/ui/Icon';
 
 export function PrintButton() {
@@ -59,4 +60,15 @@ export function PaymentWatcher() {
     return () => clearInterval(t);
   }, [router]);
   return null;
+}
+
+/** "Pay now" on the order page – opens the secure card form in place. */
+export function PayNow({ url }: { url: string }) {
+  const [open, setOpen] = useState(false);
+  if (open) return <PaymentFrame url={url} className="mt-4 text-right" />;
+  return (
+    <button type="button" className="btn-primary mt-4" onClick={() => setOpen(true)}>
+      לתשלום מאובטח
+    </button>
+  );
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { PaymentFrame } from '@/components/PaymentFrame';
 import { StampThumb } from '@/components/StampThumb';
 import { Icon } from '@/components/ui/Icon';
 import { clearCart, useCart } from '@/lib/cart-store';
@@ -24,6 +25,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
   const [agree, setAgree] = useState(false);
   const [state, setState] = useState<'idle' | 'sending' | 'error'>('idle');
   const [error, setError] = useState('');
+  const [pay, setPay] = useState<{ url: string; id: string; token: string; total: number } | null>(null);
   const idem = useRef<string>('');
 
   useEffect(() => {
@@ -91,10 +93,42 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
     ]);
     clearCart();
     if (data.paymentUrl) {
-      window.location.assign(data.paymentUrl);
+      // Card payment inside the checkout.
+      setPay({ url: data.paymentUrl, id: data.id, token: data.token, total: data.total });
+      setState('idle');
+      window.scrollTo({ top: 0 });
       return;
     }
     router.push(`/order/${data.id}/?t=${data.token}&new=1`);
+  }
+
+  if (pay) {
+    return (
+      <div className="container-x grid gap-8 pt-24 pb-20 lg:grid-cols-[1fr_340px]">
+        <div>
+          <p className="text-sm font-medium text-ok">✓ ההזמנה נשמרה · שלב אחרון</p>
+          <h1 className="mt-1 text-3xl font-extrabold">תשלום</h1>
+          <PaymentFrame url={pay.url} className="mt-5" />
+        </div>
+        <aside className="card h-fit p-6 lg:sticky lg:top-24">
+          <p className="text-sm text-muted">מספר הזמנה</p>
+          <p className="text-xl font-extrabold tracking-wide" dir="ltr">
+            {pay.id}
+          </p>
+          <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4">
+            <span className="font-semibold">לתשלום</span>
+            <span className="text-2xl font-extrabold">{formatPrice(pay.total)}</span>
+          </div>
+          <p className="mt-4 text-xs leading-5 text-muted">
+            ההזמנה והעיצוב שמורים. אפשר להשלים את התשלום גם מאוחר יותר מ
+            <Link href={`/order/${pay.id}/?t=${pay.token}`} className="text-blue underline">
+              דף ההזמנה
+            </Link>
+            .
+          </p>
+        </aside>
+      </div>
+    );
   }
 
   if (!items.length && state !== 'sending') {
@@ -194,7 +228,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
               <strong className="block">{paymentLabel}</strong>
               {manual
                 ? 'ההזמנה נכנסת לייצור מיד. נציג יחזור אליכם לתשלום מאובטח בטלפון, או שתשלמו באיסוף.'
-                : 'בלחיצה על "מעבר לתשלום" תועברו לדף התשלום המאובטח של טרנזילה. פרטי הכרטיס לא עוברים דרך האתר שלנו.'}
+                : 'בשלב הבא ממלאים את פרטי הכרטיס כאן בעמוד, בטופס המאובטח של טרנזילה. פרטי הכרטיס לא נשמרים באתר.'}
             </span>
           </p>
         </section>
@@ -251,7 +285,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
           אני מאשר/ת שבדקתי את הטקסט והעיצוב, ושהחותמת תיוצר בדיוק כפי שמוצג.
         </label>
         <button className="btn-primary btn-lg mt-5 w-full" disabled={state === 'sending' || !agree}>
-          {state === 'sending' ? (manual ? 'שולח…' : 'מעבירים לתשלום…') : manual ? 'אישור הזמנה' : 'מעבר לתשלום מאובטח'}
+          {state === 'sending' ? 'שולח…' : manual ? 'אישור הזמנה' : 'המשך לתשלום'}
         </button>
         {state === 'error' && (
           <p role="alert" className="mt-3 text-sm text-bad">
