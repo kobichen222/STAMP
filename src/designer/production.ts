@@ -183,7 +183,8 @@ export async function toProductionPdf(r: RenderResult, opts: ExportOptions = {},
   }
   ops.push(popGraphicsState());
   page.pushOperators(...ops);
-  return doc.save();
+  // Classic cross-reference table (no object streams): older CorelDRAW versions cannot read PDF 1.5 xref streams.
+  return doc.save({ useObjectStreams: false });
 }
 
 // ------------------------------------------------------------------ EPS
@@ -213,7 +214,11 @@ export function toProductionEps(r: RenderResult, opts: ExportOptions = {}, meta?
     `%%Creator: ${PRODUCTION_PROFILE.name}`,
     '%%LanguageLevel: 2',
     '%%DocumentProcessColors: Black',
+    '%%Pages: 1',
     '%%EndComments',
+    '%%BeginProlog',
+    '%%EndProlog',
+    '%%Page: 1 1',
     'gsave',
     `0 ${f(H)} translate ${f(MM_TO_PT)} ${f(-MM_TO_PT)} scale`,
     '0 0 0 1 setcmykcolor',
@@ -229,7 +234,8 @@ export function toProductionEps(r: RenderResult, opts: ExportOptions = {}, meta?
         else ps.push('closepath');
       }
       ps.push(item.fillRule === 'evenodd' ? 'eofill' : 'fill');
-      lines.push(ps.join(' '));
+      // One operator per line: EPS importers (CorelDRAW among them) reject lines over 255 characters.
+      lines.push(...ps);
     } else {
       const bmp = bitmaps[item.id];
       if (!bmp) {
@@ -247,8 +253,8 @@ export function toProductionEps(r: RenderResult, opts: ExportOptions = {}, meta?
       );
     }
   }
-  lines.push('grestore', 'showpage', '%%EOF', '');
-  return lines.join('\n');
+  lines.push('grestore', 'showpage', '%%Trailer', '%%EOF', '');
+  return lines.join('\r\n');
 }
 
 

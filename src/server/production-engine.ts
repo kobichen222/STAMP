@@ -7,6 +7,7 @@ import { profileForModel } from '@/designer/profiles';
 import { renderDesign, type FaceResolver } from '@/designer/render';
 import type { Design } from '@/designer/types';
 import { isProductionReady, preflightScore, validateDesign } from '@/designer/validate';
+import { withTracedLogos } from './logo-trace';
 
 const FONT_DIR = path.join(process.cwd(), 'public', 'fonts', 'stamp');
 
@@ -39,9 +40,11 @@ export interface EngineResult {
  * client uploaded. Deterministic for a given design + profile.
  */
 export async function runProductionEngine(
-  design: Design,
+  original: Design,
   meta: { orderId: string; customer: string; productName: string; productId?: string; ink: string; quantity: number; designVersion: string },
 ): Promise<EngineResult> {
+  // Picture logos become outlines, so every production file carries them.
+  const { design } = await withTracedLogos(original);
   const resolve = await resolverFor(design);
   const render = renderDesign(design, resolve);
   const profile = profileForModel({ shape: design.shape, width: design.width, height: design.height, dateBand: design.dateBand });
@@ -86,12 +89,13 @@ export { productionBaseName };
  * them as a ZIP) – re-rendered from the locked design JSON, never from files.
  */
 export async function exportDesign(
-  design: Design,
+  original: Design,
   format: string,
   mirror: boolean,
   meta: { orderId: string; customer: string; productName: string; ink: string; quantity: number; index: number },
 ): Promise<{ data: Uint8Array | string; name: string; mime: string; omittedImages: number }> {
   const { EXPORT_FORMATS, exportRender, isExportFormat, README, zip } = await import('./formats');
+  const { design } = await withTracedLogos(original);
   const render = renderDesign(design, await resolverFor(design));
   const pm = { orderId: meta.orderId, customer: meta.customer, productName: meta.productName, width: design.width, height: design.height, ink: meta.ink, quantity: meta.quantity, createdAt: new Date().toISOString() };
   const base = `${productionBaseName(pm)}_${meta.index + 1}${mirror ? '_MIRROR' : ''}`;
