@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkoutSchema, CheckoutError, createOrder } from '@/server/orders/service';
+import { getPaymentProvider } from '@/server/payments';
 import { rateLimit } from '@/server/rate-limit';
 
 export const maxDuration = 60;
@@ -16,7 +17,11 @@ export async function POST(req: Request) {
   }
   try {
     const order = await createOrder(parsed.data);
-    return NextResponse.json({ id: order.id, token: order.token, status: order.status, total: order.total });
+    // Card payment: the browser continues to the payment page.
+    const provider = getPaymentProvider();
+    let paymentUrl: string | undefined;
+    if (provider.id !== 'manual' && order.paymentMethod === provider.id && order.paymentStatus !== 'paid') paymentUrl = (await provider.start(order, new URL(req.url).origin)).redirectUrl;
+    return NextResponse.json({ id: order.id, token: order.token, status: order.status, total: order.total, paymentUrl });
   } catch (e) {
     if (e instanceof CheckoutError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error('[checkout]', e);

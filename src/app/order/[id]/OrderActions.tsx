@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 
 export function PrintButton() {
@@ -45,4 +45,18 @@ export function ApprovalBox({ id, token }: { id: string; token: string }) {
       )}
     </div>
   );
+}
+
+/** Right after the payment page: the bank's confirmation can arrive a few seconds after the customer. */
+export function PaymentWatcher() {
+  const router = useRouter();
+  useEffect(() => {
+    let n = 0;
+    const t = setInterval(() => {
+      if (++n > 12) clearInterval(t);
+      router.refresh();
+    }, 2500);
+    return () => clearInterval(t);
+  }, [router]);
+  return null;
 }

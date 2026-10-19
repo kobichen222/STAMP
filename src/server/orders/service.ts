@@ -288,12 +288,21 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
     if (personal && !personal.usedAt) await store.saveCoupon({ ...personal, usedAt: now(), usedOrderId: order.id });
   }
 
-  if (provider.id === 'manual' && manualAutoProduction()) {
-    await runPreflight(order);
+  if (provider.id === 'manual') {
+    if (manualAutoProduction()) await runPreflight(order);
+    await store.saveOrder(order);
+    await announce(order);
+    await store.saveOrder(order);
+  } else {
+    // Card payment: files and e-mails wait for the payment confirmation (confirmPayment).
+    await store.saveOrder(order);
   }
-  await store.saveOrder(order);
+  return order;
+}
 
-  // Staff e-mail carries the production files, so the studio can work even before the admin is set up.
+/** "Order received" e-mails; the staff copy carries the production files. Idempotent per recipient. */
+async function announce(order: Order) {
+  const store = getStore();
   const attachments: { filename: string; content: Buffer; contentType?: string }[] = [];
   for (const item of order.items) {
     for (const f of item.files.filter((x) => x.kind === 'production-pdf' || x.kind === 'production-svg' || x.kind === 'metadata')) {
@@ -301,10 +310,39 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
       if (file) attachments.push({ filename: f.name, content: Buffer.from(file.data), contentType: file.contentType });
     }
   }
-  order.notificationsSent.push(...(await notify(order, order.status === 'AWAITING_APPROVAL' ? 'order.awaiting_approval' : 'order.created', attachments)));
-  if (order.status === 'AWAITING_APPROVAL') order.notificationsSent.push(...(await notify(order, 'order.created', attachments)));
-  await store.saveOrder(order);
-  return order;
+  if (order.status === 'AWAITING_APPROVAL') order.notificationsSent.push(...(await notify(order, 'order.awaiting_approval', attachments)));
+  order.notificationsSent.push(...(await notify(order, 'order.created', attachments)));
+}
+
+/**
+ * A confirmed card payment (from the provider's server notification). Idempotent:
+ * a repeated notification for a paid order changes nothing.
+ */
+export async function confirmPayment(o: Order, payment: { ref?: string; amount: number; actor: string }): Promise<'paid' | 'already' | 'amount_mismatch'> {
+  if (o.paymentStatus === 'paid') return 'already';
+  if (Math.abs(payment.amount - o.total) > 0.009) {
+    audit(o, payment.actor, 'payment_rejected', { note: `סכום ${payment.amount} במקום ${o.total}` });
+    await saveOrder(o);
+    return 'amount_mismatch';
+  }
+  o.paymentStatus = 'paid';
+  o.paymentRef = payment.ref;
+  audit(o, payment.actor, 'payment', { note: `שולם ₪${payment.amount}${payment.ref ? ` · ${payment.ref}` : ''}` });
+  if (o.status === 'PAYMENT_PENDING' || o.status === 'PAYMENT_FAILED') transition(o, 'PAID', payment.actor);
+  await saveOrder(o); // record the payment before the slower steps
+  if (o.status === 'PAID') await runPreflight(o, payment.actor);
+  await issueReward(o).catch((e) => console.error('[reward]', o.id, e));
+  await announce(o);
+  await saveOrder(o);
+  return 'paid';
+}
+
+/** A declined / cancelled card payment – the customer can try again from the order page. */
+export async function failPayment(o: Order, actor: string, note?: string) {
+  if (o.paymentStatus === 'paid') return;
+  o.paymentStatus = 'failed';
+  transition(o, 'PAYMENT_FAILED', actor, note);
+  await saveOrder(o);
 }
 
 // ------------------------------------------------------------------ staff / customer actions

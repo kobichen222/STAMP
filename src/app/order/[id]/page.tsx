@@ -7,31 +7,46 @@ import { SITE } from '@/lib/config';
 import { formatDate, formatPrice } from '@/lib/format';
 import { loadOrder, verifyToken } from '@/server/orders/service';
 import { STATUS_LABEL, TIMELINE } from '@/server/orders/types';
-import { ApprovalBox, PrintButton } from './OrderActions';
+import { ApprovalBox, PaymentWatcher, PrintButton } from './OrderActions';
 
 export const metadata: Metadata = { title: 'ההזמנה שלי', robots: { index: false } };
 export const dynamic = 'force-dynamic';
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ t?: string; new?: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ t?: string; new?: string; pay?: string }> };
 
 export default async function OrderPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { t, new: isNew } = await searchParams;
+  const { t, new: isNew, pay } = await searchParams;
   const o = await loadOrder(id);
   if (!verifyToken(o, t ?? null)) notFound();
   const order = o!;
   const ready = order.items.every((i) => i.preflight.ready);
   const failed = ['PAYMENT_FAILED', 'PRODUCTION_FILE_ERROR', 'CANCELLED'].includes(order.status);
+  const card = order.paymentMethod !== 'manual';
+  const unpaid = card && order.paymentStatus !== 'paid' && ['PAYMENT_PENDING', 'PAYMENT_FAILED'].includes(order.status);
+  const verifying = unpaid && isNew && order.status === 'PAYMENT_PENDING';
+  const payHref = `/api/payments/tranzila/start/?id=${order.id}&t=${order.token}`;
 
   return (
     <div className="container-x max-w-3xl pt-24 pb-20 print:pt-4">
-      {isNew && (
+      {verifying && <PaymentWatcher />}
+      {unpaid && !verifying && (
+        <div role={pay === 'failed' ? 'alert' : undefined} className={`mb-6 rounded-2xl border p-5 text-center ${pay === 'failed' || order.status === 'PAYMENT_FAILED' ? 'border-bad/30 bg-bad/5' : 'border-blue/30 bg-blue-50'}`}>
+          <p className="font-bold">{pay === 'failed' || order.status === 'PAYMENT_FAILED' ? 'התשלום לא הושלם' : 'ההזמנה ממתינה לתשלום'}</p>
+          <p className="mt-1 text-sm text-muted">ההזמנה והעיצוב שמורים. אפשר לנסות שוב בכרטיס אחר, או להתקשר אלינו {SITE.phone}.</p>
+          <a href={payHref} className="btn-primary mt-4">
+            לתשלום מאובטח
+          </a>
+        </div>
+      )}
+      {isNew && !(unpaid && !verifying) && (
         <div className="mb-8 animate-fade-up text-center">
           <span className="mx-auto grid h-16 w-16 animate-pop place-items-center rounded-full bg-ok/10 text-ok">
             <Icon name="check" size={32} />
           </span>
-          <h1 className="mt-4 text-3xl font-extrabold">ההזמנה התקבלה</h1>
-          <p className="mt-2 text-muted">שלחנו אישור {order.customer.email ? `ל־${order.customer.email}` : 'בהודעה'} ונעדכן בכל שלב.</p>
+          <h1 className="mt-4 text-3xl font-extrabold">{verifying ? 'מאמתים את התשלום…' : 'ההזמנה התקבלה'}</h1>
+          <p className="mt-2 text-muted">{verifying ? 'זה לוקח כמה שניות. הדף יתעדכן לבד.' : null}</p>
+          <p className={`mt-2 text-muted ${verifying ? 'hidden' : ''}`}>שלחנו אישור {order.customer.email ? `ל־${order.customer.email}` : 'בהודעה'} ונעדכן בכל שלב.</p>
         </div>
       )}
       <div className="card p-6">
@@ -98,7 +113,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">תשלום</dt>
-            <dd>{order.paymentStatus === 'paid' ? 'שולם' : 'בטלפון / באיסוף'}</dd>
+            <dd>{order.paymentStatus === 'paid' ? (card ? 'שולם בכרטיס אשראי' : 'שולם') : card ? 'טרם שולם' : 'בטלפון / באיסוף'}</dd>
           </div>
         </dl>
         {order.shipping.trackingNumber && (

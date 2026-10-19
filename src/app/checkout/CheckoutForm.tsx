@@ -90,6 +90,10 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
       ...l,
     ]);
     clearCart();
+    if (data.paymentUrl) {
+      window.location.assign(data.paymentUrl);
+      return;
+    }
     router.push(`/order/${data.id}/?t=${data.token}&new=1`);
   }
 
@@ -188,7 +192,9 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
             <Icon name="shield" size={18} className="mt-0.5 shrink-0 text-blue" />
             <span>
               <strong className="block">{paymentLabel}</strong>
-              {manual && 'ההזמנה נכנסת לייצור מיד. נציג יחזור אליכם לתשלום מאובטח בטלפון, או שתשלמו באיסוף.'}
+              {manual
+                ? 'ההזמנה נכנסת לייצור מיד. נציג יחזור אליכם לתשלום מאובטח בטלפון, או שתשלמו באיסוף.'
+                : 'בלחיצה על "מעבר לתשלום" תועברו לדף התשלום המאובטח של טרנזילה. פרטי הכרטיס לא עוברים דרך האתר שלנו.'}
             </span>
           </p>
         </section>
@@ -245,7 +251,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
           אני מאשר/ת שבדקתי את הטקסט והעיצוב, ושהחותמת תיוצר בדיוק כפי שמוצג.
         </label>
         <button className="btn-primary btn-lg mt-5 w-full" disabled={state === 'sending' || !agree}>
-          {state === 'sending' ? 'שולח…' : 'אישור הזמנה'}
+          {state === 'sending' ? (manual ? 'שולח…' : 'מעבירים לתשלום…') : manual ? 'אישור הזמנה' : 'מעבר לתשלום מאובטח'}
         </button>
         {state === 'error' && (
           <p role="alert" className="mt-3 text-sm text-bad">
