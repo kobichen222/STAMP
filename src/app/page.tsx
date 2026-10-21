@@ -10,9 +10,16 @@ import { FaqList } from '@/components/site/FaqList';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES, categoryCard } from '@/lib/catalog';
 import { FAQ, faqJsonLd, WHY_FAQ } from '@/lib/faq';
+import { site } from '@/lib/content';
 import { ensureSettings } from '@/server/settings';
 
-export const metadata: Metadata = { alternates: { canonical: '/' } };
+// Same title and description as the WordPress home page (Yoast), so rankings carry over.
+const homeSeo = site.pages.find((p) => p.path === '/')?.seo;
+export const metadata: Metadata = {
+  ...(homeSeo?.title ? { title: { absolute: homeSeo.title } } : {}),
+  ...(homeSeo?.description ? { description: homeSeo.description } : {}),
+  alternates: { canonical: '/' },
+};
 
 const HOME_CATEGORIES = ['business', 'personal', 'doctors', 'lawyers', 'company', 'round', 'date', 'numbering', 'logo', 'signature', 'large', 'pocket'];
 

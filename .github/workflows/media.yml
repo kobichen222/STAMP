@@ -1,0 +1,34 @@
+# Copies every WordPress image (content/media-manifest.json) into
+# public/wp-content/uploads and commits them, so the new site serves its own
+# images and keeps the old image URLs after the domain moves.
+# Runs when this file or the manifest changes; can also be started by hand.
+name: Download WordPress media
+on:
+  push:
+    paths:
+      - .github/workflows/media.yml
+      - content/media-manifest.json
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download images from the WordPress site
+        continue-on-error: true
+        run: node scripts/download-media.mjs
+        env:
+          WP_MEDIA_ORIGIN: https://www.stamp2go.co.il
+      - name: Commit images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/wp-content
+          if git diff --cached --quiet; then echo "No new images"; exit 0; fi
+          git commit -m "Media: WordPress images copied into public/wp-content/uploads"
+          git push
