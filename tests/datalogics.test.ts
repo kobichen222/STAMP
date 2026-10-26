@@ -50,6 +50,14 @@ describe('DataLogics shipping', () => {
     await expect(cancelShipment(order)).rejects.toBeInstanceOf(ShippingApiError);
   });
 
+  it('accepts the token as SWAGGER_TOKEN', async () => {
+    vi.stubEnv('SWAGGER_TOKEN', 'sw');
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: 1, tracking_number: 1 })));
+    vi.stubGlobal('fetch', fetchMock);
+    await createShipment(order);
+    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toContain('token=sw');
+  });
+
   it('refuses without a token', async () => {
     await expect(createShipment(order)).rejects.toThrow('DATALOGICS_TOKEN');
   });

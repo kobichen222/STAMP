@@ -7,22 +7,28 @@ import type { Order } from '../orders/types';
  * POST {base}/create_shipping | cancel_shipping | get_shipping_status).
  *
  * Environment (Vercel → Settings → Environment Variables – never in code):
- *   DATALOGICS_TOKEN     API token of the merchant account (required)
+ *   DATALOGICS_TOKEN     API token of the merchant account (required; SWAGGER_TOKEN is accepted too)
  *   DATALOGICS_API_URL   base URL, default https://connect.datalogics.co.il/rest
  *   DATALOGICS_SUPPLIER  optional shipping_push_supplier (ZigZag platform id at DataLogics)
  *   DATALOGICS_SUPPLIER_CODES optional JSON {"28973":"code",…} – shipping_push_supplier_code per ZigZag card
  * The ZigZag customer card of the order's shipping method is sent as
  * shipping_push_supplier_id, so every service goes out under its own card.
  */
-export const datalogicsConfigured = () => !!process.env.DATALOGICS_TOKEN;
+const apiToken = () => {
+  const env = process.env;
+  const prefixed = Object.keys(env).find((k) => k.endsWith('SWAGGER_TOKEN') || k.endsWith('DATALOGICS_TOKEN'));
+  return (env.DATALOGICS_TOKEN || env.SWAGGER_TOKEN || (prefixed && env[prefixed]) || '').trim();
+};
+
+export const datalogicsConfigured = () => !!apiToken();
 
 const base = () => (process.env.DATALOGICS_API_URL || 'https://connect.datalogics.co.il/rest').replace(/\/$/, '');
 
 export class ShippingApiError extends Error {}
 
 async function call<T>(action: string, body: Record<string, unknown>): Promise<T> {
-  const token = process.env.DATALOGICS_TOKEN;
-  if (!token) throw new ShippingApiError('חיבור לזיג זג לא הוגדר (DATALOGICS_TOKEN)');
+  const token = apiToken();
+  if (!token) throw new ShippingApiError('חיבור לזיג זג לא הוגדר (DATALOGICS_TOKEN / SWAGGER_TOKEN)');
   const res = await fetch(`${base()}/${action}?token=${encodeURIComponent(token)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
