@@ -1,5 +1,6 @@
 import 'server-only';
 import { SITE } from '@/lib/config';
+import { DEFAULT_RULES } from '@/lib/pricing';
 import type { Order } from '../orders/types';
 
 /**
@@ -24,6 +25,10 @@ const apiToken = () => {
 export const datalogicsConfigured = () => !!apiToken();
 
 const base = () => (process.env.DATALOGICS_API_URL || 'https://connect.datalogics.co.il/rest').replace(/\/$/, '');
+
+/** The ZigZag card of the order – stored at checkout, or from its shipping method (older orders). */
+export const carrierCardFor = (o: Pick<Order, 'shipping'>): string | undefined =>
+  o.shipping.carrierAccount ?? DEFAULT_RULES.shipping.find((m) => m.id === o.shipping.method)?.carrierAccount;
 
 export class ShippingApiError extends Error {}
 
@@ -68,7 +73,7 @@ export function createShippingPayload(o: Order) {
   const addr = o.shipping.address;
   const locker = o.shipping.method === 'locker';
   const { street, house } = splitStreet(locker ? '' : (addr?.street ?? ''));
-  const card = o.shipping.carrierAccount;
+  const card = carrierCardFor(o);
   const supplier = process.env.DATALOGICS_SUPPLIER ? Number(process.env.DATALOGICS_SUPPLIER) : undefined;
   const products = o.items.map((i) => ({ sku: i.productSlug, name: `${i.productName} ${i.size}`, quantity: i.quantity }));
   const comment = [

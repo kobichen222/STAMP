@@ -10,7 +10,8 @@ import { addNote, markPaid, retryProduction, setStatus, setTracking, toggleUrgen
 import { Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
 import { ZigZagBox } from '../../ZigZagBox';
-import { datalogicsConfigured } from '@/server/shipping/datalogics';
+import { carrierCardFor, datalogicsConfigured } from '@/server/shipping/datalogics';
+import { ensureSettings } from '@/server/settings';
 
 const KIND_LABEL: Record<string, string> = {
   'production-svg': 'SVG ייצור',
@@ -24,6 +25,8 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const o = await loadOrder(id);
   if (!o) notFound();
+  await ensureSettings();
+  const card = carrierCardFor(o);
   const next = TRANSITIONS[o.status];
   const wa = `https://wa.me/972${o.customer.phone.replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(`שלום ${o.customer.name}, לגבי הזמנה ${o.id} מ-Stamp2Go: `)}`;
   return (
@@ -154,9 +157,9 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
               {o.shipping.label}
               {o.shipping.address && ` · ${[o.shipping.address.street, o.shipping.address.city].filter(Boolean).join(', ')}`}
             </p>
-            {o.shipping.carrierAccount && (
+            {card && (
               <p className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-sm">
-                לשדר בזיג זג בכרטיס לקוח <strong dir="ltr">{o.shipping.carrierAccount}</strong> ·{' '}
+                לשדר בזיג זג בכרטיס לקוח <strong dir="ltr">{card}</strong> ·{' '}
                 <a href="https://www.zig-zag.co.il/" target="_blank" rel="noopener" className="text-blue underline">
                   לאתר זיג זג
                 </a>
@@ -215,10 +218,10 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
 
           <section className="card p-5">
             <h2 className="font-bold">משלוח</h2>
-            {o.shipping.carrierAccount && (
+            {card && (
               <ZigZagBox
                 id={o.id}
-                card={o.shipping.carrierAccount}
+                card={card}
                 configured={datalogicsConfigured()}
                 tracking={o.shipping.trackingNumber}
                 labelUrl={o.shipping.labelUrl}
