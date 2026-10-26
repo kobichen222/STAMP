@@ -5,7 +5,7 @@ import { designerModelForProduct, formatSize } from '@/designer/models';
 import type { Design } from '@/designer/types';
 import { INK_COLORS } from '@/designer/types';
 import { getProduct } from '@/lib/content';
-import { ADDONS, DEFAULT_RULES, lineInputFor, quoteCart, quoteLine, type PricingRules } from '@/lib/pricing';
+import { addressNeed, ADDONS, DEFAULT_RULES, lineInputFor, quoteCart, quoteLine, type PricingRules } from '@/lib/pricing';
 import { notify } from '../notifications';
 import { ensureSettings } from '../settings';
 import { getPaymentProvider, manualAutoProduction } from '../payments';
@@ -249,7 +249,9 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
 
   const method = rules.shipping.find((s) => s.id === input.shipping.method);
   if (!method) throw new CheckoutError('שיטת משלוח לא תקינה');
-  if (method.id !== 'pickup' && (!input.shipping.address?.street || !input.shipping.address?.city)) throw new CheckoutError('נא למלא כתובת למשלוח');
+  const need = addressNeed(method);
+  if (need === 'full' && (!input.shipping.address?.street || !input.shipping.address?.city)) throw new CheckoutError('נא למלא כתובת למשלוח');
+  if (need === 'city' && !input.shipping.address?.city) throw new CheckoutError('נא למלא עיר לנקודת המסירה');
   const cart = quoteCart(
     items.map((i) => i.total),
     { shippingId: method.id, couponCode: input.couponCode || undefined },
@@ -268,7 +270,14 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
     paymentStatus: provider.id === 'manual' ? 'unpaid' : 'pending',
     paymentMethod: provider.id,
     customer: { ...input.customer, email: input.customer.email || undefined },
-    shipping: { method: method.id, label: method.label, price: cart.shipping, address: method.id === 'pickup' ? undefined : input.shipping.address },
+    shipping: {
+      method: method.id,
+      label: method.label,
+      price: cart.shipping,
+      address: need === 'none' ? undefined : input.shipping.address,
+      carrier: method.carrierAccount ? 'זיג זג' : undefined,
+      carrierAccount: method.carrierAccount,
+    },
     items,
     subtotal: cart.subtotal,
     discount: cart.discount,

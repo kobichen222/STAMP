@@ -150,8 +150,16 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             {o.customer.poNumber && <p className="text-sm">PO: {o.customer.poNumber}</p>}
             <p className="mt-2 text-sm text-muted">
               {o.shipping.label}
-              {o.shipping.address && ` · ${o.shipping.address.street}, ${o.shipping.address.city}`}
+              {o.shipping.address && ` · ${[o.shipping.address.street, o.shipping.address.city].filter(Boolean).join(', ')}`}
             </p>
+            {o.shipping.carrierAccount && (
+              <p className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-sm">
+                לשדר בזיג זג בכרטיס לקוח <strong dir="ltr">{o.shipping.carrierAccount}</strong> ·{' '}
+                <a href="https://www.zig-zag.co.il/" target="_blank" rel="noopener" className="text-blue underline">
+                  לאתר זיג זג
+                </a>
+              </p>
+            )}
             {o.notes && <p className="mt-2 rounded-lg bg-warn/10 p-2 text-sm">הערת לקוח: {o.notes}</p>}
             <div className="mt-3 flex flex-wrap gap-2">
               <a href={`tel:${o.customer.phone}`} className="btn-outline btn-sm">

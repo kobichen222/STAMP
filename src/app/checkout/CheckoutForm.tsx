@@ -9,7 +9,7 @@ import { Icon } from '@/components/ui/Icon';
 import { clearCart, useCart } from '@/lib/cart-store';
 import { ordersStore } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
-import { lineInputFor, quoteCart, quoteLine, type CartQuote, type ShippingMethod } from '@/lib/pricing';
+import { addressNeed, lineInputFor, quoteCart, quoteLine, type CartQuote, type ShippingMethod } from '@/lib/pricing';
 
 const DRAFT_KEY = 's2g-checkout';
 
@@ -62,7 +62,8 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
   }, [lineTotals, method, applied]);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value });
-  const needsAddress = method !== 'pickup';
+  const need = addressNeed(shipping.find((s) => s.id === method));
+  const needsAddress = need !== 'none';
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,7 +76,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
       body: JSON.stringify({
         idempotencyKey: idem.current,
         customer: { name: form.name, phone: form.phone, email: form.email, company: form.company || undefined, companyId: form.companyId || undefined, poNumber: form.poNumber || undefined },
-        shipping: { method, address: needsAddress ? { street: form.street, city: form.city, zip: form.zip } : undefined },
+        shipping: { method, address: needsAddress ? { street: form.street, city: form.city, zip: need === 'full' ? form.zip : undefined } : undefined },
         couponCode: applied,
         notes: form.notes || undefined,
         items: items.map((i) => ({ productSlug: i.productSlug, design: i.design, ink: i.ink, bodyColor: i.bodyColor, quantity: i.quantity, addons: i.addons })),
@@ -198,7 +199,20 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
               </label>
             ))}
           </div>
-          {needsAddress && (
+          {need === 'city' && (
+            <div className="mt-4 grid animate-fade-up gap-4 sm:grid-cols-[1fr_2fr]">
+              <label>
+                <span className="label">עיר *</span>
+                <input className="input" required value={form.city} onChange={set('city')} autoComplete="address-level2" />
+              </label>
+              <label>
+                <span className="label">נקודת מסירה / לוקר מועדפים (לא חובה)</span>
+                <input className="input" value={form.street} onChange={set('street')} placeholder="למשל: לוקר בסופר ברחוב הרצל" />
+              </label>
+              <p className="text-xs text-muted sm:col-span-2">נשלח את החבילה לנקודת המסירה הקרובה, ותקבלו הודעה כשהיא מחכה לאיסוף.</p>
+            </div>
+          )}
+          {need === 'full' && (
             <div className="mt-4 grid animate-fade-up gap-4 sm:grid-cols-[2fr_1fr_1fr]">
               <label>
                 <span className="label">רחוב ומספר *</span>

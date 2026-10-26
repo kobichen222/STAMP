@@ -78,6 +78,11 @@ export function withDefaults(s: Partial<AdminSettings> | null | undefined): Admi
       ink: { ...BASE_PRICING.ink, ...(p?.ink ?? {}) },
       // New add-ons added in code appear automatically; saved ones keep their values.
       addons: BASE_PRICING.addons.map((a) => ({ ...a, ...(p?.addons?.find((x) => x.id === a.id) ?? {}) })),
+      // Shipping methods added in code appear automatically (after the saved ones); saved values win.
+      shipping: [
+        ...(p?.shipping ?? []).map((m) => ({ ...(BASE_PRICING.shipping.find((b) => b.id === m.id) ?? {}), ...m })),
+        ...BASE_PRICING.shipping.filter((b) => !p?.shipping?.some((m) => m.id === b.id)),
+      ],
     },
     coupons: s?.coupons ?? [],
     products: s?.products ?? {},

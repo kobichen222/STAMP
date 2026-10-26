@@ -87,6 +87,8 @@ export interface Shipping {
   price: number;
   address?: { street: string; city: string; zip?: string; notes?: string };
   carrier?: string;
+  /** ZigZag customer card to send the shipment under. */
+  carrierAccount?: string;
   trackingNumber?: string;
   trackingUrl?: string;
 }

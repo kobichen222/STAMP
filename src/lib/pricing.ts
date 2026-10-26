@@ -19,6 +19,10 @@ export interface ShippingMethod {
   price: number;
   eta: string;
   freeFrom?: number;
+  /** What the customer fills in: full address, city only (pickup point / locker) or nothing. */
+  address?: 'full' | 'city' | 'none';
+  /** ZigZag customer card the shipment is sent under (staff only). */
+  carrierAccount?: string;
 }
 
 export interface Coupon {
@@ -89,9 +93,11 @@ export const DEFAULT_RULES: PricingRules = {
   ],
   tierDiscountPct: { retail: 0, business: 5, partner: 10, vip: 15 },
   shipping: [
-    { id: 'pickup', label: 'איסוף עצמי – הרא״ה 3, רמת גן', price: 0, eta: 'אפשר עוד היום' },
-    { id: 'courier', label: 'שליח עד הבית', price: 35, eta: '1–3 ימי עסקים', freeFrom: 300 },
-    { id: 'express', label: 'שליח אקספרס (גוש דן)', price: 60, eta: 'עד 24 שעות' },
+    { id: 'pickup', label: 'איסוף עצמי – הרא״ה 3, רמת גן', price: 0, eta: 'אפשר עוד היום', address: 'none' },
+    // Courier services by ZigZag – each one under its own customer card.
+    { id: 'courier', label: 'שליח עד הבית', price: 35, eta: 'עד 3 ימי עסקים', freeFrom: 300, address: 'full', carrierAccount: '28973' },
+    { id: 'express', label: 'שליח עד 24 שעות', price: 60, eta: 'עד 24 שעות · בהזמנה עד 13:00', address: 'full', carrierAccount: '28974' },
+    { id: 'locker', label: 'איסוף מנקודת מסירה / לוקר', price: 25, eta: 'עד 3 ימי עסקים', address: 'city', carrierAccount: '28975' },
   ],
   coupons: [],
 };
@@ -236,3 +242,7 @@ export function lineInputFor(x: {
     addons: x.addons,
   };
 }
+
+/** What the checkout asks for with a shipping method (older saved methods have no `address`). */
+export const addressNeed = (m: Pick<ShippingMethod, 'id' | 'address'> | undefined): 'full' | 'city' | 'none' =>
+  m?.address ?? (m?.id === 'pickup' ? 'none' : m?.id === 'locker' ? 'city' : 'full');
