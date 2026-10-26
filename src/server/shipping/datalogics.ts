@@ -7,7 +7,7 @@ import type { Order } from '../orders/types';
  * POST {base}/create_shipping | cancel_shipping | get_shipping_status).
  *
  * Environment (Vercel → Settings → Environment Variables – never in code):
- *   DATALOGICS_TOKEN     API token of the merchant account (required; SWAGGER_TOKEN is accepted too)
+ *   DATALOGICS_TOKEN     API token of the merchant account (required; TOKEN_SWAGGER / SWAGGER_TOKEN are accepted too)
  *   DATALOGICS_API_URL   base URL, default https://connect.datalogics.co.il/rest
  *   DATALOGICS_SUPPLIER  optional shipping_push_supplier (ZigZag platform id at DataLogics)
  *   DATALOGICS_SUPPLIER_CODES optional JSON {"28973":"code",…} – shipping_push_supplier_code per ZigZag card
@@ -16,8 +16,9 @@ import type { Order } from '../orders/types';
  */
 const apiToken = () => {
   const env = process.env;
-  const prefixed = Object.keys(env).find((k) => k.endsWith('SWAGGER_TOKEN') || k.endsWith('DATALOGICS_TOKEN'));
-  return (env.DATALOGICS_TOKEN || env.SWAGGER_TOKEN || (prefixed && env[prefixed]) || '').trim();
+  // Any name with TOKEN and SWAGGER / DATALOGICS (TOKEN_SWAGGER, SWAGGER_TOKEN, a Vercel prefix …).
+  const key = ['DATALOGICS_TOKEN', 'TOKEN_SWAGGER', 'SWAGGER_TOKEN'].find((k) => env[k]) ?? Object.keys(env).find((k) => /TOKEN/i.test(k) && /SWAGGER|DATALOGICS/i.test(k) && env[k]);
+  return ((key && env[key]) || '').trim();
 };
 
 export const datalogicsConfigured = () => !!apiToken();
@@ -28,7 +29,7 @@ export class ShippingApiError extends Error {}
 
 async function call<T>(action: string, body: Record<string, unknown>): Promise<T> {
   const token = apiToken();
-  if (!token) throw new ShippingApiError('חיבור לזיג זג לא הוגדר (DATALOGICS_TOKEN / SWAGGER_TOKEN)');
+  if (!token) throw new ShippingApiError('חיבור לזיג זג לא הוגדר (TOKEN_SWAGGER)');
   const res = await fetch(`${base()}/${action}?token=${encodeURIComponent(token)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
