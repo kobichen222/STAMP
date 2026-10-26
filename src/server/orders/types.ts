@@ -91,6 +91,10 @@ export interface Shipping {
   carrierAccount?: string;
   trackingNumber?: string;
   trackingUrl?: string;
+  /** Shipping label (PDF) from the courier system. */
+  labelUrl?: string;
+  /** Latest status history from the courier system. */
+  statusHistory?: { status: string; date: string }[];
 }
 
 export interface ProductionFileRef {

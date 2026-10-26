@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { applyStatus, audit, issueReward, loadOrder, runPreflight, saveOrder } from '@/server/orders/service';
 import { ORDER_STATUSES, type OrderStatus } from '@/server/orders/types';
+import { cancelShipment, createShipment, shipmentStatus, ShippingApiError } from '@/server/shipping/datalogics';
 import { requireStaff } from '@/server/staff';
 
 async function withOrder(id: string, roles: ('admin' | 'production')[], fn: (o: NonNullable<Awaited<ReturnType<typeof loadOrder>>>, role: string) => Promise<void>) {
@@ -82,5 +83,53 @@ export async function finishJob(id: string, worker: string) {
     const name = worker.trim().slice(0, 40) || 'ייצור';
     for (const i of o.items) i.finishedAt = new Date().toISOString();
     await applyStatus(o, 'READY_FOR_SHIPPING', name, 'הושלם בייצור');
+  });
+}
+
+// ------------------------------------------------------------------ ZigZag (DataLogics)
+
+export type ShipResult = { ok: true; msg: string } | { ok: false; msg: string };
+
+async function shipAction(id: string, fn: (o: NonNullable<Awaited<ReturnType<typeof loadOrder>>>, role: string) => Promise<string>): Promise<ShipResult> {
+  let msg = '';
+  try {
+    await withOrder(id, ['admin'], async (o, role) => {
+      msg = await fn(o, role);
+    });
+    return { ok: true, msg };
+  } catch (e) {
+    if (e instanceof ShippingApiError) return { ok: false, msg: e.message };
+    console.error('[zigzag]', id, e);
+    return { ok: false, msg: 'הפעולה נכשלה' };
+  }
+}
+
+export async function sendToZigZag(id: string): Promise<ShipResult> {
+  return shipAction(id, async (o, role) => {
+    const r = await createShipment(o);
+    o.shipping.carrier = r.platform || 'זיג זג';
+    o.shipping.trackingNumber = r.trackingNumber;
+    o.shipping.labelUrl = r.labelUrl;
+    audit(o, role, 'shipment_created', { note: `זיג זג ${r.trackingNumber}${o.shipping.carrierAccount ? ` · כרטיס ${o.shipping.carrierAccount}` : ''}` });
+    return `המשלוח שודר – מספר מעקב ${r.trackingNumber}`;
+  });
+}
+
+export async function cancelZigZag(id: string): Promise<ShipResult> {
+  return shipAction(id, async (o, role) => {
+    await cancelShipment(o);
+    audit(o, role, 'shipment_cancelled', { note: o.shipping.trackingNumber });
+    o.shipping.trackingNumber = undefined;
+    o.shipping.labelUrl = undefined;
+    o.shipping.statusHistory = undefined;
+    return 'המשלוח בוטל';
+  });
+}
+
+export async function refreshZigZagStatus(id: string): Promise<ShipResult> {
+  return shipAction(id, async (o) => {
+    o.shipping.statusHistory = await shipmentStatus(o);
+    const last = o.shipping.statusHistory.at(-1);
+    return last ? `סטטוס: ${last.status}` : 'אין עדיין עדכוני סטטוס';
   });
 }

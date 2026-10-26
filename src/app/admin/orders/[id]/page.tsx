@@ -9,6 +9,8 @@ import { STATUS_LABEL, TRANSITIONS } from '@/server/orders/types';
 import { addNote, markPaid, retryProduction, setStatus, setTracking, toggleUrgent } from '../../actions';
 import { Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
+import { ZigZagBox } from '../../ZigZagBox';
+import { datalogicsConfigured } from '@/server/shipping/datalogics';
 
 const KIND_LABEL: Record<string, string> = {
   'production-svg': 'SVG ייצור',
@@ -213,6 +215,16 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
 
           <section className="card p-5">
             <h2 className="font-bold">משלוח</h2>
+            {o.shipping.carrierAccount && (
+              <ZigZagBox
+                id={o.id}
+                card={o.shipping.carrierAccount}
+                configured={datalogicsConfigured()}
+                tracking={o.shipping.trackingNumber}
+                labelUrl={o.shipping.labelUrl}
+                history={o.shipping.statusHistory}
+              />
+            )}
             <form action={setTracking.bind(null, o.id)} className="mt-3 space-y-2">
               <input name="carrier" defaultValue={o.shipping.carrier} placeholder="חברת שילוח" className="input !py-1.5 text-sm" />
               <input name="trackingNumber" defaultValue={o.shipping.trackingNumber} placeholder="מספר מעקב" className="input !py-1.5 text-sm" dir="ltr" />
