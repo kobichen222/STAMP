@@ -1,12 +1,17 @@
 import { SITE } from './config';
 /**
- * Minimal e-mail sender for form submissions, using the Resend HTTP API
- * (https://resend.com) so no SMTP server or extra dependency is needed.
+ * E-mail sender (server only). Two ways, the first one configured wins:
  *
- * Environment:
- *   RESEND_API_KEY   – required in production
+ *   SMTP – the studio's own mailbox (e.g. hosted at JoinWeb):
+ *     SMTP_HOST   e.g. mail.stamp2go.co.il
+ *     SMTP_PORT   465 (SSL, default) or 587 (STARTTLS)
+ *     SMTP_USER   the full mailbox address, e.g. orders@stamp2go.co.il
+ *     SMTP_PASS   the mailbox password
+ *   Resend HTTP API (https://resend.com):
+ *     RESEND_API_KEY
+ *
  *   ORDERS_EMAIL_TO  – comma separated recipients (default mira@stamp2go.co.il)
- *   MAIL_FROM        – verified sender, e.g. "Stamp2Go <orders@stamp2go.co.il>"
+ *   MAIL_FROM        – sender, e.g. "Stamp2Go <orders@stamp2go.co.il>" (default: SMTP_USER)
  */
 export interface Attachment {
   filename: string;
@@ -25,6 +30,31 @@ export interface Mail {
 
 export class MailNotConfiguredError extends Error {}
 
+const env = (k: string) => process.env[k]?.trim() || undefined;
+
+export const smtpConfigured = () => !!(env('SMTP_HOST') && env('SMTP_USER') && env('SMTP_PASS'));
+
+async function sendSmtp(mail: Mail, to: string[]): Promise<void> {
+  const nodemailer = await import('nodemailer');
+  const port = Number(env('SMTP_PORT') ?? 465);
+  const user = env('SMTP_USER')!;
+  const transport = nodemailer.createTransport({
+    host: env('SMTP_HOST'),
+    port,
+    secure: port === 465,
+    auth: { user, pass: env('SMTP_PASS') },
+    connectionTimeout: 15_000,
+  });
+  await transport.sendMail({
+    from: env('MAIL_FROM') ?? `Stamp2Go <${user}>`,
+    to,
+    subject: mail.subject,
+    html: mail.html,
+    replyTo: mail.replyTo,
+    attachments: mail.attachments?.map((a) => ({ filename: a.filename, content: a.content, contentType: a.contentType })),
+  });
+}
+
 export async function sendMail(mail: Mail): Promise<void> {
   const key = process.env.RESEND_API_KEY;
   // Studio inbox: admin settings → ORDERS_EMAIL_TO → default.
@@ -32,8 +62,10 @@ export async function sendMail(mail: Mail): Promise<void> {
   const to = mail.to ?? studio.split(',').map((s) => s.trim()).filter(Boolean);
   const from = process.env.MAIL_FROM || 'Stamp2Go <onboarding@resend.dev>';
 
+  if (smtpConfigured()) return sendSmtp(mail, to);
+
   if (!key) {
-    if (process.env.NODE_ENV === 'production') throw new MailNotConfiguredError('RESEND_API_KEY is not set');
+    if (process.env.NODE_ENV === 'production') throw new MailNotConfiguredError('E-mail is not configured (SMTP_HOST/SMTP_USER/SMTP_PASS or RESEND_API_KEY)');
     console.warn('[mail] RESEND_API_KEY missing – printing message instead of sending\n', mail.subject, '\n', mail.html);
     return;
   }
