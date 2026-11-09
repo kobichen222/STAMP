@@ -72,7 +72,7 @@ export function Logo({ className = '', size = 'md', markOnly = false }: { classN
             {/* SVG badge: the 2 is centred geometrically, whatever the font metrics. */}
             <svg viewBox="0 0 20 22" className="h-[1.55em] w-auto shrink-0 drop-shadow-[0_2px_3px_rgba(36,87,255,.45)]" aria-hidden>
               <rect width="20" height="22" rx="5" fill="#2457ff" />
-              <text x="10" y="11.6" textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="16" fontWeight="900" style={{ fontFamily: 'var(--font-heebo), Heebo, Arial, sans-serif' }}>
+              <text x="10" y="11.6" textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="16" fontWeight="900" style={{ fontFamily: "'Heebo Variable', Heebo, Arial, sans-serif" }}>
                 2
               </text>
             </svg>

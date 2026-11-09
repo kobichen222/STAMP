@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { Heebo } from 'next/font/google';
+// Heebo is self-hosted so builds never depend on fetching Google Fonts.
+import '@fontsource-variable/heebo/wght.css';
 import { Header } from '@/components/site/Header';
 import { Footer } from '@/components/site/Footer';
 import { AnnouncementBar } from '@/components/site/AnnouncementBar';
@@ -12,8 +13,6 @@ import { SettingsBoot } from '@/components/site/SettingsBoot';
 import { ensureSettings } from '@/server/settings';
 import './globals.css';
 import './a11y.css';
-
-const heebo = Heebo({ subsets: ['hebrew', 'latin'], weight: ['300', '400', '500', '600', '700', '800', '900'], display: 'swap', variable: '--font-heebo' });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
@@ -49,7 +48,7 @@ export const revalidate = 60;
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const settings = await ensureSettings();
   return (
-    <html lang="he" dir="rtl" className={heebo.variable} suppressHydrationWarning>
+    <html lang="he" dir="rtl" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
       </head>

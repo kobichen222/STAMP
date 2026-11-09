@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: var(--font-heebo), 'Heebo', system-ui, sans-serif;
+  --font-sans: 'Heebo Variable', 'Heebo', system-ui, sans-serif;
   --color-ink: #0b1426;
   --color-ink-2: #1c2a44;
   --color-muted: #5b6678;
