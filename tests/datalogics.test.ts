@@ -5,6 +5,7 @@ import { cancelShipment, createShipment, createShippingPayload, ShippingApiError
 
 const order = {
   id: 'ORD-261026-AB12',
+  createdAt: '2026-10-26T10:00:00.000Z',
   customer: { name: 'ישראל ישראלי כהן', phone: '050-123 4567', email: 'a@b.co' },
   shipping: { method: 'courier', label: 'שליח עד הבית', price: 35, address: { street: 'הרצל 10', city: 'חיפה', zip: '3300000' }, carrierAccount: '28973' },
   items: [{ productSlug: 'print-r-540', productName: 'PRINT R 540', size: '40 מ"מ', quantity: 2 }],
@@ -26,10 +27,16 @@ describe('DataLogics shipping', () => {
     vi.stubEnv('DATALOGICS_SUPPLIER', '62');
     vi.stubEnv('DATALOGICS_SUPPLIER_CODES', '{"28973":"ABC"}');
     const p = createShippingPayload(order);
-    expect(p.order.id).toBe('ORD-261026-AB12');
+    expect(p.order.id).toBe(Date.parse('2026-10-26T10:00:00.000Z') / 1000);
+    expect(p.order.number).toBe('ORD-261026-AB12');
     expect(p.order.shipping).toMatchObject({ first_name: 'ישראל', last_name: 'ישראלי כהן', phone: '0501234567', city: 'חיפה', address_1: 'הרצל', house: '10' });
     expect(p.order.products[0]).toMatchObject({ sku: 'print-r-540', quantity: 2 });
     expect(p.settings?.shipping_method[0]).toEqual({ shipping_push_supplier: 62, shipping_push_supplier_id: '28973', shipping_push_supplier_code: 'ABC' });
+  });
+
+  it('defaults to the ZigZag platform', () => {
+    const p = createShippingPayload(order);
+    expect(p.settings).toMatchObject({ shipping_push_supplier: 52, shipping_push_supplier_id: '28973' });
   });
 
   it('creates a shipment and returns the tracking number', async () => {

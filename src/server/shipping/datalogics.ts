@@ -32,6 +32,12 @@ export const carrierCardFor = (o: Pick<Order, 'shipping'>): string | undefined =
 
 export class ShippingApiError extends Error {}
 
+/** ZigZag's platform number in DataLogics (w_get_shipping_companies → 52 "זיגזג ZigZag"). */
+const ZIGZAG_PLATFORM = 52;
+
+/** DataLogics keeps a numeric order id; the order's creation second is unique enough and stable. */
+export const numericOrderId = (o: Pick<Order, 'createdAt'>) => Math.floor(new Date(o.createdAt).getTime() / 1000);
+
 async function call<T>(action: string, body: Record<string, unknown>): Promise<T> {
   const token = apiToken();
   if (!token) throw new ShippingApiError('חיבור לזיג זג לא הוגדר (TOKEN_SWAGGER)');
@@ -72,13 +78,19 @@ export function splitStreet(street: string): { street: string; house: string } {
   return m ? { street: m[1].trim(), house: m[2] } : { street: street.trim(), house: '' };
 }
 
+const zigzagMethod = (supplier: number, card: string) => ({
+  shipping_push_supplier: supplier,
+  shipping_push_supplier_id: card,
+  ...(supplierCode(card) ? { shipping_push_supplier_code: supplierCode(card) } : {}),
+});
+
 export function createShippingPayload(o: Order) {
   const [first, ...rest] = o.customer.name.trim().split(/\s+/);
   const addr = o.shipping.address;
   const locker = o.shipping.method === 'locker';
   const { street, house } = splitStreet(locker ? '' : (addr?.street ?? ''));
   const card = carrierCardFor(o);
-  const supplier = process.env.DATALOGICS_SUPPLIER ? Number(process.env.DATALOGICS_SUPPLIER) : undefined;
+  const supplier = Number(process.env.DATALOGICS_SUPPLIER || ZIGZAG_PLATFORM);
   const products = o.items.map((i) => ({ sku: i.productSlug, name: `${i.productName} ${i.size}`, quantity: i.quantity }));
   const comment = [
     locker && addr?.street ? `נקודת מסירה מועדפת: ${addr.street}` : '',
@@ -91,7 +103,7 @@ export function createShippingPayload(o: Order) {
   return {
     url: SITE.url,
     order: {
-      id: o.id,
+      id: numericOrderId(o),
       number: o.id,
       packs: 1,
       ref: card,
@@ -113,13 +125,9 @@ export function createShippingPayload(o: Order) {
     ...(card
       ? {
           settings: {
-            shipping_method: [
-              {
-                ...(supplier ? { shipping_push_supplier: supplier } : {}),
-                shipping_push_supplier_id: card,
-                ...(supplierCode(card) ? { shipping_push_supplier_code: supplierCode(card) } : {}),
-              },
-            ],
+            // Both the flat keys and shipping_method[0] – DataLogics reads either, depending on the merchant setup.
+            ...zigzagMethod(supplier, card),
+            shipping_method: [zigzagMethod(supplier, card)],
           },
         }
       : {}),
@@ -142,7 +150,7 @@ export async function createShipment(o: Order): Promise<ShipmentResult> {
 }
 
 export async function cancelShipment(o: Order): Promise<void> {
-  const r = await call<{ success?: number | boolean; msg?: string }>('cancel_shipping', { order: { id: o.id } });
+  const r = await call<{ success?: number | boolean; msg?: string }>('cancel_shipping', { order: { id: numericOrderId(o) } });
   if (!r.success) throw new ShippingApiError(r.msg || 'ביטול המשלוח נכשל');
 }
 
