@@ -52,11 +52,10 @@ export function Header() {
       }`}
     >
       <div className="container-x relative flex h-16 items-center gap-2 sm:gap-6 lg:h-[4.75rem]">
-        {/* Phones: menu and cart on the right, logo centered. */}
+        {/* Phones: menu on the right, logo centered, cart on the left. */}
         <button type="button" className="-ms-2 grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-surface sm:hidden" aria-label="פתיחת תפריט" aria-expanded={drawer} onClick={() => setDrawer(true)}>
           <Icon name="menu" size={22} />
         </button>
-        <CartLink count={cartCount} className="sm:hidden" />
         <Link href="/" aria-label="חותמות תוך 2 דקות – דף הבית" className="min-w-0 shrink text-ink max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2 sm:shrink-0">
           <span className="sm:hidden">
             <Logo size="sm" />
@@ -106,12 +105,12 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-0.5 sm:ms-auto sm:gap-1.5">
+        <div className="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1.5">
           <Link href="/account/" className="btn-ghost hidden !px-3 sm:inline-flex" aria-label="האזור שלי">
             <Icon name="user" size={19} />
             <span className="hidden 2xl:inline">האזור שלי</span>
           </Link>
-          <CartLink count={cartCount} className="max-sm:hidden" />
+          <CartLink count={cartCount} />
           <Link href="/designer/" className="btn-primary hidden !px-5 sm:inline-flex lg:!h-12 lg:!px-6 lg:!text-base lg:font-bold">
             עצבו חותמת
           </Link>
