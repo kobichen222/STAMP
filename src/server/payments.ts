@@ -40,6 +40,22 @@ export const tranzilaUrls = (origin: string) => ({
   notify: `${origin}/api/payments/tranzila/notify/`,
 });
 
+/**
+ * Line items for Tranzila's documents module (tax invoice / receipt issued with
+ * the charge): u71=1 + json_purchase_data. Prices include VAT. Coupon discounts
+ * are spread over the lines so the lines always add up to the charged sum.
+ */
+export function tranzilaPurchaseData(order: Order): { product_name: string; product_quantity: number; product_price: number }[] {
+  const lines = order.items.map((i) => ({ name: `${i.productName} ${i.size} ×${i.quantity}`, amount: i.total }));
+  if (order.shippingPrice > 0) lines.push({ name: order.shipping.label, amount: order.shippingPrice });
+  const gross = lines.reduce((s, l) => s + l.amount, 0);
+  const k = gross > 0 ? order.total / gross : 1;
+  const out = lines.map((l) => ({ product_name: l.name.slice(0, 100), product_quantity: 1, product_price: Math.round(l.amount * k * 100) / 100 }));
+  const diff = Math.round((order.total - out.reduce((s, l) => s + l.product_price, 0)) * 100) / 100;
+  if (out.length && diff) out[out.length - 1].product_price = Math.round((out[out.length - 1].product_price + diff) * 100) / 100;
+  return out;
+}
+
 const tranzila: PaymentProvider = {
   id: 'tranzila',
   label: 'תשלום מאובטח בכרטיס אשראי',
@@ -56,6 +72,9 @@ const tranzila: PaymentProvider = {
       email: order.customer.email ?? '',
       company: order.customer.company ?? '',
       pdesc: `Stamp2Go ${order.id}`,
+      // Documents module: invoice / receipt with the order lines, sent to the customer's e-mail.
+      u71: '1',
+      json_purchase_data: JSON.stringify(tranzilaPurchaseData(order)),
       // Shown inside the checkout (iframe): no Tranzila logo, our button colour.
       nologo: '1',
       trButtonColor: '2457ff',
