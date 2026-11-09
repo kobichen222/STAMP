@@ -116,3 +116,10 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Floating WhatsApp button: expanding ring + a short wiggle every few seconds. */
+.wa-ring { animation: wa-ring 2.4s cubic-bezier(.2,.6,.4,1) infinite; z-index: -1; }
+@keyframes wa-ring { 0% { transform: scale(1); opacity: .55; } 80%, 100% { transform: scale(1.75); opacity: 0; } }
+.wa-icon { animation: wa-wiggle 4.8s ease-in-out infinite; transform-origin: 50% 60%; }
+@keyframes wa-wiggle { 0%, 82%, 100% { transform: rotate(0); } 85% { transform: rotate(-14deg) scale(1.08); } 88% { transform: rotate(12deg) scale(1.08); } 91% { transform: rotate(-8deg); } 94% { transform: rotate(4deg); } }
+@media (prefers-reduced-motion: reduce) { .wa-ring, .wa-icon { animation: none; } .wa-ring { display: none; } }

@@ -7,6 +7,7 @@ import { AnnouncementBar } from '@/components/site/AnnouncementBar';
 import { RouteMemory } from '@/components/site/RouteMemory';
 import { Suspense } from 'react';
 import { AccessibilityMenu } from '@/components/a11y/AccessibilityMenu';
+import { WhatsAppFab } from '@/components/site/WhatsAppFab';
 import { BOOT_SCRIPT } from '@/components/a11y/settings';
 import { SITE } from '@/lib/config';
 import { SettingsBoot } from '@/components/site/SettingsBoot';
@@ -62,6 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main id="main">{children}</main>
         <Footer />
         <AccessibilityMenu />
+        <WhatsAppFab href={SITE.whatsapp} />
         <Suspense>
           <RouteMemory />
         </Suspense>
