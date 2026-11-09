@@ -82,7 +82,8 @@ export async function createAdminToken(role: StaffRole): Promise<string> {
 }
 
 export async function verifyAdminToken(token?: string): Promise<StaffRole | null> {
-  if (!token || !(await authConfigured())) return null;
+  // Any signing secret is enough: sessions also come from email codes, not only passwords.
+  if (!token || !(await secret())) return null;
   const [exp, role, sig] = token.split('.');
   if (!exp || !sig || (role !== 'admin' && role !== 'production') || Number(exp) < Date.now() / 1000) return null;
   return safeEqual(sig, await hmac(`${exp}.${role}`)) ? role : null;
