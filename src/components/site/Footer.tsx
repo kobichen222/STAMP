@@ -62,9 +62,22 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-line">
-        <div className="container-x flex flex-col gap-2 py-5 text-xs text-muted sm:flex-row sm:justify-between">
-          <span>© {new Date().getFullYear()} Stamp2Go · חותמות תוך 2 דקות · כל המחירים כוללים מע״מ</span>
-          <span>הרא״ה 3, רמת גן</span>
+        <div className="container-x flex flex-col items-center gap-3 pt-5 pb-24 text-xs sm:pb-5 text-muted sm:flex-row sm:justify-between">
+          <span className="text-center sm:text-start">© {new Date().getFullYear()} Stamp2Go · חותמות תוך 2 דקות · הרא״ה 3, רמת גן · כל המחירים כוללים מע״מ</span>
+          <a
+            href="https://www.media-deal.co.il/"
+            target="_blank"
+            rel="noopener"
+            className="group flex items-center gap-2.5 rounded-full border border-line bg-white py-1 ps-1 pe-3.5 shadow-soft transition hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-lift"
+            aria-label="פותח על ידי מדיה דיל – בית תוכנה ופיתוח אתרים"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/media-deal.jpg" alt="" width={30} height={30} loading="lazy" className="h-[30px] w-[30px] rounded-full transition duration-500 group-hover:rotate-[360deg]" />
+            <span className="leading-tight">
+              <span className="block text-[10px] text-muted">פיתוח ועיצוב</span>
+              <span className="block text-[12.5px] font-bold text-ink">מדיה דיל · בית תוכנה ופיתוח אתרים</span>
+            </span>
+          </a>
         </div>
       </div>
     </footer>
