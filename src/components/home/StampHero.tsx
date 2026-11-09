@@ -185,16 +185,16 @@ export function StampHero() {
       <div className="relative flex items-start overflow-hidden bg-gradient-to-b from-white via-white to-surface lg:min-h-[calc(100dvh-12rem)]">
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
         <div className={`container-x relative grid w-full gap-4 pt-[6rem] pb-24 sm:pt-[4.5rem] sm:pb-16 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:gap-6 lg:pt-28 lg:pb-16 ${animated ? 'content-start' : ''}`}>
-          <div ref={introRef} className="relative z-10 max-w-xl will-change-transform lg:max-w-2xl">
+          <div ref={introRef} className="relative z-10 max-w-xl will-change-transform max-lg:mx-auto max-lg:text-center lg:max-w-2xl">
             <h1 className="animate-fade-up text-[1.85rem] leading-[1.15] font-extrabold max-[360px]:text-[1.65rem] sm:text-5xl lg:text-[2.6rem] lg:leading-[1.15] xl:text-[2.9rem]">
               מעצבים חותמת אונליין,
               <br />
               <span className="grad-text">החותמת מוכנה תוך&nbsp;2&nbsp;דקות.</span>
             </h1>
-            <p className="mt-4 max-w-lg animate-fade-up text-[17px] leading-relaxed text-ink-2 sm:text-xl lg:text-lg">
+            <p className="mt-4 max-w-lg animate-fade-up max-lg:mx-auto text-[17px] leading-relaxed text-ink-2 sm:text-xl lg:text-lg">
               בוחרים דגם, מקלידים את הפרטים ורואים את החותמת בזמן אמת. אנחנו מייצרים אותה מיד – ואתם אוספים או מקבלים עד הבית.
             </p>
-            <ul className="mt-5 flex animate-fade-up flex-wrap items-center gap-x-3 gap-y-1 text-[15px] font-semibold text-ink-2 sm:gap-x-4 sm:text-2xl sm:font-bold">
+            <ul className="mt-5 flex animate-fade-up flex-wrap items-center max-lg:justify-center gap-x-3 gap-y-1 text-[15px] font-semibold text-ink-2 sm:gap-x-4 sm:text-2xl sm:font-bold">
               <li className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-blue sm:h-2.5 sm:w-2.5" aria-hidden /> איסוף עצמי ברמת גן
               </li>
@@ -202,7 +202,7 @@ export function StampHero() {
                 <span className="h-2 w-2 rounded-full bg-blue sm:h-2.5 sm:w-2.5" aria-hidden /> משלוחים לכל הארץ
               </li>
             </ul>
-            <div className="mt-8 flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-3 sm:mt-9">
+            <div className="mt-8 flex animate-fade-up flex-wrap items-center max-lg:justify-center gap-x-4 gap-y-3 sm:mt-9">
               <Link
                 href="/designer/"
                 className="btn-primary cta-glow group !h-14 !rounded-xl !px-7 !text-lg font-bold max-sm:w-full max-sm:justify-center shadow-[0_14px_30px_-12px_rgba(36,87,255,.8)] sm:!h-[4.25rem] sm:!rounded-2xl sm:!px-9 sm:!text-[1.35rem]"
@@ -225,7 +225,7 @@ export function StampHero() {
               ))}
             </div>
           </div>
-          <div className={animated ? 'relative -mx-4 mt-2 h-[370px] max-[380px]:h-[320px] sm:mx-0 sm:h-[380px] lg:h-[60vh] lg:min-h-[320px]' : 'relative h-[46vh] min-h-[300px] lg:h-[72vh]'}>
+          <div className={animated ? 'relative -mx-4 mt-10 h-[370px] max-[380px]:h-[320px] sm:mx-0 sm:h-[380px] lg:h-[60vh] lg:min-h-[320px]' : 'relative h-[46vh] min-h-[300px] lg:h-[72vh]'}>
             {!animated && (
               <div className={`absolute inset-0 grid place-items-center p-10 ${animated ? 'max-lg:p-4' : ''}`}>
                 <div className="h-full max-h-[420px] w-full max-w-[420px]">
