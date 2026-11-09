@@ -9,7 +9,7 @@ const WA_PATH =
 
 const HIDDEN = ['/designer', '/checkout', '/cart', '/admin'];
 
-/** Floating WhatsApp button for phones: soft pulse, a gentle wiggle and a one-time "chat with us" bubble. */
+/** Floating WhatsApp button: soft pulse, a gentle wiggle and a one-time "chat with us" bubble. */
 export function WhatsAppFab({ href }: { href: string }) {
   const pathname = usePathname() ?? '/';
   const [hint, setHint] = useState(false);
@@ -37,7 +37,7 @@ export function WhatsAppFab({ href }: { href: string }) {
   const product = pathname.startsWith('/stamp/');
 
   return (
-    <div className={`fixed right-3 z-[2147483590] lg:hidden ${product ? 'bottom-[88px]' : 'bottom-3'}`}>
+    <div className={`fixed right-3 z-[2147483590] sm:right-5 ${product ? 'bottom-[88px] lg:bottom-5' : 'bottom-3 sm:bottom-5'}`}>
       <span
         className={`wa-hint pointer-events-none absolute top-1/2 right-[4.25rem] -translate-y-1/2 rounded-2xl rounded-br-sm bg-white px-3.5 py-2 text-sm font-bold whitespace-nowrap text-ink shadow-[0_10px_30px_-10px_rgba(11,20,38,.45)] transition duration-500 ${hint ? 'translate-x-0 opacity-100' : 'translate-x-2 opacity-0'}`}
         aria-hidden
