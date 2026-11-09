@@ -10,6 +10,19 @@ import { MobileMenu } from './MobileMenu';
 import { showAnnouncement } from './AnnouncementBar';
 import { MAIN_NAV, STAMP_MENU } from './nav';
 
+function CartLink({ count, className = '' }: { count: number; className?: string }) {
+  return (
+    <Link href="/cart/" className={`btn-ghost relative !px-3 ${className}`} aria-label={`סל קניות (${count})`}>
+      <Icon name="cart" size={20} />
+      {count > 0 && (
+        <span className="absolute -top-0.5 -left-0.5 grid h-5 min-w-5 animate-pop place-items-center rounded-full bg-blue px-1 text-[11px] font-bold text-white">
+          {count}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export function Header() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
@@ -38,12 +51,13 @@ export function Header() {
         solid ? 'border-b border-line/80 bg-white/80 backdrop-blur-xl backdrop-saturate-150' : 'bg-transparent'
       }`}
     >
-      <div className="container-x flex h-16 items-center gap-2 sm:gap-6 lg:h-[4.75rem]">
-        {/* Phones: menu on the right, logo and cart on the left. */}
+      <div className="container-x relative flex h-16 items-center gap-2 sm:gap-6 lg:h-[4.75rem]">
+        {/* Phones: menu and cart on the right, logo centered. */}
         <button type="button" className="-ms-2 grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-surface sm:hidden" aria-label="פתיחת תפריט" aria-expanded={drawer} onClick={() => setDrawer(true)}>
           <Icon name="menu" size={22} />
         </button>
-        <Link href="/" aria-label="חותמות תוך 2 דקות – דף הבית" className="min-w-0 shrink text-ink max-sm:ms-auto sm:shrink-0">
+        <CartLink count={cartCount} className="sm:hidden" />
+        <Link href="/" aria-label="חותמות תוך 2 דקות – דף הבית" className="min-w-0 shrink text-ink max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2 sm:shrink-0">
           <span className="sm:hidden">
             <Logo size="sm" />
           </span>
@@ -97,14 +111,7 @@ export function Header() {
             <Icon name="user" size={19} />
             <span className="hidden 2xl:inline">האזור שלי</span>
           </Link>
-          <Link href="/cart/" className="btn-ghost relative !px-3" aria-label={`סל קניות (${cartCount})`}>
-            <Icon name="cart" size={20} />
-            {cartCount > 0 && (
-              <span className="absolute -top-0.5 -left-0.5 grid h-5 min-w-5 animate-pop place-items-center rounded-full bg-blue px-1 text-[11px] font-bold text-white">
-                {cartCount}
-              </span>
-            )}
-          </Link>
+          <CartLink count={cartCount} className="max-sm:hidden" />
           <Link href="/designer/" className="btn-primary hidden !px-5 sm:inline-flex lg:!h-12 lg:!px-6 lg:!text-base lg:font-bold">
             עצבו חותמת
           </Link>
