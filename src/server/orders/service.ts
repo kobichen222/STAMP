@@ -310,7 +310,7 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
 }
 
 /** "Order received" e-mails; the staff copy carries the production files. Idempotent per recipient. */
-async function announce(order: Order) {
+export async function announce(order: Order) {
   const store = getStore();
   const attachments: { filename: string; content: Buffer; contentType?: string }[] = [];
   for (const item of order.items) {
@@ -378,3 +378,13 @@ export const verifyToken = (o: Order | null, token: string | null) =>
   !!o && !!token && o.token.length === token.length && crypto.timingSafeEqual(Buffer.from(o.token), Buffer.from(token));
 
 export { audit };
+
+/** Admin: send the order e-mails that did not go out (each recipient at most once). */
+export async function resendOrderEmails(o: Order): Promise<number> {
+  const before = o.notificationsSent.length;
+  if (o.paymentStatus === 'paid' || o.paymentMethod === 'manual') {
+    await announce(o);
+    if (o.rewardCode) o.notificationsSent.push(...(await notify(o, 'order.reward')));
+  }
+  return o.notificationsSent.length - before;
+}

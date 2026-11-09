@@ -6,7 +6,7 @@ import { formatDate } from '@/lib/format';
 import { trackingLink } from '@/server/notifications';
 import { loadOrder } from '@/server/orders/service';
 import { STATUS_LABEL, TRANSITIONS } from '@/server/orders/types';
-import { addNote, markPaid, retryProduction, setStatus, setTracking, toggleUrgent } from '../../actions';
+import { addNote, markPaid, resendEmails, retryProduction, setStatus, setTracking, toggleUrgent } from '../../actions';
 import { Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
 import { ZigZagBox } from '../../ZigZagBox';
@@ -196,6 +196,11 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             {o.status === 'PRODUCTION_FILE_ERROR' && (
               <form action={retryProduction.bind(null, o.id)} className="mt-3">
                 <button className="btn-primary btn-sm w-full">נסה שוב ליצור קבצים</button>
+              </form>
+            )}
+            {(o.paymentStatus === 'paid' || o.paymentMethod === 'manual') && !o.notificationsSent.includes('order.created:staff') && (
+              <form action={resendEmails.bind(null, o.id)} className="mt-3">
+                <button className="btn-outline btn-sm w-full">שליחת מיילי ההזמנה שלא נשלחו</button>
               </form>
             )}
             <form action={toggleUrgent.bind(null, o.id)} className="mt-3">

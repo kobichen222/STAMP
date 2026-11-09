@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { applyStatus, audit, issueReward, loadOrder, runPreflight, saveOrder } from '@/server/orders/service';
+import { applyStatus, audit, issueReward, loadOrder, resendOrderEmails, runPreflight, saveOrder } from '@/server/orders/service';
 import { ORDER_STATUSES, type OrderStatus } from '@/server/orders/types';
 import { cancelShipment, createShipment, shipmentStatus, ShippingApiError } from '@/server/shipping/datalogics';
 import { requireStaff } from '@/server/staff';
@@ -131,5 +131,12 @@ export async function refreshZigZagStatus(id: string): Promise<ShipResult> {
     o.shipping.statusHistory = await shipmentStatus(o);
     const last = o.shipping.statusHistory.at(-1);
     return last ? `סטטוס: ${last.status}` : 'אין עדיין עדכוני סטטוס';
+  });
+}
+
+export async function resendEmails(id: string) {
+  await withOrder(id, ['admin'], async (o, role) => {
+    const n = await resendOrderEmails(o);
+    audit(o, role, 'emails_resent', { note: `${n} נשלחו` });
   });
 }
