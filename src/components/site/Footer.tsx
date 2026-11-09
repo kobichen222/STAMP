@@ -68,14 +68,13 @@ export function Footer() {
             href="https://www.media-deal.co.il/"
             target="_blank"
             rel="noopener"
-            className="group flex items-center gap-2.5 rounded-full border border-line bg-white py-1 ps-1 pe-3.5 shadow-soft transition hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-lift"
+            className="group flex items-center gap-1.5 text-[11px] text-muted opacity-80 transition hover:text-ink hover:opacity-100"
             aria-label="פותח על ידי מדיה דיל – בית תוכנה ופיתוח אתרים"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/media-deal.jpg" alt="" width={30} height={30} loading="lazy" className="h-[30px] w-[30px] rounded-full transition duration-500 group-hover:rotate-[360deg]" />
-            <span className="leading-tight">
-              <span className="block text-[10px] text-muted">פיתוח ועיצוב</span>
-              <span className="block text-[12.5px] font-bold text-ink">מדיה דיל · בית תוכנה ופיתוח אתרים</span>
+            <img src="/media-deal.jpg" alt="" width={18} height={18} loading="lazy" className="h-[18px] w-[18px] rounded-full grayscale transition duration-500 group-hover:rotate-[360deg] group-hover:grayscale-0" />
+            <span>
+              פיתוח: <span className="font-semibold">מדיה דיל</span> · בית תוכנה ופיתוח אתרים
             </span>
           </a>
         </div>
