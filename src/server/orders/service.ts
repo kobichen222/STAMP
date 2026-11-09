@@ -10,6 +10,7 @@ import { notify } from '../notifications';
 import { ensureSettings } from '../settings';
 import { getPaymentProvider, manualAutoProduction } from '../payments';
 import { runProductionEngine } from '../production-engine';
+import { carrierCardFor, createShipment, datalogicsConfigured } from '../shipping/datalogics';
 import { getStore } from '../store';
 import { canTransition, type Order, type OrderItem, type OrderStatus, type ProductionFileRef } from './types';
 
@@ -342,8 +343,28 @@ export async function confirmPayment(o: Order, payment: { ref?: string; amount: 
   if (o.status === 'PAID') await runPreflight(o, payment.actor);
   await issueReward(o).catch((e) => console.error('[reward]', o.id, e));
   await announce(o);
+  await autoShip(o, payment.actor);
   await saveOrder(o);
   return 'paid';
+}
+
+/**
+ * A paid ZigZag order goes straight to ZigZag (DataLogics). A failure never blocks
+ * the order: it is written to the order history and the manual button stays in the admin.
+ */
+export async function autoShip(o: Order, actor: string) {
+  const card = carrierCardFor(o);
+  if (!card || o.shipping.method === 'pickup' || o.shipping.trackingNumber || !datalogicsConfigured()) return;
+  try {
+    const r = await createShipment(o);
+    o.shipping.carrier = r.platform || 'זיג זג';
+    o.shipping.trackingNumber = r.trackingNumber;
+    o.shipping.labelUrl = r.labelUrl;
+    audit(o, actor, 'shipment_created', { note: `זיג זג ${r.trackingNumber} · כרטיס ${card} (אוטומטי)` });
+  } catch (e) {
+    console.error('[zigzag:auto]', o.id, e);
+    audit(o, actor, 'shipment_failed', { note: `שידור אוטומטי לזיג זג נכשל: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300) });
+  }
 }
 
 /** A declined / cancelled card payment – the customer can try again from the order page. */
