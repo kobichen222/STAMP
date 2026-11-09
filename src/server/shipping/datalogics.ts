@@ -53,6 +53,7 @@ async function call<T>(action: string, body: Record<string, unknown>): Promise<T
   } catch {
     throw new ShippingApiError(`תשובה לא צפויה משרת המשלוחים (HTTP ${res.status}): ${text.slice(0, 200)}`);
   }
+  console.log('[datalogics]', action, res.status, text.slice(0, 500));
   if (!res.ok) throw new ShippingApiError(`שרת המשלוחים החזיר שגיאה (HTTP ${res.status}): ${JSON.stringify(data).slice(0, 200)}`);
   return data as T;
 }
