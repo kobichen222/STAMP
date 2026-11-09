@@ -44,6 +44,8 @@ async function call<T>(action: string, body: Record<string, unknown>): Promise<T
     throw new ShippingApiError(`אין חיבור לשרת המשלוחים (${e instanceof Error ? e.message : e})`);
   });
   const text = await res.text();
+  // DataLogics answers 200 with an empty body when the token matches no merchant account.
+  if (res.ok && !text.trim()) throw new ShippingApiError('שרת המשלוחים החזיר תשובה ריקה – הטוקן (TOKEN_SWAGGER) לא מזוהה או שהחשבון לא הופעל ב-DataLogics');
   let data: unknown;
   try {
     data = JSON.parse(text);
