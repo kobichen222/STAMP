@@ -39,7 +39,7 @@ describe('DataLogics shipping', () => {
     const r = await createShipment(order);
     expect(r).toEqual({ trackingNumber: '987654', labelUrl: 'https://x/label.pdf', platform: 'ZigZag' });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe('https://connect.datalogics.co.il/rest/create_shipping?token=tok');
+    expect(url).toBe('https://connect.datalogics.co.il/rest/w_create_shipping?token=tok');
     expect(JSON.parse(String(init.body)).token).toBe('tok');
   });
 

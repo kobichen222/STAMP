@@ -5,7 +5,7 @@ import type { Order } from '../orders/types';
 
 /**
  * ZigZag shipments through DataLogics ("Shipping API", route-driven REST:
- * POST {base}/create_shipping | cancel_shipping | get_shipping_status).
+ * POST {base}/w_create_shipping | w_cancel_shipping | w_get_shipping_status).
  *
  * Environment (Vercel → Settings → Environment Variables – never in code):
  *   DATALOGICS_TOKEN     API token of the merchant account (required; TOKEN_SWAGGER / SWAGGER_TOKEN are accepted too)
@@ -35,7 +35,8 @@ export class ShippingApiError extends Error {}
 async function call<T>(action: string, body: Record<string, unknown>): Promise<T> {
   const token = apiToken();
   if (!token) throw new ShippingApiError('חיבור לזיג זג לא הוגדר (TOKEN_SWAGGER)');
-  const res = await fetch(`${base()}/${action}?token=${encodeURIComponent(token)}`, {
+  // The router serves each action under a w_ prefix (/rest/w_create_shipping); the bare name answers empty.
+  const res = await fetch(`${base()}/w_${action}?token=${encodeURIComponent(token)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ token, ...body }),
