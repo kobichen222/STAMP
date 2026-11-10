@@ -113,7 +113,7 @@ export function createShippingPayload(o: Order) {
         first_name: first ?? o.customer.name,
         last_name: rest.join(' '),
         email: o.customer.email ?? '',
-        phone: o.customer.phone.replace(/[^\d+]/g, ''),
+        phone: israeliPhone(o.customer.phone),
         company: o.customer.company ?? '',
         city: addr?.city ?? '',
         address_1: street,
@@ -161,4 +161,11 @@ export async function shipmentStatus(o: Order): Promise<{ status: string; date: 
   });
   if (!r.success) throw new ShippingApiError(r.msg || 'לא התקבל סטטוס');
   return (r.data ?? []).map((d) => ({ status: String(d.status ?? ''), date: String(d.date ?? '') }));
+}
+
+/** ZigZag wants a local Israeli number (05XXXXXXXX / 0X-XXXXXXX), not +972… */
+export function israeliPhone(raw: string): string {
+  const d = raw.replace(/\D/g, '');
+  if (d.startsWith('972')) return `0${d.slice(3).replace(/^0/, '')}`;
+  return d;
 }
