@@ -35,6 +35,8 @@ export function PrintStation(p: {
   mirror: boolean;
   svg: string;
   size: string;
+  /** Plate size in mm – the printed page is exactly this size (the Trotec job size). */
+  mm: { w: number; h: number };
   quantity: number;
   canStart: boolean;
   omittedImages: number;
@@ -75,10 +77,11 @@ export function PrintStation(p: {
       <style>{`
         #print-area { display: none }
         @media print {
-          @page { margin: 0 }
+          @page { size: ${p.mm.w}mm ${p.mm.h}mm; margin: 0 }
           body * { visibility: hidden !important }
           #print-area, #print-area * { visibility: visible !important }
-          #print-area { display: block !important; position: absolute; top: 0; left: 0; padding: 5mm }
+          #print-area { display: block !important; position: absolute; top: 0; left: 0; padding: 0; margin: 0 }
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important }
           #print-area svg { display: block }
         }
       `}</style>

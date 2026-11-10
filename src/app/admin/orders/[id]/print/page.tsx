@@ -57,6 +57,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
         mirror={mirror}
         svg={svg}
         size={`${it.design.width}×${it.design.height} מ"מ`}
+        mm={{ w: it.design.width, h: it.design.height }}
         quantity={it.quantity}
         canStart={['READY_FOR_PRODUCTION', 'AWAITING_APPROVAL'].includes(o.status)}
         omittedImages={out.omittedImages}
