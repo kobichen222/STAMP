@@ -122,10 +122,7 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
     <div className="min-h-dvh bg-gradient-to-b from-blue-50/60 via-white to-surface pt-24 pb-16 sm:pt-28">
       <div className="container-x max-w-3xl">
         <div className="text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-sm font-semibold text-blue shadow-soft ring-1 ring-blue/15">
-            <Icon name="sparkles" size={16} /> עיצוב עם AI
-          </span>
-          <h1 className="mt-4 text-3xl leading-tight font-extrabold sm:text-4xl">
+          <h1 className="text-3xl leading-tight font-extrabold sm:text-4xl">
             כותבים את התוכן – <span className="grad-text">מקבלים חותמת מעוצבת</span>
           </h1>
           <p className="mt-3 text-muted sm:text-lg">4 צעדים קצרים, המחשה מלאה לפני שמזמינים.</p>
@@ -160,7 +157,7 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
           {step === 0 && (
             <>
               <h2 className="text-xl font-bold">מה יהיה כתוב על החותמת?</h2>
-              <p className="mt-1 text-sm text-muted">כתבו כל שורה בשורה נפרדת – בדיוק כמו שתרצו שיופיע. ה-AI ישמור על כל מילה וכל ספרה.</p>
+              <p className="mt-1 text-sm text-muted">כתבו כל שורה בשורה נפרדת – בדיוק כמו שתרצו שיופיע. כל מילה וכל ספרה נשמרות.</p>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -225,7 +222,7 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
               </ul>
               {error && <p className="mt-3 text-sm text-bad">{error}</p>}
               <button type="button" className="btn-primary mt-6 !h-13 w-full !text-base font-bold" disabled={!product || busy} onClick={() => product && generate(product)}>
-                <Icon name="sparkles" size={18} /> {busy ? 'ה-AI מעצב… (כמה שניות)' : 'צרו לי 3 עיצובים'}
+                {busy ? 'מעצבים… (כמה שניות)' : 'צרו לי 3 עיצובים'}
               </button>
             </>
           )}

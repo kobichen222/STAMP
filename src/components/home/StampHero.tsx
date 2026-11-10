@@ -213,7 +213,7 @@ export function StampHero() {
                 </svg>
               </Link>
               <Link href="/ai-design/" className="inline-flex items-center gap-1.5 font-semibold text-blue underline-offset-4 hover:underline max-sm:w-full max-sm:justify-center sm:px-3">
-                ✨ או: עיצוב עם AI תוך דקה
+                או: עיצוב מהיר תוך דקה
               </Link>
             </div>
             <div ref={storyRef} className="relative mt-10 hidden h-20 lg:block" aria-hidden={!ready}>
