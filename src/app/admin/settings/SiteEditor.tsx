@@ -12,7 +12,7 @@ const FIELDS: { key: keyof SiteSettings; label: string; dir?: 'ltr'; hint?: stri
   { key: 'ordersEmail', label: 'מיילים להתראות על הזמנות', dir: 'ltr', hint: 'אפשר כמה כתובות מופרדות בפסיק' },
   { key: 'address', label: 'כתובת לאיסוף' },
   { key: 'hours', label: 'שעות פעילות' },
-  { key: 'announcement', label: 'הודעה בראש האתר', hint: 'למשל: "סגורים בחג – הזמנות ייוצרו ביום ראשון". השאירו ריק כדי להסתיר', long: true },
+  { key: 'announcement', label: 'הודעה בדף הבית', hint: 'מוצגת כתגית "חדש" מעל הכותרת הראשית. למשל: "סגורים בחג – הזמנות ייוצרו ביום ראשון". השאירו ריק כדי להסתיר', long: true },
 ];
 
 export function SiteEditor({ initial }: { initial: SiteSettings }) {
