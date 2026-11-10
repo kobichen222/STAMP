@@ -11,7 +11,7 @@ export function showAnnouncement(pathname: string) {
 
 /** The message as an endless ticker: two identical halves slide by one half, so the loop never jumps. */
 /** Pixels per second – the same calm pace whatever the length of the message (slower on narrow phone screens). */
-const speed = () => (window.innerWidth < 640 ? 20 : 30);
+const speed = () => (window.innerWidth < 640 ? 38 : 55);
 
 export function AnnouncementBar() {
   const pathname = usePathname();
@@ -20,7 +20,7 @@ export function AnnouncementBar() {
   useEffect(() => {
     const el = track.current;
     if (!el) return;
-    const fit = () => el.style.setProperty('--ticker-duration', `${Math.max(20, el.scrollWidth / 2 / speed())}s`);
+    const fit = () => el.style.setProperty('--ticker-duration', `${Math.max(12, el.scrollWidth / 2 / speed())}s`);
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el);
