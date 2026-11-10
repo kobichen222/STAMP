@@ -5,6 +5,8 @@ import { useEffect, useState, useTransition } from 'react';
 import { logPrint, markInProduction } from '../../../actions';
 
 const PRINTER_KEY = 's2g-printer';
+/** The studio's laser driver (Windows 10 station). */
+const DEFAULT_PRINTER = 'Trotec Engraver v9.3.2';
 
 /** Short, readable description of this computer (OS + browser) for the print log. */
 function device() {
@@ -44,9 +46,9 @@ export function PrintStation(p: {
 
   useEffect(() => {
     try {
-      setPrinter(localStorage.getItem(PRINTER_KEY) ?? '');
+      setPrinter(localStorage.getItem(PRINTER_KEY) || DEFAULT_PRINTER);
     } catch {
-      /* ignore */
+      setPrinter(DEFAULT_PRINTER);
     }
   }, []);
 
@@ -114,7 +116,7 @@ export function PrintStation(p: {
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-medium">שם המדפסת / המכונה</span>
-            <input value={printer} onChange={(e) => setPrinter(e.target.value)} placeholder="למשל: Trotec Speedy 100" className="input" />
+            <input value={printer} onChange={(e) => setPrinter(e.target.value)} placeholder="Trotec Engraver v9.3.2" className="input" />
             <span className="mt-1 block text-xs text-muted">נשמר במחשב הזה ונרשם ביומן עם כל הדפסה.</span>
           </label>
           <button type="button" onClick={print} className="btn-primary w-full">
@@ -143,9 +145,12 @@ export function PrintStation(p: {
             </button>
           )}
           <ul className="space-y-1 rounded-xl bg-surface p-3 text-xs leading-5 text-ink-2">
-            <li>• בחלון ההדפסה בוחרים את המדפסת או את דרייבר מכונת הלייזר.</li>
+            <li>
+              • בחלון ההדפסה בוחרים <strong dir="ltr">Trotec Engraver</strong> – העבודה נכנסת ל־JobControl.
+            </li>
             <li>• קנה מידה: 100% / ״גודל אמיתי״, בלי ״התאמה לדף״.</li>
             <li>• שוליים: ללא. כותרות עליונות ותחתונות: כבוי.</li>
+            <li>• מראה והיפוך לחותמת אפשר לסמן כאן או בהגדרות הדרייבר של Trotec – רק באחד מהם, כדי שלא יתהפך פעמיים.</li>
             {p.quantity > 1 && <li>• מספר עותקים: {p.quantity}.</li>}
           </ul>
         </section>
