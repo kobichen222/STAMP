@@ -126,7 +126,10 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
                   </dl>
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <Link href={`/admin/orders/${o.id}/print/?item=${i}`} className="btn-primary mt-4 w-full sm:w-auto">
+                <Icon name="file" size={17} /> שלח להדפסה
+              </Link>
+              <div className="mt-3 flex flex-wrap gap-2">
                 {it.files
                   .filter((f) => f.kind !== 'preview-svg')
                   .map((f) => (

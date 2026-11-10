@@ -141,3 +141,18 @@ export async function resendEmails(id: string) {
     audit(o, role, 'emails_resent', { note: `${n} נשלחו` });
   });
 }
+
+/** Print log: which printer / computer printed which plate (the browser can't tell us the printer, so staff type it once). */
+export async function logPrint(id: string, info: { index: number; printer: string; mirror: boolean; size: string; device: string }) {
+  await withOrder(id, ['admin', 'production'], async (o, role) => {
+    const printer = info.printer.trim().slice(0, 80) || 'לא צוין';
+    audit(o, role, 'print', { note: `פריט ${info.index + 1} · ${info.size} · ${info.mirror ? 'מראה' : 'רגיל'} · מדפסת: ${printer} · ${info.device.slice(0, 160)}` });
+  });
+}
+
+export async function markInProduction(id: string) {
+  await withOrder(id, ['admin', 'production'], async (o, role) => {
+    if (o.status === 'AWAITING_APPROVAL') await applyStatus(o, 'READY_FOR_PRODUCTION', role, 'נשלח להדפסה');
+    if (o.status === 'READY_FOR_PRODUCTION') await applyStatus(o, 'IN_PRODUCTION', role, 'נשלח להדפסה');
+  });
+}
