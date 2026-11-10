@@ -19,10 +19,11 @@ export function StatusBadge({ status }: { status: OrderStatus }) {
 }
 
 export function Preview({ order, index = 0, className = 'h-16 w-24' }: { order: Order; index?: number; className?: string }) {
-  const f = order.items[index]?.files.find((x) => x.kind === 'production-svg');
+  const item = order.items[index];
+  const f = item?.files.find((x) => x.kind === 'production-svg');
   return (
     <div className={`grid shrink-0 place-items-center rounded-lg border border-line bg-white p-1 ${className}`}>
-      {f ? <img src={`/api/admin/files/?path=${encodeURIComponent(f.path)}&inline=1`} alt="" className="max-h-full max-w-full" /> : <span className="text-xs text-muted">—</span>}
+      {f ? <img src={`/api/admin/files/?path=${encodeURIComponent(f.path)}&inline=1&v=${encodeURIComponent(item.designVersionId)}`} alt="" loading="lazy" decoding="async" className="max-h-full max-w-full" /> : <span className="text-xs text-muted">—</span>}
     </div>
   );
 }

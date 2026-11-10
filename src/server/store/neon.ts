@@ -122,9 +122,11 @@ export async function db(): Promise<NeonQueryFunction<false, false>> {
   const url = databaseUrl();
   if (!url) throw new Error('DATABASE_URL is not configured');
   const sql = neon(url);
-  ready ??= (async () => {
-    for (const stmt of SCHEMA) await sql.query(stmt);
-  })().catch((e) => {
+  // One round trip for the whole schema (the database is far from some regions – one call, not 25).
+  ready ??= sql
+    .transaction(SCHEMA.map((stmt) => sql.query(stmt)))
+    .then(() => undefined)
+    .catch((e) => {
     ready = null;
     throw e;
   });
@@ -296,4 +298,14 @@ export async function listRewardCoupons(limit = 200): Promise<RewardCoupon[]> {
     usedAt: iso(r.used_at),
     usedOrderId: r.used_order_id ?? undefined,
   }));
+}
+
+/** Menu counters in one small query (instead of loading whole orders). */
+export async function adminCounts(): Promise<{ production: number; errors: number; leads: number }> {
+  const sql = await db();
+  const [r] = await sql`select
+      (select count(*)::int from s2g_orders where status in ('READY_FOR_PRODUCTION', 'IN_PRODUCTION')) production,
+      (select count(*)::int from s2g_orders where status = 'PRODUCTION_FILE_ERROR') errors,
+      (select count(*)::int from s2g_contacts where not handled) leads`;
+  return { production: Number(r.production), errors: Number(r.errors), leads: Number(r.leads) };
 }

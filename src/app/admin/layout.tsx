@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { currentRole } from '@/server/staff';
 import { getStore } from '@/server/store';
-import { listContacts } from '@/server/store/neon';
+import { adminCounts, databaseUrl, listContacts } from '@/server/store/neon';
 import { AdminShell, type AdminBadges } from './AdminShell';
 
 export const metadata: Metadata = { title: { default: 'ניהול', template: '%s | ניהול Stamp2Go' }, robots: { index: false, follow: false } };
@@ -10,6 +10,10 @@ export const dynamic = 'force-dynamic';
 /** Small counters for the menu – never block the page if they fail. */
 async function badges(role: string): Promise<AdminBadges> {
   try {
+    if (databaseUrl()) {
+      const c = await adminCounts();
+      return role === 'admin' ? c : { production: c.production, errors: c.errors };
+    }
     const orders = await getStore().listOrders({ limit: 300 });
     const b: AdminBadges = {
       production: orders.filter((o) => o.status === 'READY_FOR_PRODUCTION' || o.status === 'IN_PRODUCTION').length,

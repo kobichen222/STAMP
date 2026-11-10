@@ -13,7 +13,8 @@ export async function GET(req: Request) {
     headers: {
       'Content-Type': file.contentType,
       'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(name)}`,
-      'Cache-Control': 'private, no-store',
+      // Versioned links (?v=design version) – safe to keep in the browser; makes order lists instant.
+      'Cache-Control': url.searchParams.has('v') ? 'private, max-age=86400' : 'private, no-store',
       'Content-Security-Policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'",
       'X-Content-Type-Options': 'nosniff',
     },

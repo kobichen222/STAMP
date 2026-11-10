@@ -3,7 +3,6 @@ import { SITE } from '@/lib/config';
 import { emailDetails, emailLayout, emailP } from '@/lib/email-template';
 import { sendMail } from '@/lib/mail';
 import type { Order } from './orders/types';
-import { getStore } from './store';
 import { databaseUrl, db } from './store/neon';
 
 /**
@@ -113,16 +112,13 @@ export async function paymentHealth() {
   const sql = await db();
   const [last] = await sql`select max(at) at from s2g_payment_log where ok = true`;
   const [fails] = await sql`select count(*)::int n from s2g_payment_log where ok = false and at > now() - interval '24 hours'`;
-  // Card orders opened in the last day that never got any answer from Tranzila.
-  const pending = await getStore().listOrders({ status: ['PAYMENT_PENDING'], limit: 50 });
-  const now = Date.now();
-  const stuck = [];
-  for (const o of pending) {
-    const age = now - new Date(o.createdAt).getTime();
-    if (o.paymentMethod === 'manual' || age < 15 * 60_000 || age > 864e5) continue;
-    const [answer] = await sql`select 1 from s2g_payment_log where order_id = ${o.id} and kind in ('notify', 'return') limit 1`;
-    if (!answer) stuck.push({ id: o.id, name: o.customer.name, total: o.total, createdAt: o.createdAt });
-  }
+  // Card orders opened in the last day (older than 15 minutes) that never got any answer from Tranzila – one query.
+  const rows = await sql`select o.id, o.customer_name, o.total, o.created_at from s2g_orders o
+    where o.status = 'PAYMENT_PENDING' and coalesce(o.data->>'paymentMethod', '') <> 'manual'
+      and o.created_at < now() - interval '15 minutes' and o.created_at > now() - interval '1 day'
+      and not exists (select 1 from s2g_payment_log l where l.order_id = o.id and l.kind in ('notify', 'return'))
+    order by o.created_at desc limit 50`;
+  const stuck = rows.map((r) => ({ id: String(r.id), name: String(r.customer_name), total: Number(r.total), createdAt: new Date(r.created_at as string).toISOString() }));
   return { lastOk: last?.at ? new Date(last.at as string).toISOString() : null, failures24h: Number(fails?.n ?? 0), stuck };
 }
 
