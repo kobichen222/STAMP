@@ -59,12 +59,13 @@ export function PrintStation(p: {
     } catch {
       /* ignore */
     }
-    start(async () => {
-      await logPrint(p.orderId, { index: p.index, printer, mirror: p.mirror, size: p.size, device: device() }).catch(() => {});
-      window.print();
-      setPrinted(true);
-      router.refresh();
-    });
+    // Open the print dialog straight from the click – browsers (iPhone, Safari, some Chrome setups)
+    // block it if it comes after waiting for the server. The log is written in the background.
+    setPrinted(true);
+    window.print();
+    logPrint(p.orderId, { index: p.index, printer, mirror: p.mirror, size: p.size, device: device() })
+      .then(() => router.refresh())
+      .catch(() => {});
   };
 
   return (
@@ -116,9 +117,16 @@ export function PrintStation(p: {
             <input value={printer} onChange={(e) => setPrinter(e.target.value)} placeholder="למשל: Trotec Speedy 100" className="input" />
             <span className="mt-1 block text-xs text-muted">נשמר במחשב הזה ונרשם ביומן עם כל הדפסה.</span>
           </label>
-          <button type="button" onClick={print} disabled={pending} className="btn-primary w-full">
-            {pending ? 'פותח הדפסה…' : `הדפסה (${p.quantity > 1 ? `${p.quantity} עותקים` : 'עותק אחד'})`}
+          <button type="button" onClick={print} className="btn-primary w-full">
+            {`הדפסה (${p.quantity > 1 ? `${p.quantity} עותקים` : 'עותק אחד'})`}
           </button>
+          <a
+            href={`/api/admin/export/?order=${encodeURIComponent(p.orderId)}&item=${p.index}&format=pdf&mirror=${p.mirror ? 1 : 0}`}
+            onClick={() => logPrint(p.orderId, { index: p.index, printer: printer || 'PDF', mirror: p.mirror, size: p.size, device: `${device()} · הורדת PDF` }).catch(() => {})}
+            className="btn-outline btn-sm w-full"
+          >
+            לא נפתח חלון הדפסה? הורדת PDF להדפסה
+          </a>
           {printed && p.canStart && (
             <button
               type="button"
