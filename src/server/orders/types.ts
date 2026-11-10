@@ -82,7 +82,7 @@ export interface Customer {
 }
 
 export interface Shipping {
-  method: string; // pickup | courier | express
+  method: string; // pickup | courier | express | rush | locker
   label: string;
   price: number;
   address?: { street: string; city: string; zip?: string; notes?: string };

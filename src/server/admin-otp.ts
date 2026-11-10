@@ -1,6 +1,6 @@
 import 'server-only';
 import crypto from 'node:crypto';
-import { escapeHtml, sendMail } from '@/lib/mail';
+import { loginCodeEmail } from './emails';
 import type { StaffRole } from './admin-auth';
 
 /**
@@ -70,15 +70,7 @@ export async function requestLoginCode(rawEmail: string): Promise<'sent' | 'igno
   if (prev && Date.now() - prev.sentAt < RESEND_MS) return 'wait';
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
   await save(email, { hash: hashCode(email, code), exp: Date.now() + TTL_MS, sentAt: Date.now(), tries: 0 });
-  await sendMail({
-    to: [email],
-    subject: `קוד כניסה לניהול: ${code}`,
-    html: `<div dir="rtl" style="font-family:Arial,sans-serif;font-size:16px;color:#0b1426">
-      <p>קוד הכניסה שלך לניהול האתר:</p>
-      <p style="font-size:32px;font-weight:700;letter-spacing:6px;margin:16px 0">${escapeHtml(code)}</p>
-      <p>הקוד תקף ל-10 דקות. אם לא ביקשת להיכנס – אפשר להתעלם מהמייל.</p>
-    </div>`,
-  });
+  await loginCodeEmail(email, code);
   return 'sent';
 }
 

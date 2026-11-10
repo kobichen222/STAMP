@@ -50,6 +50,11 @@ export const SCHEMA = [
     updated_at  timestamptz not null default now()
   )`,
   `alter table s2g_contacts add column if not exists handled boolean not null default false`,
+  `create table if not exists s2g_subscribers (
+    email       text primary key,
+    at          timestamptz not null default now(),
+    source      text
+  )`,
   `create table if not exists s2g_coupons (
     code           text primary key,
     pct            numeric(5,2) not null,
@@ -179,6 +184,14 @@ export async function saveContact(c: { name: string; phone: string; email?: stri
   const sql = await db();
   await sql`insert into s2g_contacts (name, phone, email, message, page, mailed)
             values (${c.name}, ${c.phone}, ${c.email || null}, ${c.message || null}, ${c.page || null}, ${c.mailed})`;
+}
+
+/** Newsletter sign-up; false when the address was already on the list. */
+export async function addSubscriber(email: string, source?: string): Promise<boolean> {
+  if (!databaseUrl()) return true;
+  const sql = await db();
+  const rows = await sql`insert into s2g_subscribers (email, source) values (${email}, ${source || null}) on conflict (email) do nothing returning email`;
+  return rows.length > 0;
 }
 
 export async function listContacts(limit = 200) {

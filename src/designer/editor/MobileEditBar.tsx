@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import type { DesignElement } from '../types';
 import { useEditor } from './context';
+import { ElementActions } from './ElementActions';
 
 const STEP = 0.5; // mm per tap – visible on a phone (0.2mm was ~1px and felt unresponsive)
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -80,7 +81,10 @@ export function MobileEditBar() {
     } else {
       const f = dir > 0 ? 1.08 : 1 / 1.08;
       const w = round2(Math.max(0.5, el.width * f));
-      actions.patch(el.id, { width: w, height: round2(Math.max(0, el.height * f)) });
+      actions.patch(el.id, {
+        width: w,
+        height: round2(Math.max(0, el.height * f)),
+      });
       show(`${w.toFixed(1)} מ״מ`);
     }
   };
@@ -96,6 +100,7 @@ export function MobileEditBar() {
           {flash}
         </span>
       )}
+      <ElementActions compact />
       <div className="flex max-w-full animate-pop items-center overflow-x-auto rounded-2xl border border-line bg-white/95 p-1 shadow-lift backdrop-blur [scrollbar-width:none]">
         {/* Nudge pad – RTL order: right first */}
         {(
@@ -127,10 +132,6 @@ export function MobileEditBar() {
         </button>
         <button type="button" aria-label="הגדלה" disabled={!el || locked} onClick={() => resize(1)} className={btn}>
           <Icon name="plus" size={18} />
-        </button>
-        {sep}
-        <button type="button" aria-label="מחיקה" disabled={locked} onClick={() => actions.remove(ids)} className={`${btn} active:!bg-bad/10 active:!text-bad`}>
-          <Icon name="trash" size={18} />
         </button>
         {sep}
         <button type="button" aria-label="סיום" onClick={() => actions.select([])} className={`${btn} bg-blue !text-white active:!bg-blue-600`}>

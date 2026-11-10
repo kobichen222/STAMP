@@ -52,7 +52,7 @@ export interface Addon {
 }
 
 export const ADDONS: Addon[] = [
-  { id: 'extra-body', label: 'גוף חותמת נוסף זהה', description: 'עותק נוסף של אותה חותמת – ב־10% הנחה', pctOfUnit: 90 },
+  { id: 'extra-body', label: 'העתק חותמת', description: 'עותק נוסף של אותה חותמת – ב־10% הנחה', pctOfUnit: 90 },
   { id: 'pad', label: 'כרית דיו חלופית', description: 'כרית רזרבית לאותו דגם', price: 25 },
   { id: 'ink-bottle', label: 'בקבוקון דיו', description: 'דיו למילוי בצבע החותמת', price: 20 },
   { id: 'certified', label: 'חותמת ״נאמן למקור״', description: 'חותמת מוכנה לאימות מסמכים', price: 49, pro: true },
@@ -97,6 +97,8 @@ export const DEFAULT_RULES: PricingRules = {
     // Courier services by ZigZag – each one under its own customer card.
     { id: 'courier', label: 'שליח עד הבית', price: 35, eta: 'עד 3 ימי עסקים', freeFrom: 300, address: 'full', carrierAccount: '28973' },
     { id: 'express', label: 'שליח עד 24 שעות', price: 60, eta: 'עד 24 שעות · בהזמנה עד 13:00', address: 'full', carrierAccount: '28974' },
+    // Rush delivery – arranged by the studio (no ZigZag card), price and terms editable in admin → pricing.
+    { id: 'rush', label: 'שליח עד 3 שעות', price: 99, eta: 'עד 3 שעות מאישור ההזמנה · א׳–ה׳ בשעות הפעילות', address: 'full' },
     { id: 'locker', label: 'איסוף מנקודת מסירה / לוקר', price: 25, eta: 'עד 3 ימי עסקים', address: 'city', carrierAccount: '28975' },
   ],
   coupons: [],

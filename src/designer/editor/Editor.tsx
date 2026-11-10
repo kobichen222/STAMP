@@ -27,6 +27,7 @@ import { IconButton } from './controls';
 import { AddToCartModal } from './AddToCartModal';
 import { AiPanel } from './AiPanel';
 import { EmptyState } from './EmptyState';
+import { ElementActions } from './ElementActions';
 import { FloatingToolbar } from './FloatingToolbar';
 import { MobileEditBar } from './MobileEditBar';
 import { Onboarding } from './Onboarding';
@@ -701,7 +702,16 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
             </div>
             {textDock && <TextDock onClose={() => actions.select([])} />}
             {/* Mobile: the open panel already holds every action – the bar only appears with the panel closed. */}
-            {selected.length > 0 && (isMobile ? sheet === 'closed' && <MobileEditBar /> : !textDock && <FloatingToolbar />)}
+            {selected.length > 0 &&
+              (isMobile ? (
+                sheet === 'closed' && <MobileEditBar />
+              ) : textDock ? (
+                <div className="absolute top-3 left-1/2 z-20 -translate-x-1/2">
+                  <ElementActions />
+                </div>
+              ) : (
+                <FloatingToolbar />
+              ))}
             {resumeBar && (
               <div role="status" className="absolute inset-x-3 top-16 z-30 mx-auto flex w-fit max-w-full animate-fade-up items-center gap-2 rounded-2xl border border-blue/20 bg-white/95 py-1.5 ps-3 pe-1.5 text-sm shadow-lift backdrop-blur lg:top-3">
                 <Icon name="history" size={16} className="shrink-0 text-blue" />

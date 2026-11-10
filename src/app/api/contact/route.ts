@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { fieldsTable, MailNotConfiguredError, sendMail } from '@/lib/mail';
+import { MailNotConfiguredError } from '@/lib/mail';
+import { contactEmails } from '@/server/emails';
 import { saveContact } from '@/server/store/neon';
 
 export async function POST(req: Request) {
@@ -20,11 +21,7 @@ export async function POST(req: Request) {
   const page = String(body.page || '').slice(0, 300);
   let mailError: unknown = null;
   try {
-    await sendMail({
-      subject: `פנייה חדשה מהאתר – ${name}`,
-      replyTo: email || undefined,
-      html: fieldsTable({ שם: name, טלפון: phone, אימייל: email, הודעה: message, עמוד: page }),
-    });
+    await contactEmails({ name, phone, email: email || undefined, message, page });
   } catch (e) {
     console.error(e);
     mailError = e;
