@@ -1,7 +1,7 @@
 /** ZigZag shipments through DataLogics: request shape and response handling (fetch mocked). */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Order } from '@/server/orders/types';
-import { cancelShipment, createShipment, createShippingPayload, ShippingApiError, splitStreet } from '@/server/shipping/datalogics';
+import { cancelShipment, createShipment, createShippingPayload, ShippingApiError, siteUrls, splitStreet } from '@/server/shipping/datalogics';
 
 const order = {
   id: 'ORD-261026-AB12',
@@ -75,12 +75,27 @@ describe('DataLogics shipping', () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: 0, msg: 'התרחשה שגיאה' })));
     vi.stubGlobal('fetch', fetchMock);
     await expect(createShipment(order)).rejects.toThrow('התרחשה שגיאה');
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    const perUrl = fetchMock.mock.calls.length / siteUrls().length;
+    expect(perUrl).toBe(4);
     expect(JSON.parse(String((fetchMock.mock.calls[3] as unknown as [string, RequestInit])[1].body)).settings).toBeUndefined();
     fetchMock.mockClear();
     const express = { ...order, shipping: { ...order.shipping, method: 'express', carrierAccount: '28974' } } as Order;
     await expect(createShipment(express)).rejects.toThrow();
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.length / siteUrls().length).toBe(3);
+  });
+
+  it('tries the other forms of the site address when the account is not found', async () => {
+    vi.stubEnv('DATALOGICS_TOKEN', 'tok');
+    const urls: string[] = [];
+    const fetchMock = vi.fn(async (_u: string, init: RequestInit) => {
+      const b = JSON.parse(String(init.body));
+      urls.push(b.url);
+      if (b.url === 'https://stamp2go.co.il' && !b.settings) return new Response(JSON.stringify({ success: 1, tracking_number: 7 }));
+      return new Response(JSON.stringify(b.settings ? { success: 0, msg: 'התרחשה שגיאה' } : { success: 0, msg: 'אין חשבון על אתר זה (5)' }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    expect((await createShipment(order)).trackingNumber).toBe('7');
+    expect(urls).toContain('https://www.stamp2go.co.il');
   });
 
   it('accepts the token as TOKEN_SWAGGER', async () => {

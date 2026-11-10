@@ -209,19 +209,42 @@ export function shippingAttempts(o: Order): { name: string; payload: ReturnType<
   return out;
 }
 
+/** DataLogics finds the merchant account by the site address; the account may still be registered under the old site's form of it. */
+export function siteUrls(): string[] {
+  const host = new URL(SITE.url).host.replace(/^www\./, '');
+  const list = [process.env.DATALOGICS_SITE_URL, SITE.url, `https://${host}`, `https://www.${host}`, `http://${host}`, `http://www.${host}`]
+    .filter((u): u is string => !!u)
+    .map((u) => u.replace(/\/$/, ''));
+  return [...new Set(list)];
+}
+
+const NO_ACCOUNT = /אין חשבון/;
+
 export async function createShipment(o: Order): Promise<ShipmentResult> {
   let last: CreateReply = {};
-  for (const a of shippingAttempts(o)) {
-    const r = await call<CreateReply>('create_shipping', a.payload);
-    if (r.success && r.tracking_number) {
-      if (a.name !== 'full') console.log('[datalogics] shipment created with variant', a.name, o.id);
-      return { trackingNumber: String(r.tracking_number), labelUrl: r.label_url || undefined, platform: r.platform_name || undefined };
+  let noAccount: CreateReply | undefined;
+  for (const url of siteUrls()) {
+    for (const a of shippingAttempts(o)) {
+      const r = await call<CreateReply>('create_shipping', { ...a.payload, url });
+      if (r.success && r.tracking_number) {
+        if (a.name !== 'full' || url !== SITE.url) console.log('[datalogics] shipment created with', a.name, url, o.id);
+        return { trackingNumber: String(r.tracking_number), labelUrl: r.label_url || undefined, platform: r.platform_name || undefined };
+      }
+      if (r.msg && NO_ACCOUNT.test(r.msg)) {
+        noAccount = r;
+        continue; // the account's settings are not found under this address – the next variant / address
+      }
+      last = r;
+      // Only the generic error is worth another shape; a specific message (bad address, card …) is shown as is.
+      if (r.msg && r.msg !== 'התרחשה שגיאה') throw new ShippingApiError(r.msg);
     }
-    last = r;
-    // Only the generic error is worth another shape; a specific message (bad address, card …) is shown as is.
-    if (r.msg && r.msg !== 'התרחשה שגיאה') break;
   }
-  throw new ShippingApiError(last.msg || last.error || `המשלוח לא נוצר: ${JSON.stringify(last).slice(0, 200)}`);
+  const r = noAccount ?? last;
+  throw new ShippingApiError(
+    noAccount
+      ? `DataLogics לא מוצאים את החשבון לפי כתובת האתר (${SITE.url}). צריך לבקש מהם לרשום את הכתובת הזו לחשבון: ${r.msg}`
+      : r.msg || r.error || `המשלוח לא נוצר: ${JSON.stringify(r).slice(0, 200)}`,
+  );
 }
 
 export async function cancelShipment(o: Order): Promise<void> {
