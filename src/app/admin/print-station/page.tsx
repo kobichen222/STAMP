@@ -13,8 +13,31 @@ export default async function PrintStationPage() {
         <p className="mt-1 text-sm text-muted">כל הזמנה ששולמה ועברה בדיקה נשלחת לבד למכונת הלייזר, בגודל המדויק של החותמת, ועוברת ל״בייצור״.</p>
       </div>
       <AutoPrint />
+      <section className="card border-blue/30 p-4 text-sm leading-6 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold">התקנה בקובץ אחד (Windows XP / 7 / 10 / 11)</h2>
+            <p className="text-ink-2">מגדיר הכול לבד: דפדפן, Trotec כמדפסת ברירת מחדל, אייקון בשולחן העבודה ופתיחה אוטומטית בהפעלת המחשב.</p>
+          </div>
+          <a href="/downloads/stamp2go-station-setup.bat" download className="btn-primary">
+            הורדת קובץ ההתקנה
+          </a>
+        </div>
+        <ol className="mt-3 list-decimal space-y-1.5 ps-5 text-ink-2">
+          <li>
+            <strong>במחשב XP בלבד:</strong> להוריד במחשב אחר את Supermium (גרסת 32-bit, דפדפן מודרני שעובד על XP SP3) מ־
+            <a href="https://github.com/win32ss/supermium/releases" target="_blank" rel="noopener" className="text-blue underline" dir="ltr">
+              github.com/win32ss/supermium
+            </a>{' '}
+            ולשים אותו באותה תיקייה עם קובץ ההתקנה (למשל בדיסק און קי).
+          </li>
+          <li>ללחוץ פעמיים על <span dir="ltr">stamp2go-station-setup.bat</span> במחשב של המכונה ולעקוב אחרי ההודעות.</li>
+          <li>בחלון שנפתח: להתחבר לניהול פעם אחת וללחוץ ״הפעלת הדפסה אוטומטית״.</li>
+        </ol>
+      </section>
+
       <section className="card p-4 text-sm leading-6 sm:p-5">
-        <h2 className="font-bold">הגדרה חד־פעמית במחשב של המכונה</h2>
+        <h2 className="font-bold">הגדרה ידנית (אם לא משתמשים בקובץ)</h2>
         <ol className="mt-2 list-decimal space-y-1.5 ps-5 text-ink-2">
           <li>
             ב־Windows: הגדרות ← מדפסות וסורקים ← <strong dir="ltr">Trotec Engraver</strong> ← ״הגדר כברירת מחדל״ (ולבטל ״אפשר ל־Windows לנהל את מדפסת ברירת המחדל״).
