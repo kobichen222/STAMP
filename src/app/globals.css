@@ -125,7 +125,7 @@
 @media (prefers-reduced-motion: reduce) { .wa-ring, .wa-icon { animation: none; } .wa-ring { display: none; } }
 
 /* Announcement ticker – endless loop (RTL: moves to the right); static text with reduced motion. */
-.ticker-track { animation: ticker 38s linear infinite; }
+.ticker-track { animation: ticker var(--ticker-duration, 120s) linear infinite; }
 .ticker:hover .ticker-track { animation-play-state: paused; }
 .ticker-static { display: none; }
 @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(50%); } }
