@@ -2,7 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { STATUS_LABEL, TRANSITIONS, type OrderStatus } from '@/server/orders/types';
+import { statusLabel, TRANSITIONS, type OrderStatus } from '@/server/orders/types';
 import { setStatus } from '../../actions';
 
 /** The regular path of an order, in order. */
@@ -11,7 +11,8 @@ const FLOW: OrderStatus[] = ['PAYMENT_PENDING', 'PAID', 'PREFLIGHT', 'AWAITING_A
 const SIDE: OrderStatus[] = ['CHANGE_REQUESTED', 'PRODUCTION_FILE_ERROR', 'PAYMENT_FAILED', 'CANCELLED', 'PARTIALLY_REFUNDED', 'REFUNDED'];
 const DANGER: OrderStatus[] = ['CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'];
 
-function useStatus(id: string, status: OrderStatus) {
+function useStatus(id: string, status: OrderStatus, method?: string) {
+  const L = (s: OrderStatus) => statusLabel(s, method);
   const router = useRouter();
   const [shown, setShown] = useOptimistic(status);
   const [pending, start] = useTransition();
@@ -19,7 +20,7 @@ function useStatus(id: string, status: OrderStatus) {
   const [error, setError] = useState('');
   const go = (to: OrderStatus) => {
     if (to === shown || pending) return;
-    if (DANGER.includes(to) && !window.confirm(`להעביר את ההזמנה ל"${STATUS_LABEL[to]}"?`)) return;
+    if (DANGER.includes(to) && !window.confirm(`להעביר את ההזמנה ל"${L(to)}"?`)) return;
     setError('');
     setTarget(to);
     start(async () => {
@@ -32,14 +33,14 @@ function useStatus(id: string, status: OrderStatus) {
       }
     });
   };
-  return { shown, pending, target, error, go };
+  return { shown, pending, target, error, go, L };
 }
 
 const Spinner = () => <span aria-hidden className="inline-block size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />;
 
 /** Every step on view, the current one marked; a click moves the order there at once. */
-export function StatusPicker({ id, status, primary }: { id: string; status: OrderStatus; primary?: OrderStatus }) {
-  const { shown, pending, target, error, go } = useStatus(id, status);
+export function StatusPicker({ id, status, primary, method }: { id: string; status: OrderStatus; primary?: OrderStatus; method?: string }) {
+  const { shown, pending, target, error, go, L } = useStatus(id, status, method);
   const at = FLOW.indexOf(shown);
   const allowed = TRANSITIONS[shown] ?? [];
   const next = primary && shown === status ? primary : allowed.find((s) => FLOW.indexOf(s) > at);
@@ -48,7 +49,7 @@ export function StatusPicker({ id, status, primary }: { id: string; status: Orde
     <div className="mt-3 space-y-3">
       {next && (
         <button type="button" onClick={() => go(next)} disabled={pending} className="btn-primary w-full">
-          {pending && target === next ? <Spinner /> : null} העברה ל: {STATUS_LABEL[next]}
+          {pending && target === next ? <Spinner /> : null} העברה ל: {L(next)}
         </button>
       )}
       <ol className="grid gap-1" aria-label="שלבי ההזמנה">
@@ -69,7 +70,7 @@ export function StatusPicker({ id, status, primary }: { id: string; status: Orde
                 <span className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] ${current ? 'bg-white text-blue' : done ? 'bg-blue text-white' : 'bg-line text-muted'}`}>
                   {pending && target === s ? <Spinner /> : done ? '✓' : n + 1}
                 </span>
-                <span className="min-w-0 flex-1 truncate">{STATUS_LABEL[s]}</span>
+                <span className="min-w-0 flex-1 truncate">{L(s)}</span>
                 {!current && allowed.includes(s) && <span className="text-[10px] text-blue">הבא</span>}
               </button>
             </li>
@@ -87,7 +88,7 @@ export function StatusPicker({ id, status, primary }: { id: string; status: Orde
               s === shown ? 'border-bad bg-bad text-white' : DANGER.includes(s) ? 'border-bad/30 text-bad hover:bg-bad/5' : 'border-line text-muted hover:border-blue hover:text-ink'
             }`}
           >
-            {pending && target === s ? <Spinner /> : null} {STATUS_LABEL[s]}
+            {pending && target === s ? <Spinner /> : null} {L(s)}
           </button>
         ))}
       </div>
@@ -97,12 +98,12 @@ export function StatusPicker({ id, status, primary }: { id: string; status: Orde
 }
 
 /** The sticky phone bar button – same instant response. */
-export function NextStatusButton({ id, status, primary }: { id: string; status: OrderStatus; primary: OrderStatus }) {
-  const { shown, pending, go } = useStatus(id, status);
+export function NextStatusButton({ id, status, primary, method }: { id: string; status: OrderStatus; primary: OrderStatus; method?: string }) {
+  const { shown, pending, go, L } = useStatus(id, status, method);
   const done = shown !== status;
   return (
     <button type="button" onClick={() => go(primary)} disabled={pending || done} className="btn-primary !h-11 w-full truncate text-sm">
-      {pending ? <Spinner /> : null} {done ? STATUS_LABEL[shown] : `העברה ל: ${STATUS_LABEL[primary]}`}
+      {pending ? <Spinner /> : null} {done ? L(shown) : `העברה ל: ${L(primary)}`}
     </button>
   );
 }

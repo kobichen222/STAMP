@@ -1,5 +1,5 @@
 import { csv, csvResponse } from '@/server/csv';
-import { STATUS_LABEL } from '@/server/orders/types';
+import { statusLabel, STATUS_LABEL } from '@/server/orders/types';
 import { requireStaff } from '@/server/staff';
 import { getStore } from '@/server/store';
 
@@ -13,7 +13,7 @@ export async function GET() {
     ...orders.map((o) => [
       o.id,
       new Date(o.createdAt).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' }),
-      STATUS_LABEL[o.status],
+      statusLabel(o.status, o.shipping.method),
       o.paymentStatus === 'paid' ? 'שולם' : 'לא שולם',
       o.customer.name,
       o.customer.phone,

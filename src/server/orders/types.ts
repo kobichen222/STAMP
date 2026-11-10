@@ -40,6 +40,9 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
   PARTIALLY_REFUNDED: 'הוחזר חלקית',
 };
 
+/** The status as shown: a pickup order that is ready says "מוכן לאיסוף", not "מוכן למשלוח". */
+export const statusLabel = (status: OrderStatus, method?: string) => (status === 'READY_FOR_SHIPPING' && method === 'pickup' ? 'מוכן לאיסוף' : STATUS_LABEL[status]);
+
 /** Allowed transitions – everything else is rejected (and audited). */
 export const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PAYMENT_PENDING: ['PAID', 'PAYMENT_FAILED', 'PREFLIGHT', 'CANCELLED'],

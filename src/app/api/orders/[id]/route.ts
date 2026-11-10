@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { applyStatus, audit, loadOrder, saveOrder, verifyToken } from '@/server/orders/service';
-import { STATUS_LABEL } from '@/server/orders/types';
+import { statusLabel, STATUS_LABEL } from '@/server/orders/types';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: Ctx) {
     id: o!.id,
     createdAt: o!.createdAt,
     status: o!.status,
-    statusLabel: STATUS_LABEL[o!.status],
+    statusLabel: statusLabel(o!.status, o!.shipping.method),
     total: o!.total,
     shipping: { label: o!.shipping.label, trackingNumber: o!.shipping.trackingNumber, trackingUrl: o!.shipping.trackingUrl },
     items: o!.items.map((i) => ({ productName: i.productName, size: i.size, quantity: i.quantity, ink: i.ink, total: i.total, ready: i.preflight.ready })),
@@ -34,5 +34,5 @@ export async function POST(req: Request, { params }: Ctx) {
     audit(o!, 'customer', 'change_request', { note: String(body.note ?? '').slice(0, 1000) });
   } else return NextResponse.json({ error: 'bad action' }, { status: 400 });
   await saveOrder(o!);
-  return NextResponse.json({ status: o!.status, statusLabel: STATUS_LABEL[o!.status] });
+  return NextResponse.json({ status: o!.status, statusLabel: statusLabel(o!.status, o!.shipping.method) });
 }

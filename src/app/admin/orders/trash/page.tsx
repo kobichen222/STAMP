@@ -27,7 +27,7 @@ export default async function TrashPage() {
           <li key={o.id} className="card flex flex-wrap items-center gap-3 p-3.5">
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-center gap-2 font-bold">
-                <span dir="ltr">{o.id}</span> <StatusBadge status={o.status} />
+                <span dir="ltr">{o.id}</span> <StatusBadge status={o.status} method={o.shipping.method} />
               </p>
               <p className="truncate text-sm text-ink-2">
                 {o.customer.name} · ₪{o.total} · {o.items.map((i) => i.productName).join(', ')}

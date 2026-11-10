@@ -6,7 +6,7 @@ import { INK_COLORS } from '@/designer/types';
 import { SITE } from '@/lib/config';
 import { formatDate, formatPrice } from '@/lib/format';
 import { loadOrder, verifyToken } from '@/server/orders/service';
-import { STATUS_LABEL, TIMELINE } from '@/server/orders/types';
+import { statusLabel, STATUS_LABEL, TIMELINE } from '@/server/orders/types';
 import { headers } from 'next/headers';
 import { getPaymentProvider } from '@/server/payments';
 import { ApprovalBox, PaymentWatcher, PayNow, PrintButton } from './OrderActions';
@@ -75,7 +75,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
             </p>
             <p className="mt-1 text-sm text-muted">{formatDate(order.createdAt)}</p>
           </div>
-          <span className={`rounded-full px-3 py-1.5 text-sm font-semibold ${failed ? 'bg-bad/10 text-bad' : 'bg-blue-50 text-blue'}`}>{STATUS_LABEL[order.status]}</span>
+          <span className={`rounded-full px-3 py-1.5 text-sm font-semibold ${failed ? 'bg-bad/10 text-bad' : 'bg-blue-50 text-blue'}`}>{statusLabel(order.status, order.shipping.method)}</span>
         </div>
         {ready && !failed && (
           <p className="mt-4 flex items-center gap-2 rounded-xl bg-ok/10 px-4 py-3 text-sm font-medium text-ok">

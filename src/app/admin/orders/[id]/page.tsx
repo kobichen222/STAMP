@@ -6,7 +6,7 @@ import { ADDONS, DEFAULT_RULES } from '@/lib/pricing';
 import { formatDate } from '@/lib/format';
 import { trackingLink } from '@/server/notifications';
 import { loadOrder } from '@/server/orders/service';
-import { STATUS_LABEL, TIMELINE, TRANSITIONS, type OrderStatus } from '@/server/orders/types';
+import { statusLabel, STATUS_LABEL, TIMELINE, TRANSITIONS, type OrderStatus } from '@/server/orders/types';
 import { addNote, markPaid, resendEmails, retryProduction, setStatus, setTracking, toggleUrgent } from '../../actions';
 import { Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
@@ -63,7 +63,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
           <h1 className="text-xl font-bold sm:text-2xl" dir="ltr">
             {o.id}
           </h1>
-          <StatusBadge status={o.status} />
+          <StatusBadge status={o.status} method={o.shipping.method} />
           {o.urgent && <span className="rounded-full bg-bad px-2 py-0.5 text-xs font-bold text-white">דחוף</span>}
           <Link href={`/admin/orders/${o.id}/edit/`} className="btn-outline btn-sm ms-auto">
             <Icon name="edit" size={15} /> עריכת הזמנה
@@ -222,7 +222,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
                   <span className="shrink-0 text-xs text-muted tabular-nums sm:w-32 sm:text-sm">{formatDate(a.at)}</span>
                   <span>
                     <strong>{a.actor}</strong> · {a.action}
-                    {a.to && ` → ${STATUS_LABEL[a.to]}`}
+                    {a.to && ` → ${statusLabel(a.to, o.shipping.method)}`}
                     {a.note && <span className="text-muted"> · {a.note}</span>}
                   </span>
                 </li>
@@ -310,7 +310,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
 
           <section className="card p-4 sm:p-5">
             <h2 className="font-bold">סטטוס</h2>
-            <StatusPicker key={o.status} id={o.id} status={o.status} primary={primary} />
+            <StatusPicker key={o.status} id={o.id} status={o.status} primary={primary} method={o.shipping.method} />
             {o.status === 'PRODUCTION_FILE_ERROR' && (
               <form action={retryProduction.bind(null, o.id)} className="mt-3">
                 <button className="btn-primary btn-sm w-full">נסה שוב ליצור קבצים</button>
@@ -393,14 +393,14 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
           </a>
           {primary ? (
             <div className="min-w-0 flex-1">
-              <NextStatusButton key={o.status} id={o.id} status={o.status} primary={primary} />
+              <NextStatusButton key={o.status} id={o.id} status={o.status} primary={primary} method={o.shipping.method} />
             </div>
           ) : o.paymentStatus !== 'paid' && !closed ? (
             <a href="#pay" className="btn-dark !h-11 min-w-0 flex-1 text-sm">
               סימון תשלום
             </a>
           ) : (
-            <span className="min-w-0 flex-1 truncate text-center text-sm text-muted">{STATUS_LABEL[o.status]}</span>
+            <span className="min-w-0 flex-1 truncate text-center text-sm text-muted">{statusLabel(o.status, o.shipping.method)}</span>
           )}
         </div>
       </div>

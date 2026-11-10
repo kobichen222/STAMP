@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getStore } from '@/server/store';
 import { requireStaff } from '@/server/staff';
-import { STATUS_LABEL, type Order } from '@/server/orders/types';
+import { statusLabel, STATUS_LABEL, type Order } from '@/server/orders/types';
 
 export const metadata = { title: 'לקוחות' };
 export const dynamic = 'force-dynamic';
@@ -97,7 +97,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   </span>
                   <span className="text-muted">{fmt.format(new Date(o.createdAt))}</span>
                   <span className="min-w-0 flex-1 truncate">{o.items.map((i) => i.productName).join(', ')}</span>
-                  <span className="rounded-full bg-surface px-2 py-0.5 text-xs">{STATUS_LABEL[o.status]}</span>
+                  <span className="rounded-full bg-surface px-2 py-0.5 text-xs">{statusLabel(o.status, o.shipping.method)}</span>
                   <span className="font-semibold tabular-nums">₪{o.total}</span>
                 </Link>
               </li>

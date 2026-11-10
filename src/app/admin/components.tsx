@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { STATUS_LABEL, type Order, type OrderStatus } from '@/server/orders/types';
+import { statusLabel, STATUS_LABEL, type Order, type OrderStatus } from '@/server/orders/types';
 
 const TONE: Partial<Record<OrderStatus, string>> = {
   PRODUCTION_FILE_ERROR: 'bg-bad/10 text-bad',
@@ -14,8 +14,8 @@ const TONE: Partial<Record<OrderStatus, string>> = {
   DELIVERED: 'bg-ok/10 text-ok',
 };
 
-export function StatusBadge({ status }: { status: OrderStatus }) {
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${TONE[status] ?? 'bg-surface text-ink-2'}`}>{STATUS_LABEL[status]}</span>;
+export function StatusBadge({ status, method }: { status: OrderStatus; method?: string }) {
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${TONE[status] ?? 'bg-surface text-ink-2'}`}>{statusLabel(status, method)}</span>;
 }
 
 export function Preview({ order, index = 0, className = 'h-16 w-24' }: { order: Order; index?: number; className?: string }) {
@@ -52,7 +52,7 @@ export function OrderRow({ o }: { o: Order }) {
       <p className="hidden truncate text-sm md:block">{items}</p>
       <p className="hidden text-sm text-muted md:block">{date}</p>
       <div className="flex shrink-0 flex-col items-end gap-1 md:contents">
-        <StatusBadge status={o.status} />
+        <StatusBadge status={o.status} method={o.shipping.method} />
         <p className="text-sm font-bold tabular-nums md:text-base">₪{o.total}</p>
       </div>
     </Link>
