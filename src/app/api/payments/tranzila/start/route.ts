@@ -1,3 +1,4 @@
+import { logPayment } from '@/server/payment-log';
 import { NextResponse } from 'next/server';
 import { saveOrder, transition } from '@/server/orders/service';
 import { getPaymentProvider } from '@/server/payments';
@@ -20,5 +21,6 @@ export async function GET(req: Request) {
     await saveOrder(o);
   }
   const start = await provider.start(o, url.origin);
+  await logPayment({ orderId: o.id, kind: 'start', sum: o.total, message: 'ניסיון תשלום חוזר מדף ההזמנה' });
   return NextResponse.redirect(start.redirectUrl!, 303);
 }

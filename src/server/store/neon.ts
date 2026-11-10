@@ -79,6 +79,19 @@ export const SCHEMA = [
   )`,
   `create index if not exists s2g_carts_due_idx on s2g_carts (updated_at) where sent_at is null and converted_order is null`,
   `create index if not exists s2g_carts_email_idx on s2g_carts (lower(email))`,
+  `create table if not exists s2g_payment_log (
+    id        bigserial primary key,
+    at        timestamptz not null default now(),
+    order_id  text,
+    kind      text not null,
+    ok        boolean,
+    code      text,
+    sum       numeric(10,2),
+    message   text,
+    detail    jsonb
+  )`,
+  `create index if not exists s2g_payment_log_order_idx on s2g_payment_log (order_id, at desc)`,
+  `create index if not exists s2g_payment_log_at_idx on s2g_payment_log (at desc)`,
   `create table if not exists s2g_trash (
     id          text primary key,
     data        jsonb not null,

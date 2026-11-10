@@ -1,5 +1,6 @@
 import { after, NextResponse } from 'next/server';
 import { markCartConverted } from '@/server/abandoned';
+import { logPayment } from '@/server/payment-log';
 import { checkoutSchema, CheckoutError, createOrder } from '@/server/orders/service';
 import { getPaymentProvider } from '@/server/payments';
 import { rateLimit } from '@/server/rate-limit';
@@ -22,7 +23,10 @@ export async function POST(req: Request) {
     // Card payment: the browser continues to the payment page.
     const provider = getPaymentProvider();
     let paymentUrl: string | undefined;
-    if (provider.id !== 'manual' && order.paymentMethod === provider.id && order.paymentStatus !== 'paid') paymentUrl = (await provider.start(order, new URL(req.url).origin)).redirectUrl;
+    if (provider.id !== 'manual' && order.paymentMethod === provider.id && order.paymentStatus !== 'paid') {
+      paymentUrl = (await provider.start(order, new URL(req.url).origin)).redirectUrl;
+      after(() => logPayment({ orderId: order.id, kind: 'start', sum: order.total, message: 'נפתח טופס תשלום בקופה' }));
+    }
     return NextResponse.json({ id: order.id, token: order.token, status: order.status, total: order.total, paymentUrl });
   } catch (e) {
     if (e instanceof CheckoutError) return NextResponse.json({ error: e.message }, { status: e.status });

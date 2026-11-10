@@ -29,6 +29,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: '/admin/', label: 'לוח בקרה', icon: 'grid', roles: ['admin'] },
       { href: '/admin/orders/', label: 'הזמנות', icon: 'file', roles: ['admin'], badge: 'errors' },
       { href: '/admin/production/', label: 'תור ייצור', icon: 'layers3d', roles: ['admin', 'production'], badge: 'production' },
+      { href: '/admin/payments/', label: 'לוג סליקה', icon: 'shield', roles: ['admin'] },
       { href: '/admin/print-station/', label: 'תחנת הדפסה', icon: 'file', roles: ['admin', 'production'] },
       { href: '/admin/leads/', label: 'פניות', icon: 'phone', roles: ['admin'], badge: 'leads' },
     ],

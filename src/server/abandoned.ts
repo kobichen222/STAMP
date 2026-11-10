@@ -3,6 +3,7 @@ import { SITE } from '@/lib/config';
 import { emailDetails, emailLayout, emailP } from '@/lib/email-template';
 import { escapeHtml, sendMail } from '@/lib/mail';
 import { trackingLink } from './notifications';
+import { checkPaymentsAlive } from './payment-log';
 import { getStore } from './store';
 import { databaseUrl, db } from './store/neon';
 
@@ -181,5 +182,6 @@ export async function sweepAbandoned(force = false): Promise<{ carts: number; pa
       console.error('[abandoned] payment mail', o.id, e);
     }
   }
+  await checkPaymentsAlive().catch((e) => console.error('[payment-log] alive', e));
   return done;
 }

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getStore } from '@/server/store';
 import { listContacts } from '@/server/store/neon';
 import { OrderRow } from './components';
+import { paymentHealth } from '@/server/payment-log';
 
 function Kpi({ label, value, tone = '', href }: { label: string; value: string | number; tone?: string; href?: string }) {
   const body = (
@@ -28,6 +29,7 @@ function Health({ label, ok, warn }: { label: string; ok: boolean; warn?: string
 export default async function Dashboard() {
   const store = getStore();
   const orders = await store.listOrders({ limit: 500 });
+  const payHealth = await paymentHealth().catch(() => null);
   const today = new Date().toDateString();
   const todays = orders.filter((o) => new Date(o.createdAt).toDateString() === today);
   const revenueToday = todays.filter((o) => o.status !== 'CANCELLED').reduce((s, o) => s + o.total, 0);
@@ -87,7 +89,7 @@ export default async function Dashboard() {
             <Health label={`מסד נתונים / אחסון${store.kind === 'neon' ? ' (Neon)' : ''}`} ok={store.durable} warn={store.kind === 'filesystem' ? 'זמני – הגדירו DATABASE_URL (Neon)' : 'לא מוגדר'} />
             <Health label="מנוע ייצור" ok />
             <Health label={`שליחת מיילים${process.env.SMTP_HOST ? ' (SMTP)' : process.env.RESEND_API_KEY ? ' (Resend)' : ''}`} ok={!!(process.env.SMTP_HOST || process.env.RESEND_API_KEY)} warn="לא מוגדר" />
-            <Health label="סליקה (טרנזילה)" ok={(process.env.PAYMENT_PROVIDER ?? 'tranzila') === 'tranzila'} warn="ידני" />
+            <Health label="סליקה (טרנזילה)" ok={(process.env.PAYMENT_PROVIDER ?? 'tranzila') === 'tranzila' && !(payHealth && payHealth.stuck.length >= 2)} warn={payHealth && payHealth.stuck.length >= 2 ? `${payHealth.stuck.length} הזמנות בלי תשובה` : 'ידני'} />
             <Health label="משלוחים (זיג זג)" ok={!!(process.env.TOKEN_SWAGGER || process.env.DATALOGICS_TOKEN)} warn="שידור ידני" />
             <Health label="עוזר עיצוב" ok={!!process.env.ANTHROPIC_API_KEY} warn="מצב מקומי" />
           </ul>

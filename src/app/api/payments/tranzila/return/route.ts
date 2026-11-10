@@ -1,4 +1,5 @@
-import { failPayment } from '@/server/orders/service';
+import { failPayment, saveOrder } from '@/server/orders/service';
+import { alertPaymentFailed, codeText, logPayment } from '@/server/payment-log';
 import { orderFor, readFields } from '../fields';
 
 export const dynamic = 'force-dynamic';
@@ -22,9 +23,20 @@ async function handle(req: Request) {
   const f = await readFields(req);
   console.info('[tranzila] return', url.searchParams.get('result'), f.order_id, 'Response', f.Response);
   const o = await orderFor(f);
-  if (!o) return leaveFrame(new URL('/', url.origin));
+  if (!o) {
+    await logPayment({ orderId: f.order_id || null, kind: 'return', ok: false, code: f.Response, message: 'חזרה מדף התשלום – הזמנה לא נמצאה', fields: f });
+    return leaveFrame(new URL('/', url.origin));
+  }
   const failed = url.searchParams.get('result') === 'fail' || (f.Response !== undefined && f.Response !== '000');
-  if (failed) await failPayment(o, 'customer', `חזרה מדף התשלום${f.Response ? ` (Response ${f.Response})` : ''}`);
+  await logPayment({ orderId: o.id, kind: 'return', ok: !failed, code: f.Response, sum: Number(f.sum) || null, message: failed ? `הלקוח חזר מדף התשלום בלי תשלום · ${codeText(f.Response)}` : 'הלקוח חזר מדף התשלום אחרי תשלום', fields: f });
+  if (failed) {
+    await failPayment(o, 'customer', `חזרה מדף התשלום${f.Response ? ` (Response ${f.Response})` : ''}`);
+    if (o.paymentStatus !== 'paid' && !o.notificationsSent.includes('payment.failed:staff')) {
+      o.notificationsSent.push('payment.failed:staff');
+      await saveOrder(o);
+      await alertPaymentFailed(o, f.Response, 'חזרה מדף התשלום');
+    }
+  }
   const to = new URL(`/order/${o.id}/`, url.origin);
   to.searchParams.set('t', o.token);
   to.searchParams.set(failed ? 'pay' : 'new', failed ? 'failed' : '1');

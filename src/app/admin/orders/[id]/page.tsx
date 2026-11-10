@@ -12,6 +12,8 @@ import { Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
 import { ZigZagBox } from '../../ZigZagBox';
 import { DeleteOrder } from './DeleteOrder';
+import { PaymentLogList } from '../../PaymentLogList';
+import { paymentLog } from '@/server/payment-log';
 import { carrierCardFor, datalogicsConfigured } from '@/server/shipping/datalogics';
 import { ensureSettings } from '@/server/settings';
 
@@ -42,6 +44,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
   if (!o) notFound();
   await ensureSettings();
   const card = carrierCardFor(o);
+  const payLog = o.paymentMethod === 'manual' ? [] : await paymentLog({ orderId: o.id, limit: 30 }).catch(() => []);
   const next = TRANSITIONS[o.status];
   const primary = PRIMARY[o.status];
   const stepsDone = TIMELINE.filter((t) => t.reached.includes(o.status)).length;
@@ -258,6 +261,17 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             <p className="mt-2 text-sm">
               ₪{o.total} · {o.paymentStatus === 'paid' ? `שולם ${o.paymentRef ?? ''}` : 'לא שולם'} ({o.paymentMethod})
             </p>
+            {o.paymentMethod !== 'manual' && (
+              <details className="mt-3" open={payLog.some((r) => r.ok === false) || o.paymentStatus !== 'paid'}>
+                <summary className="cursor-pointer text-sm font-semibold">לוג סליקה ({payLog.length})</summary>
+                <div className="mt-2">
+                  <PaymentLogList rows={payLog} />
+                  {o.paymentStatus !== 'paid' && !payLog.some((r) => r.kind !== 'start') && Date.now() - new Date(o.createdAt).getTime() > 15 * 60_000 && (
+                    <p className="mt-2 rounded-xl bg-warn/10 px-3 py-2 text-xs text-warn">לא הגיעה שום תשובה מטרנזילה – ייתכן שהלקוח סגר את הדף או שטופס התשלום נכשל. כדאי לחזור ללקוח.</p>
+                  )}
+                </div>
+              </details>
+            )}
             {o.paymentStatus !== 'paid' && (
               <form action={markPaid.bind(null, o.id)} className="mt-3 flex gap-2">
                 <input name="ref" placeholder="אסמכתא" className="input min-w-0 !py-1.5 text-sm" />
