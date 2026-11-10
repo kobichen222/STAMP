@@ -2,9 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
+import { withCutLine } from '@/lib/cut-line';
 import { logPrint, markInProduction } from '../../../actions';
 
 const PRINTER_KEY = 's2g-printer';
+const CUT_KEY = 's2g-cutline';
 /** The studio's laser driver (Windows 10 station). */
 const DEFAULT_PRINTER = 'Trotec Engraver v9.3.2';
 
@@ -37,6 +40,7 @@ export function PrintStation(p: {
   size: string;
   /** Plate size in mm – the printed page is exactly this size (the Trotec job size). */
   mm: { w: number; h: number };
+  shape: 'rect' | 'round';
   quantity: number;
   canStart: boolean;
   omittedImages: number;
@@ -44,11 +48,15 @@ export function PrintStation(p: {
   const router = useRouter();
   const [printer, setPrinter] = useState('');
   const [printed, setPrinted] = useState(false);
+  const [cut, setCut] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [pending, start] = useTransition();
 
   useEffect(() => {
     try {
       setPrinter(localStorage.getItem(PRINTER_KEY) || DEFAULT_PRINTER);
+      setCut(localStorage.getItem(CUT_KEY) !== '0');
     } catch {
       setPrinter(DEFAULT_PRINTER);
     }
@@ -75,18 +83,17 @@ export function PrintStation(p: {
   return (
     <>
       <style>{`
-        #print-area { display: none }
+        #print-root { display: none }
         @media print {
           @page { size: ${p.mm.w}mm ${p.mm.h}mm; margin: 0 }
-          body * { visibility: hidden !important }
-          #print-area, #print-area * { visibility: visible !important }
-          #print-area { display: block !important; position: absolute; top: 0; left: 0; padding: 0; margin: 0 }
-          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important }
-          #print-area svg { display: block }
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; overflow: visible !important }
+          body > *:not(#print-root) { display: none !important }
+          #print-root { display: block !important; position: static; margin: 0; padding: 0; width: ${p.mm.w}mm; height: ${p.mm.h}mm; overflow: hidden; break-after: avoid; page-break-after: avoid }
+          #print-root svg { display: block; width: ${p.mm.w}mm; height: ${p.mm.h}mm }
         }
       `}</style>
       {/* What actually goes to the printer: the plate at its true size in millimetres. */}
-      <div id="print-area" dangerouslySetInnerHTML={{ __html: p.svg }} />
+      {mounted && createPortal(<div id="print-root" dangerouslySetInnerHTML={{ __html: cut ? withCutLine(p.svg, p.shape, p.mm.w, p.mm.h) : p.svg }} />, document.body)}
 
       <div className="grid gap-4 md:grid-cols-[1fr_300px]">
         <section className="card p-4 sm:p-5">
@@ -96,7 +103,7 @@ export function PrintStation(p: {
               {p.size} · {p.mirror ? 'מראה' : 'רגיל'}
             </span>
           </div>
-          <div className="mt-3 grid min-h-48 place-items-center rounded-xl border border-dashed border-line bg-white p-4 [&_svg]:h-auto [&_svg]:max-h-80 [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: p.svg }} />
+          <div className="mt-3 grid min-h-48 place-items-center rounded-xl border border-dashed border-line bg-white p-4 [&_svg]:h-auto [&_svg]:max-h-80 [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: cut ? withCutLine(p.svg, p.shape, p.mm.w, p.mm.h) : p.svg }} />
           {p.omittedImages > 0 && <p className="mt-2 text-xs text-warn">יש בעיצוב לוגו כתמונה – בדקו שהוא מופיע בתצוגה לפני ההדפסה.</p>}
         </section>
 
@@ -117,6 +124,25 @@ export function PrintStation(p: {
             <input type="checkbox" checked={p.mirror} onChange={(e) => go({ mirror: e.target.checked })} className="h-4 w-4 accent-[#2457ff]" />
             הדפסה במראה
           </label>
+          <label className="flex items-start gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={cut}
+              onChange={(e) => {
+                setCut(e.target.checked);
+                try {
+                  localStorage.setItem(CUT_KEY, e.target.checked ? '1' : '0');
+                } catch {
+                  /* ignore */
+                }
+              }}
+              className="mt-0.5 h-4 w-4 accent-[#2457ff]"
+            />
+            <span>
+              קו חיתוך בגודל החותמת
+              <span className="block text-xs font-normal text-muted">קו אדום דק (0.01 מ״מ) שה־Trotec חותך – בדיוק {p.size}</span>
+            </span>
+          </label>
           <label className="block text-sm">
             <span className="mb-1 block font-medium">שם המדפסת / המכונה</span>
             <input value={printer} onChange={(e) => setPrinter(e.target.value)} placeholder="Trotec Engraver v9.3.2" className="input" />
@@ -126,7 +152,7 @@ export function PrintStation(p: {
             {`הדפסה (${p.quantity > 1 ? `${p.quantity} עותקים` : 'עותק אחד'})`}
           </button>
           <a
-            href={`/api/admin/export/?order=${encodeURIComponent(p.orderId)}&item=${p.index}&format=pdf&mirror=${p.mirror ? 1 : 0}`}
+            href={`/api/admin/export/?order=${encodeURIComponent(p.orderId)}&item=${p.index}&format=pdf&mirror=${p.mirror ? 1 : 0}&cut=${cut ? 1 : 0}`}
             onClick={() => logPrint(p.orderId, { index: p.index, printer: printer || 'PDF', mirror: p.mirror, size: p.size, device: `${device()} · הורדת PDF` }).catch(() => {})}
             className="btn-outline btn-sm w-full"
           >
@@ -153,6 +179,9 @@ export function PrintStation(p: {
             </li>
             <li>• קנה מידה: 100% / ״גודל אמיתי״, בלי ״התאמה לדף״.</li>
             <li>• שוליים: ללא. כותרות עליונות ותחתונות: כבוי.</li>
+            <li>
+              • בהעדפות Trotec: לסמן <strong dir="ltr">Size Optimization</strong> ולבחור תבנית חומר שבה אדום = חיתוך ושחור = חריטה.
+            </li>
             <li>• מראה והיפוך לחותמת אפשר לסמן כאן או בהגדרות הדרייבר של Trotec – רק באחד מהם, כדי שלא יתהפך פעמיים.</li>
             {p.quantity > 1 && <li>• מספר עותקים: {p.quantity}.</li>}
           </ul>

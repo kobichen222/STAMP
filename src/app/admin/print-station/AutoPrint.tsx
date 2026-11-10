@@ -1,12 +1,22 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { withCutLine } from '@/lib/cut-line';
 import { logPrint, markInProduction, printQueue, type PrintJob } from '../actions';
 
 const ON_KEY = 's2g-autoprint-since';
 const DONE_KEY = 's2g-autoprint-done';
 const PRINTER = 'Trotec Engraver v9.3.2 (תחנה אוטומטית)';
 const POLL_MS = 20_000;
+const CUT_KEY = 's2g-cutline';
+const cutOn = () => {
+  try {
+    return localStorage.getItem(CUT_KEY) !== '0';
+  } catch {
+    return true;
+  }
+};
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 const fmt = (iso: string) => new Date(iso).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
@@ -47,7 +57,7 @@ export function AutoPrint() {
   const printJob = useCallback(async (job: PrintJob) => {
     for (const it of job.items) {
       for (let c = 0; c < Math.max(1, it.quantity); c++) {
-        setPlate({ svg: it.svg, w: it.w, h: it.h });
+        setPlate({ svg: cutOn() ? withCutLine(it.svg, it.shape, it.w, it.h) : it.svg, w: it.w, h: it.h });
         await nextFrame();
         window.print(); // kiosk-printing: straight to the default printer
         await new Promise((r) => setTimeout(r, 400));
@@ -130,17 +140,16 @@ export function AutoPrint() {
   return (
     <>
       <style>{`
-        #auto-plate { display: none }
+        #print-root { display: none }
         @media print {
           ${plate ? `@page { size: ${plate.w}mm ${plate.h}mm; margin: 0 }` : ''}
-          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important }
-          body * { visibility: hidden !important }
-          #auto-plate, #auto-plate * { visibility: visible !important }
-          #auto-plate { display: block !important; position: absolute; top: 0; left: 0 }
-          #auto-plate svg { display: block }
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; overflow: visible !important }
+          body > *:not(#print-root) { display: none !important }
+          #print-root { display: block !important; margin: 0; padding: 0; overflow: hidden; ${plate ? `width: ${plate.w}mm; height: ${plate.h}mm;` : ''} }
+          #print-root svg { display: block; ${plate ? `width: ${plate.w}mm; height: ${plate.h}mm;` : ''} }
         }
       `}</style>
-      {plate && <div id="auto-plate" dangerouslySetInnerHTML={{ __html: plate.svg }} />}
+      {plate && createPortal(<div id="print-root" dangerouslySetInnerHTML={{ __html: plate.svg }} />, document.body)}
 
       <section className={`card p-4 sm:p-5 ${since ? 'ring-2 ring-ok/40' : ''}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">

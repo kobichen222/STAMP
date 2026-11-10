@@ -564,10 +564,10 @@ export function zip(files: { name: string; data: Uint8Array | string }[]): Uint8
 
 // ------------------------------------------------------------------ dispatcher
 
-export async function exportRender(r: RenderResult, format: ExportFormat, mirror: boolean, meta?: ProductionMeta): Promise<Uint8Array | string> {
+export async function exportRender(r: RenderResult, format: ExportFormat, mirror: boolean, meta?: ProductionMeta, cutLine?: 'rect' | 'round'): Promise<Uint8Array | string> {
   switch (format) {
     case 'pdf':
-      return toProductionPdf(r, { mirror }, meta);
+      return toProductionPdf(r, { mirror, cutLine }, meta);
     case 'svg':
       return toProductionSvg(r, { mirror });
     case 'eps':

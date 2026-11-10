@@ -93,6 +93,7 @@ export async function exportDesign(
   format: string,
   mirror: boolean,
   meta: { orderId: string; customer: string; productName: string; ink: string; quantity: number; index: number },
+  opts: { cutLine?: boolean } = {},
 ): Promise<{ data: Uint8Array | string; name: string; mime: string; omittedImages: number }> {
   const { EXPORT_FORMATS, exportRender, isExportFormat, README, zip } = await import('./formats');
   const { design } = await withTracedLogos(original);
@@ -107,5 +108,5 @@ export async function exportDesign(
   }
   if (!isExportFormat(format)) throw new Error('unknown format');
   const f = EXPORT_FORMATS.find((x) => x.id === format)!;
-  return { data: await exportRender(render, format, mirror, pm), name: `${base}.${f.ext}`, mime: f.mime, omittedImages };
+  return { data: await exportRender(render, format, mirror, pm, opts.cutLine ? design.shape : undefined), name: `${base}.${f.ext}`, mime: f.mime, omittedImages };
 }

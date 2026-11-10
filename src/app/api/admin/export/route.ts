@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       ink: item.ink,
       quantity: item.quantity,
       index,
-    });
+    }, { cutLine: url.searchParams.get('cut') === '1' });
     const body = typeof out.data === 'string' ? new TextEncoder().encode(out.data) : out.data;
     return new Response(body as unknown as BodyInit, {
       headers: {

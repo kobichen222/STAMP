@@ -162,7 +162,7 @@ export interface PrintJob {
   customer: string;
   readyAt: string;
   urgent: boolean;
-  items: { index: number; name: string; w: number; h: number; mirror: boolean; quantity: number; svg: string }[];
+  items: { index: number; name: string; w: number; h: number; shape: 'rect' | 'round'; mirror: boolean; quantity: number; svg: string }[];
 }
 
 /** Print station: orders that are paid, checked and waiting for the laser (oldest first). */
@@ -177,7 +177,7 @@ export async function printQueue(): Promise<PrintJob[]> {
     const items = [];
     for (const [index, it] of o.items.entries()) {
       const out = await exportDesign(it.design, 'svg', it.mirror, { orderId: o.id, customer: o.customer.company || o.customer.name, productName: it.productName, ink: it.ink, quantity: it.quantity, index });
-      items.push({ index, name: it.productName, w: it.design.width, h: it.design.height, mirror: it.mirror, quantity: it.quantity, svg: String(out.data).replace(/<\?xml[^>]*>\s*/, '') });
+      items.push({ index, name: it.productName, w: it.design.width, h: it.design.height, shape: it.design.shape, mirror: it.mirror, quantity: it.quantity, svg: String(out.data).replace(/<\?xml[^>]*>\s*/, '') });
     }
     jobs.push({ orderId: o.id, customer: o.customer.company || o.customer.name, readyAt, urgent: !!o.urgent, items });
   }

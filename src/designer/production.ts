@@ -12,6 +12,7 @@ import {
   PDFOperatorNames,
   popGraphicsState,
   pushGraphicsState,
+  rgb,
   setFillingCmykColor,
 } from 'pdf-lib';
 import { compose, type Matrix, type Path, scale, transformPath, translate } from './geometry';
@@ -37,6 +38,8 @@ export const PRODUCTION_PROFILE = {
 export interface ExportOptions {
   /** Mirror horizontally (some engravers need a mirrored plate). */
   mirror?: boolean;
+  /** Trotec cut line: red (RGB) hairline around the plate, in the stamp's shape. */
+  cutLine?: 'rect' | 'round';
 }
 
 export interface ProductionMeta {
@@ -183,6 +186,13 @@ export async function toProductionPdf(r: RenderResult, opts: ExportOptions = {},
   }
   ops.push(popGraphicsState());
   page.pushOperators(...ops);
+  if (opts.cutLine) {
+    // Pure RGB red, 0.01 mm – the Trotec driver cuts red hairlines and engraves black.
+    const hair = 0.01 * MM_TO_PT;
+    const color = rgb(1, 0, 0);
+    if (opts.cutLine === 'round') page.drawEllipse({ x: W / 2, y: H / 2, xScale: W / 2 - hair / 2, yScale: H / 2 - hair / 2, borderColor: color, borderWidth: hair });
+    else page.drawRectangle({ x: hair / 2, y: hair / 2, width: W - hair, height: H - hair, borderColor: color, borderWidth: hair });
+  }
   // Classic cross-reference table (no object streams): older CorelDRAW versions cannot read PDF 1.5 xref streams.
   return doc.save({ useObjectStreams: false });
 }
