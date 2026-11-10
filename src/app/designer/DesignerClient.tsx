@@ -76,6 +76,7 @@ export function DesignerClient({ product: requested, products, generic = false }
       startWithUpload={params.get('upload') === '1'}
       chooseProduct={generic && !saved && !params.get('template') && params.get('upload') !== '1'}
       autoOrder={params.get('order') === '1' && !!initial.design}
+      orderEdit={params.get('orderEdit') ? { orderId: params.get('orderEdit')!, index: Math.max(0, Number(params.get('item')) || 0) } : undefined}
     />
   );
 }

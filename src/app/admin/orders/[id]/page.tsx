@@ -58,6 +58,9 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
           </h1>
           <StatusBadge status={o.status} />
           {o.urgent && <span className="rounded-full bg-bad px-2 py-0.5 text-xs font-bold text-white">דחוף</span>}
+          <Link href={`/admin/orders/${o.id}/edit/`} className="btn-outline btn-sm ms-auto">
+            <Icon name="edit" size={15} /> עריכת הזמנה
+          </Link>
         </div>
         <p className="mt-1 text-sm text-muted">
           {formatDate(o.createdAt)} · <strong className="text-ink tabular-nums">₪{o.total}</strong> · {o.paymentStatus === 'paid' ? <span className="text-ok">שולם</span> : <span className="text-warn">לא שולם</span>} · {o.shipping.label}

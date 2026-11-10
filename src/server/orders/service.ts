@@ -409,3 +409,150 @@ export async function resendOrderEmails(o: Order): Promise<number> {
   }
   return o.notificationsSent.length - before;
 }
+
+// ------------------------------------------------------------------ staff editing
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Re-price an edited order with today's rules. A coupon keeps the same share
+ * of the subtotal it had (personal codes are already used by this order).
+ */
+export async function recalcOrder(o: Order) {
+  const rules = await pricingRulesFor();
+  const oldSubtotal = o.subtotal;
+  for (const it of o.items) {
+    const product = it.productSlug ? getProduct(it.productSlug) : undefined;
+    if (!product || product.price == null) {
+      it.total = round2(it.unitPrice * it.quantity);
+      continue;
+    }
+    const q = quoteLine(lineInputFor({ basePrice: product.price, quantity: it.quantity, design: it.design, ink: it.ink, body: it.bodyColor, addons: it.addons }), rules);
+    it.quantity = q.quantity;
+    it.unitPrice = q.unitPrice;
+    it.total = q.total;
+    it.priceLines = q.lines;
+  }
+  const cart = quoteCart(
+    o.items.map((i) => i.total),
+    { shippingId: o.shipping.method },
+    rules,
+  );
+  o.subtotal = cart.subtotal;
+  o.discount = o.discount > 0 && oldSubtotal > 0 ? round2((cart.subtotal * o.discount) / oldSubtotal) : 0;
+  o.shippingPrice = cart.shipping;
+  o.shipping.price = cart.shipping;
+  o.total = Math.max(0, round2(cart.subtotal - o.discount + cart.shipping + (o.adjustment ?? 0)));
+}
+
+export const editOrderSchema = z.object({
+  customer: z.object({
+    name: z.string().trim().min(2).max(120),
+    phone: z.string().trim().min(7).max(30),
+    email: z.string().trim().max(160).optional(),
+    company: z.string().trim().max(160).optional(),
+    companyId: z.string().trim().max(30).optional(),
+    poNumber: z.string().trim().max(60).optional(),
+  }),
+  shipping: z.object({
+    method: z.string().min(1).max(40),
+    address: z.object({ street: z.string().trim().max(160), city: z.string().trim().max(80), zip: z.string().trim().max(12).optional(), notes: z.string().trim().max(300).optional() }).optional(),
+  }),
+  items: z
+    .array(
+      z.object({
+        id: z.string(),
+        quantity: z.number().int().min(1).max(999),
+        ink: z.string(),
+        addons: z.record(z.string(), z.number().int().min(0).max(99)).optional(),
+      }),
+    )
+    .min(1),
+  notes: z.string().max(2000).optional(),
+  adjustment: z.number().min(-100000).max(100000).optional(),
+});
+export type EditOrderInput = z.infer<typeof editOrderSchema>;
+
+const opt = (s?: string) => (s && s.trim() ? s.trim() : undefined);
+
+/** Apply a staff edit (customer, shipping, items, price) and re-price. Returns a short change summary. */
+export async function applyOrderEdit(o: Order, input: EditOrderInput, actor: string): Promise<string[]> {
+  const rules = await pricingRulesFor();
+  const changes: string[] = [];
+  const c = input.customer;
+  const nextCustomer = { name: c.name, phone: c.phone, email: opt(c.email), company: opt(c.company), companyId: opt(c.companyId), poNumber: opt(c.poNumber) };
+  if (JSON.stringify(nextCustomer) !== JSON.stringify({ ...o.customer, email: opt(o.customer.email), company: opt(o.customer.company), companyId: opt(o.customer.companyId), poNumber: opt(o.customer.poNumber) })) changes.push('פרטי לקוח');
+  o.customer = nextCustomer;
+
+  const method = rules.shipping.find((s) => s.id === input.shipping.method);
+  if (!method) throw new Error('שיטת משלוח לא תקינה');
+  const need = addressNeed(method);
+  const addr = input.shipping.address;
+  if (need === 'full' && (!addr?.street || !addr?.city)) throw new Error('נא למלא רחוב ועיר למשלוח');
+  if (need === 'city' && !addr?.city) throw new Error('נא למלא עיר');
+  const nextAddress = need === 'none' || !addr ? undefined : { street: addr.street, city: addr.city, zip: opt(addr.zip), notes: opt(addr.notes) };
+  if (method.id !== o.shipping.method) changes.push(`משלוח: ${o.shipping.label} → ${method.label}`);
+  else if (JSON.stringify(nextAddress ?? null) !== JSON.stringify(o.shipping.address ?? null)) changes.push('כתובת');
+  o.shipping = { ...o.shipping, method: method.id, label: method.label, address: nextAddress, carrierAccount: method.carrierAccount, carrier: method.carrierAccount ? 'זיג זג' : o.shipping.carrier };
+
+  // Items: keep / remove / update quantity, ink and extras.
+  const kept: OrderItem[] = [];
+  for (const it of o.items) {
+    const e = input.items.find((x) => x.id === it.id);
+    if (!e) {
+      changes.push(`הוסר: ${it.productName}`);
+      continue;
+    }
+    if (e.quantity !== it.quantity) changes.push(`${it.productName}: כמות ${it.quantity} → ${e.quantity}`);
+    it.quantity = e.quantity;
+    if (e.ink in INK_COLORS && e.ink !== it.ink) {
+      changes.push(`${it.productName}: דיו ${INK_COLORS[it.ink]?.label} → ${INK_COLORS[e.ink as keyof typeof INK_COLORS].label}`);
+      it.ink = e.ink as OrderItem['ink'];
+      it.design = { ...it.design, inkColor: it.ink };
+    }
+    const addons = Object.fromEntries(Object.entries(e.addons ?? {}).filter(([k, v]) => ADDONS.some((a) => a.id === k) && v > 0));
+    if (JSON.stringify(addons) !== JSON.stringify(Object.fromEntries(Object.entries(it.addons ?? {}).filter(([, v]) => (v ?? 0) > 0)))) changes.push(`${it.productName}: תוספות`);
+    it.addons = Object.keys(addons).length ? addons : undefined;
+    kept.push(it);
+  }
+  if (!kept.length) throw new Error('בהזמנה חייב להישאר לפחות פריט אחד');
+  o.items = kept.map((it, i) => ({ ...it, id: `${i + 1}` }));
+
+  if (opt(input.notes) !== opt(o.notes)) changes.push('הערת לקוח');
+  o.notes = opt(input.notes);
+  const adj = input.adjustment ? round2(input.adjustment) : undefined;
+  if ((adj ?? 0) !== (o.adjustment ?? 0)) changes.push(`התאמת מחיר ${adj ?? 0}₪`);
+  o.adjustment = adj;
+
+  const before = o.total;
+  await recalcOrder(o);
+  if (o.total !== before) changes.push(`סה״כ ₪${before} → ₪${o.total}`);
+  if (o.items.some((i) => i.files.length)) await generateProductionFiles(o);
+  if (changes.length) audit(o, actor, 'edited', { note: changes.join(' · ') });
+  return changes;
+}
+
+/** Replace one item's design (and possibly its product/size) from the editor. */
+export async function replaceItemDesign(o: Order, index: number, productSlug: string, design: Design, actor: string) {
+  const it = o.items[index];
+  if (!it) throw new Error('פריט לא נמצא');
+  const product = getProduct(productSlug);
+  const model = product && designerModelForProduct(product);
+  if (!product || !model) throw new Error('מוצר לא זמין');
+  if (Math.abs(design.width - model.width) > 0.01 || Math.abs(design.height - model.height) > 0.01 || design.shape !== model.shape) throw new Error('מידות העיצוב אינן תואמות למוצר');
+  const moved = product.slug !== it.productSlug;
+  Object.assign(it, {
+    productSlug: product.slug,
+    productName: product.title,
+    size: formatSize(model),
+    width: model.width,
+    height: model.height,
+    ink: design.inkColor,
+    design,
+    designVersionId: `DV-${crypto.createHash('sha1').update(JSON.stringify(design)).digest('hex').slice(0, 12)}`,
+  });
+  const before = o.total;
+  await recalcOrder(o);
+  if (it.files.length || ['READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'QUALITY_CHECK', 'AWAITING_APPROVAL', 'PRODUCTION_FILE_ERROR'].includes(o.status)) await generateProductionFiles(o);
+  audit(o, actor, 'design_edited', { note: `פריט ${index + 1}${moved ? ` · מוצר: ${product.title}` : ''}${o.total !== before ? ` · סה״כ ₪${before} → ₪${o.total}` : ''}` });
+}

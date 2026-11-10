@@ -167,4 +167,6 @@ export interface Order {
   audit: AuditEntry[];
   notificationsSent: string[]; // event ids (dedupe, spec §179)
   urgent?: boolean;
+  /** Manual price adjustment by staff (₪, + or −), already included in total. */
+  adjustment?: number;
 }

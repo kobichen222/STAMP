@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { saveOrderItemDesign } from '@/app/admin/order-edit-actions';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Logo } from '@/components/Logo';
 import { lastPage } from '@/components/site/RouteMemory';
@@ -157,9 +158,11 @@ export interface EditorProps {
   chooseProduct?: boolean;
   /** Open the order dialog right away (design prepared elsewhere, e.g. the AI wizard). */
   autoOrder?: boolean;
+  /** Staff editing a design of an existing order: "save to order" replaces the checkout button. */
+  orderEdit?: { orderId: string; index: number };
 }
 
-export function Editor({ product: initialProduct, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice, resumed, chooseProduct, autoOrder }: EditorProps) {
+export function Editor({ product: initialProduct, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice, resumed, chooseProduct, autoOrder, orderEdit }: EditorProps) {
   const router = useRouter();
   // Product / size changes happen in place – the customer stays in the editor with their design.
   const [product, setProduct] = useState(initialProduct);
@@ -234,6 +237,17 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
   const render = useMemo(() => (ready ? renderDesign(design, resolve) : null), [design, resolve, ready, version]);
   const issues = useMemo(() => (render ? validateDesign(design, render, profile) : []), [design, render, profile]);
   const productionReady = isProductionReady(issues);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const saveToOrder = async () => {
+    if (!orderEdit || savingOrder) return;
+    setSavingOrder(true);
+    const r = await saveOrderItemDesign(orderEdit.orderId, orderEdit.index, product.slug, design).catch(() => ({ ok: false as const, error: 'השמירה נכשלה – בדקו שאתם מחוברים לניהול' }));
+    if (r.ok) window.location.href = `/admin/orders/${orderEdit.orderId}/edit/`;
+    else {
+      setSavingOrder(false);
+      window.alert(r.error);
+    }
+  };
   useEffect(() => {
     if (!autoOrder || autoOrdered.current || !render) return;
     autoOrdered.current = true;
@@ -571,6 +585,16 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
         style={isMobile && vp.h ? { height: vp.h, top: vp.top, bottom: 'auto' } : undefined}
         dir="rtl"
       >
+        {orderEdit && (
+          <div className="flex shrink-0 items-center justify-between gap-2 bg-ink px-3 py-1.5 text-xs text-white">
+            <span>
+              עריכת עיצוב בהזמנה <strong dir="ltr">{orderEdit.orderId}</strong> · פריט {orderEdit.index + 1}
+            </span>
+            <a href={`/admin/orders/${orderEdit.orderId}/edit/`} className="underline">
+              ביטול
+            </a>
+          </div>
+        )}
         {/* ------------------------------------------------ header */}
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-2 sm:px-3">
           <button type="button" onClick={() => leave(lastPage())} className="hidden items-center sm:flex" aria-label="סגירת העורך – חזרה לדף הקודם">
@@ -857,9 +881,15 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
                 כולל החותמת והעיצוב · משלוח בקופה
               </p>
             </div>
-            <button type="button" className="btn-primary" onClick={() => setCartOpen(true)} disabled={!render}>
-              המשך להזמנה <Icon name="arrowLeft" size={17} />
-            </button>
+            {orderEdit ? (
+              <button type="button" className="btn-primary" onClick={saveToOrder} disabled={!render || savingOrder}>
+                {savingOrder ? 'שומר…' : `שמירה בהזמנה ${orderEdit.orderId}`}
+              </button>
+            ) : (
+              <button type="button" className="btn-primary" onClick={() => setCartOpen(true)} disabled={!render}>
+                המשך להזמנה <Icon name="arrowLeft" size={17} />
+              </button>
+            )}
           </div>
         </footer>
 
@@ -944,9 +974,15 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
                 {isEmpty ? 'התחילו מתבנית או מטקסט' : productionReady ? '✓ מוכן לייצור' : 'נדרשים תיקונים'}
               </p>
             </div>
-            <button type="button" className="btn-primary" onClick={() => setCartOpen(true)} disabled={!render || isEmpty}>
-              המשך להזמנה <Icon name="arrowLeft" size={16} />
-            </button>
+            {orderEdit ? (
+              <button type="button" className="btn-primary" onClick={saveToOrder} disabled={!render || isEmpty || savingOrder}>
+                {savingOrder ? 'שומר…' : 'שמירה בהזמנה'}
+              </button>
+            ) : (
+              <button type="button" className="btn-primary" onClick={() => setCartOpen(true)} disabled={!render || isEmpty}>
+                המשך להזמנה <Icon name="arrowLeft" size={16} />
+              </button>
+            )}
           </div>
           <nav className="grid grid-cols-6 border-t border-line pb-[env(safe-area-inset-bottom)]" aria-label="כלים">
             {MOBILE_TABS.map((p) => {
@@ -1027,7 +1063,7 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
             </div>
           </div>
         )}
-        <Onboarding paused={(showEmpty && design.elements.length === 0) || textDock} />
+        {!orderEdit && <Onboarding paused={(showEmpty && design.elements.length === 0) || textDock} />}
         <ProductSwitcherHost products={products} current={product.slug} onChange={changeProduct} />
       </div>
     </EditorContext.Provider>
