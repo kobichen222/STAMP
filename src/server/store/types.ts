@@ -18,6 +18,12 @@ export interface RewardCoupon {
   usedOrderId?: string;
 }
 
+export interface DeletedOrder {
+  order: Order;
+  deletedAt: string;
+  by: string;
+}
+
 export interface OrderStore {
   kind: 'neon' | 'supabase' | 'filesystem';
   /** True when data survives deployments/instances (Neon / Supabase). */
@@ -26,6 +32,11 @@ export interface OrderStore {
   getOrder(id: string): Promise<Order | null>;
   listOrders(opts?: ListOptions): Promise<Order[]>;
   saveOrder(order: Order): Promise<void>;
+  /** Move an order to the recycle bin (restorable). */
+  deleteOrder(id: string, by: string): Promise<void>;
+  listDeleted(limit?: number): Promise<DeletedOrder[]>;
+  restoreDeleted(id: string): Promise<Order | null>;
+  purgeDeleted(id: string): Promise<void>;
   putFile(path: string, data: Uint8Array | string, contentType: string): Promise<void>;
   getFile(path: string): Promise<{ data: Uint8Array; contentType: string } | null>;
   getCoupon(code: string): Promise<RewardCoupon | null>;

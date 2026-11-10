@@ -79,6 +79,12 @@ export const SCHEMA = [
   )`,
   `create index if not exists s2g_carts_due_idx on s2g_carts (updated_at) where sent_at is null and converted_order is null`,
   `create index if not exists s2g_carts_email_idx on s2g_carts (lower(email))`,
+  `create table if not exists s2g_trash (
+    id          text primary key,
+    data        jsonb not null,
+    deleted_at  timestamptz not null default now(),
+    deleted_by  text
+  )`,
 ];
 
 let ready: Promise<void> | null = null;
@@ -150,6 +156,30 @@ export function neonStore(): OrderStore {
           status = excluded.status, payment_status = excluded.payment_status, customer_name = excluded.customer_name,
           customer_phone = excluded.customer_phone, customer_email = excluded.customer_email, company = excluded.company,
           total = excluded.total, updated_at = excluded.updated_at, data = excluded.data`;
+    },
+    async deleteOrder(id, by) {
+      const sql = await db();
+      await sql`insert into s2g_trash (id, data, deleted_by) select id, data, ${by} from s2g_orders where id = ${id}
+        on conflict (id) do update set data = excluded.data, deleted_at = now(), deleted_by = excluded.deleted_by`;
+      await sql`delete from s2g_orders where id = ${id}`;
+    },
+    async listDeleted(limit = 100) {
+      const sql = await db();
+      const rows = await sql`select data, deleted_at, deleted_by from s2g_trash order by deleted_at desc limit ${limit}`;
+      return rows.map((r) => ({ order: r.data as Order, deletedAt: new Date(r.deleted_at as string).toISOString(), by: (r.deleted_by as string) ?? '' }));
+    },
+    async restoreDeleted(id) {
+      const sql = await db();
+      const [r] = await sql`select data from s2g_trash where id = ${id}`;
+      if (!r) return null;
+      await this.saveOrder(r.data as Order);
+      await sql`delete from s2g_trash where id = ${id}`;
+      return r.data as Order;
+    },
+    async purgeDeleted(id) {
+      const sql = await db();
+      await sql`delete from s2g_trash where id = ${id}`;
+      await sql`delete from s2g_files where path like ${id.replace(/[%_\\]/g, '') + '/%'}`;
     },
     async putFile(path, data, contentType) {
       const sql = await db();

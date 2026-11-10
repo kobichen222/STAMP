@@ -44,3 +44,31 @@ export async function saveOrderItemDesign(id: string, index: number, productSlug
     return { ok: false, error: e instanceof Error ? e.message : 'השמירה נכשלה' };
   }
 }
+
+/** Admin: move an order to the recycle bin. */
+export async function deleteOrder(id: string): Promise<EditResult> {
+  const role = await requireStaff(['admin']);
+  const { getStore } = await import('@/server/store');
+  await getStore().deleteOrder(id, role);
+  refresh(id);
+  revalidatePath('/admin/orders/trash/');
+  return { ok: true, changes: ['נמחקה'], total: 0 };
+}
+
+export async function restoreOrder(id: string): Promise<EditResult> {
+  await requireStaff(['admin']);
+  const { getStore } = await import('@/server/store');
+  const o = await getStore().restoreDeleted(id);
+  if (!o) return { ok: false, error: 'ההזמנה לא נמצאה בסל המחזור' };
+  refresh(id);
+  revalidatePath('/admin/orders/trash/');
+  return { ok: true, changes: ['שוחזרה'], total: o.total };
+}
+
+export async function purgeOrder(id: string): Promise<EditResult> {
+  await requireStaff(['admin']);
+  const { getStore } = await import('@/server/store');
+  await getStore().purgeDeleted(id);
+  revalidatePath('/admin/orders/trash/');
+  return { ok: true, changes: ['נמחקה לצמיתות'], total: 0 };
+}

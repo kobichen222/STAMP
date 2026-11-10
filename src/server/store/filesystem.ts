@@ -52,6 +52,44 @@ export function filesystemStore(): OrderStore {
       await fs.writeFile(tmp, JSON.stringify(order));
       await fs.rename(tmp, orderPath(order.id));
     },
+    async deleteOrder(id, by) {
+      const o = await this.getOrder(id);
+      if (!o) return;
+      await fs.mkdir(path.join(root, 'trash'), { recursive: true });
+      await fs.writeFile(path.join(root, 'trash', `${id.replace(/[^\w-]/g, '')}.json`), JSON.stringify({ order: o, deletedAt: new Date().toISOString(), by }));
+      await fs.rm(orderPath(id), { force: true });
+    },
+    async listDeleted(limit = 100) {
+      let names: string[] = [];
+      try {
+        names = await fs.readdir(path.join(root, 'trash'));
+      } catch {
+        return [];
+      }
+      const out = [];
+      for (const n of names) {
+        try {
+          out.push(JSON.parse(await fs.readFile(path.join(root, 'trash', n), 'utf8')));
+        } catch {
+          /* skip */
+        }
+      }
+      return out.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt)).slice(0, limit);
+    },
+    async restoreDeleted(id) {
+      const fp = path.join(root, 'trash', `${id.replace(/[^\w-]/g, '')}.json`);
+      try {
+        const { order } = JSON.parse(await fs.readFile(fp, 'utf8'));
+        await this.saveOrder(order);
+        await fs.rm(fp, { force: true });
+        return order;
+      } catch {
+        return null;
+      }
+    },
+    async purgeDeleted(id) {
+      await fs.rm(path.join(root, 'trash', `${id.replace(/[^\w-]/g, '')}.json`), { force: true });
+    },
     async putFile(p, data, contentType) {
       const fp = filePath(p);
       await fs.mkdir(path.dirname(fp), { recursive: true });

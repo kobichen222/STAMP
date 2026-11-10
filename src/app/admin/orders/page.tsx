@@ -56,6 +56,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           <Link href="/designer/?new=1" target="_blank" className="btn-primary btn-sm max-sm:!px-3" aria-label="הזמנה טלפונית">
             <Icon name="plus" size={16} /> <span className="max-sm:hidden">הזמנה טלפונית</span>
           </Link>
+          <Link href="/admin/orders/trash/" className="btn-outline btn-sm max-sm:!px-3" aria-label="סל מחזור">
+            <Icon name="trash" size={16} /> <span className="max-sm:hidden">סל מחזור</span>
+          </Link>
           <a href="/api/admin/orders.csv" className="btn-outline btn-sm max-sm:!px-3" aria-label="ייצוא CSV">
             <Icon name="download" size={16} /> <span className="max-sm:hidden">ייצוא CSV</span>
           </a>

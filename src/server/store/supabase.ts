@@ -52,6 +52,18 @@ export function supabaseStore(url: string, serviceKey: string): OrderStore {
       const { error } = await db.from('orders').upsert(row(order), { onConflict: 'id' });
       if (error) throw error;
     },
+    // Supabase is a legacy fallback: deleting is permanent there (no recycle bin table).
+    async deleteOrder(id) {
+      const { error } = await db.from('orders').delete().eq('id', id);
+      if (error) throw error;
+    },
+    async listDeleted() {
+      return [];
+    },
+    async restoreDeleted() {
+      return null;
+    },
+    async purgeDeleted() {},
     async putFile(p, data, contentType) {
       const body = typeof data === 'string' ? new TextEncoder().encode(data) : data;
       const { error } = await db.storage.from(BUCKET).upload(p, body, { contentType, upsert: true });

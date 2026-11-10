@@ -11,6 +11,7 @@ import { addNote, markPaid, resendEmails, retryProduction, setStatus, setTrackin
 import { Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
 import { ZigZagBox } from '../../ZigZagBox';
+import { DeleteOrder } from './DeleteOrder';
 import { carrierCardFor, datalogicsConfigured } from '@/server/shipping/datalogics';
 import { ensureSettings } from '@/server/settings';
 
@@ -304,6 +305,16 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
               <textarea name="text" rows={2} className="input text-sm" placeholder="לא מוצג ללקוח" />
               <button className="btn-outline btn-sm">הוספת הערה</button>
             </form>
+          </section>
+          <section className="card p-4 sm:p-5">
+            <DeleteOrder
+              id={o.id}
+              warnings={[
+                ...(o.paymentStatus === 'paid' ? ['ההזמנה שולמה – מחיקה לא מבטלת את החיוב בכרטיס.'] : []),
+                ...(o.shipping.trackingNumber ? ['נוצר לה משלוח – בטלו אותו קודם בזיג זג.'] : []),
+                ...(['IN_PRODUCTION', 'QUALITY_CHECK', 'READY_FOR_SHIPPING'].includes(o.status) ? ['ההזמנה כבר בייצור.'] : []),
+              ]}
+            />
           </section>
         </aside>
       </div>
