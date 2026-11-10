@@ -143,15 +143,23 @@ export async function sweepAbandoned(force = false): Promise<{ carts: number; pa
   }
 
   // 2) Card orders created but never paid.
-  const pending = await getStore().listOrders({ status: ['PAYMENT_PENDING'], limit: 50 });
+  // Newest first: one reminder per person, for their latest unpaid order only.
+  const pending = (await getStore().listOrders({ status: ['PAYMENT_PENDING'], limit: 50 })).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const now = Date.now();
+  const seen = new Set<string>();
   for (const o of pending) {
     const age = now - new Date(o.createdAt).getTime();
     if (!o.customer.email || o.paymentMethod === 'manual' || age < ABANDON_MINUTES * 60_000 || age > 2 * 864e5 || o.notificationsSent.includes('payment.reminder')) continue;
-    const [stop] = await sql`select 1 from s2g_carts where lower(email) = ${o.customer.email.toLowerCase()} and unsubscribed limit 1`;
+    const email = o.customer.email.toLowerCase();
+    const [stop] = await sql`select 1 from s2g_carts where lower(email) = ${email} and unsubscribed limit 1`;
+    // Already reminded about another order, or paid a later one (a retry that went through).
+    const [later] = await sql`select 1 from s2g_orders where lower(customer_email) = ${email} and id <> ${o.id} and created_at > now() - interval '3 days'
+      and (payment_status = 'paid' or data->'notificationsSent' ? 'payment.reminder') limit 1`;
+    const dup = seen.has(email) || !!later;
+    seen.add(email);
     o.notificationsSent.push('payment.reminder');
     await getStore().saveOrder(o);
-    if (stop) continue;
+    if (stop || dup) continue;
     try {
       await sendMail({
         to: [o.customer.email],
