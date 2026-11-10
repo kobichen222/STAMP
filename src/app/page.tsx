@@ -35,7 +35,6 @@ export default async function HomePage() {
       <StampHero />
       <HowItWorks />
       <QuickDesign />
-      <WhyUs />
 
       <section className="py-12 sm:py-16">
         <div className="container-x">
@@ -56,6 +55,7 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <WhyUs />
       <TemplateStrip />
       <AboutSection />
 
