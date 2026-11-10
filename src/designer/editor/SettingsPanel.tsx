@@ -141,19 +141,21 @@ function VersionHistory() {
 }
 
 export function SettingsPanel() {
-  const { design, actions, view, setView, advanced, setAdvanced, improve } = useEditor();
+  const { design, actions, view, setView, advanced, setAdvanced, improve, openPanel } = useEditor();
   const products = productSwitcher.products;
   return (
     <>
       <Section title="מוצר ומידה">
-        <select className="input !py-2 text-sm" value={productSwitcher.current} onChange={(e) => productSwitcher.onChange(e.target.value)} aria-label="החלפת מוצר">
-          {products.map((p) => (
-            <option key={p.slug} value={p.slug}>
-              {p.title} · {formatSize(p.model)}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1.5 text-xs text-muted">העיצוב שלכם עובר למוצר החדש ומותאם אוטומטית למידה שלו.</p>
+        <button type="button" className="btn-outline btn-sm w-full justify-between" onClick={() => openPanel('product')}>
+          <span className="truncate">
+            {products.find((p) => p.slug === productSwitcher.current)?.title ?? 'בחירת מוצר'} ·{' '}
+            {(() => {
+              const p = products.find((x) => x.slug === productSwitcher.current);
+              return p ? formatSize(p.model) : '';
+            })()}
+          </span>
+          <span className="text-blue">החלפה</span>
+        </button>
       </Section>
       <Section title="צבע דיו">
         <div className="flex flex-wrap gap-2">

@@ -33,7 +33,7 @@ export interface EditorContextValue {
   addVariants: (designs: import('../types').Design[]) => void;
 }
 
-export type PanelId = 'templates' | 'text' | 'logo' | 'icons' | 'shapes' | 'frames' | 'layers' | 'ai' | 'settings' | 'elements';
+export type PanelId = 'product' | 'templates' | 'text' | 'logo' | 'icons' | 'shapes' | 'frames' | 'layers' | 'ai' | 'settings' | 'elements';
 
 export const EditorContext = createContext<EditorContextValue | null>(null);
 

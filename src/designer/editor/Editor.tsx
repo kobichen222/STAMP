@@ -32,6 +32,7 @@ import { MobileEditBar } from './MobileEditBar';
 import { Onboarding } from './Onboarding';
 import { PreflightBadge } from './PreflightBadge';
 import { PreviewMode } from './PreviewMode';
+import { ProductPanel } from './ProductPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { ElementsPanel, FramesPanel, IconsPanel, LayersPanel, LogoPanel, ShapesPanel, TemplatesPanel, TextDock, TextPanel } from './panels';
 import { useEditorStore } from './store';
@@ -50,6 +51,7 @@ const PANELS: {
   icon: string;
   advanced?: boolean;
 }[] = [
+  { id: 'product', label: 'מוצר ומידה', icon: 'store' },
   { id: 'templates', label: 'תבניות', icon: 'template' },
   { id: 'text', label: 'טקסט', icon: 'text' },
   { id: 'logo', label: 'לוגו', icon: 'image' },
@@ -63,6 +65,7 @@ const PANELS: {
 ];
 
 const MOBILE_TABS: { id: PanelId; label: string; icon: string }[] = [
+  { id: 'product', label: 'מוצר', icon: 'store' },
   { id: 'templates', label: 'תבניות', icon: 'template' },
   { id: 'text', label: 'טקסט', icon: 'text' },
   { id: 'logo', label: 'לוגו', icon: 'image' },
@@ -110,6 +113,8 @@ let clipboard: DesignElement[] = [];
 
 function PanelBody({ id, readyFile }: { id: PanelId; readyFile: boolean }) {
   switch (id) {
+    case 'product':
+      return <ProductPanel />;
     case 'templates':
       return <TemplatesPanel />;
     case 'text':
@@ -147,9 +152,11 @@ export interface EditorProps {
   notice?: string;
   /** Opened by continuing the customer's draft in progress. */
   resumed?: boolean;
+  /** Start on the product & size step (a fresh design from the general designer). */
+  chooseProduct?: boolean;
 }
 
-export function Editor({ product: initialProduct, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice, resumed }: EditorProps) {
+export function Editor({ product: initialProduct, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice, resumed, chooseProduct }: EditorProps) {
   const router = useRouter();
   // Product / size changes happen in place – the customer stays in the editor with their design.
   const [product, setProduct] = useState(initialProduct);
@@ -167,9 +174,9 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
   const { state, actions, selected, canUndo, canRedo } = useEditorStore(initial);
   const design = state.design;
   const templateFitted = useRef(false);
-  const [panel, setPanel] = useState<PanelId | null>(initialDesign ? 'text' : startWithUpload ? 'logo' : 'templates');
+  const [panel, setPanel] = useState<PanelId | null>(initialDesign ? 'text' : startWithUpload ? 'logo' : chooseProduct ? 'product' : 'templates');
   const [panelOpen, setPanelOpen] = useState(true);
-  const [sheet, setSheet] = useState<'closed' | 'half' | 'full'>('closed');
+  const [sheet, setSheet] = useState<'closed' | 'half' | 'full'>(chooseProduct && !initialDesign ? 'full' : 'closed');
   const [advanced, setAdvanced] = useState(false);
   const [view, setView] = useState<ViewSettings>({
     zoom: 3,
@@ -918,7 +925,7 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
               המשך להזמנה <Icon name="arrowLeft" size={16} />
             </button>
           </div>
-          <nav className="grid grid-cols-5 border-t border-line pb-[env(safe-area-inset-bottom)]" aria-label="כלים">
+          <nav className="grid grid-cols-6 border-t border-line pb-[env(safe-area-inset-bottom)]" aria-label="כלים">
             {MOBILE_TABS.map((p) => {
               const on = sheet !== 'closed' && (panel === p.id || (p.id === 'settings' && !!panel && MORE_LINKS.includes(panel)));
               return (

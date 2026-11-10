@@ -74,6 +74,7 @@ export function DesignerClient({ product: requested, products, generic = false }
       initialQty={Math.max(1, Number(params.get('qty')) || 1)}
       bodyColor={params.get('body') ?? undefined}
       startWithUpload={params.get('upload') === '1'}
+      chooseProduct={generic && !saved && !params.get('template') && params.get('upload') !== '1'}
     />
   );
 }
