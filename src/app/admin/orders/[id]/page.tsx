@@ -202,7 +202,11 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             </p>
             {card && (
               <p className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-sm">
-                לשדר בזיג זג בכרטיס לקוח <strong dir="ltr">{card}</strong> ·{' '}
+                זיג זג · כרטיס לקוח <strong dir="ltr">{card}</strong> ·{' '}
+                <a href="#shipping" className="font-semibold text-blue underline">
+                  לשליחה
+                </a>{' '}
+                ·{' '}
                 <a href="https://www.zig-zag.co.il/" target="_blank" rel="noopener" className="text-blue underline">
                   לאתר זיג זג
                 </a>
@@ -225,6 +229,29 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
                 קישור מעקב ללקוח
               </a>
             </div>
+          </section>
+
+          <section id="shipping" className="card p-4 sm:p-5">
+            <h2 className="font-bold">משלוח</h2>
+            {card && (
+              <ZigZagBox
+                id={o.id}
+                card={card}
+                configured={datalogicsConfigured()}
+                tracking={o.shipping.trackingNumber}
+                labelUrl={o.shipping.labelUrl}
+                history={o.shipping.statusHistory}
+              />
+            )}
+            <form action={setTracking.bind(null, o.id)} className="mt-3 space-y-2">
+              <input name="carrier" defaultValue={o.shipping.carrier} placeholder="חברת שילוח" className="input !py-1.5 text-sm" />
+              <input name="trackingNumber" defaultValue={o.shipping.trackingNumber} placeholder="מספר מעקב" className="input !py-1.5 text-sm" dir="ltr" />
+              <input name="trackingUrl" defaultValue={o.shipping.trackingUrl} placeholder="קישור מעקב" className="input !py-1.5 text-sm" dir="ltr" />
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="ship" value="1" className="accent-blue" /> סמן כנשלח
+              </label>
+              <button className="btn-outline btn-sm w-full sm:w-auto">שמירת משלוח</button>
+            </form>
           </section>
 
           <section className="card p-4 sm:p-5">
@@ -280,28 +307,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             )}
           </section>
 
-          <section className="card p-4 sm:p-5">
-            <h2 className="font-bold">משלוח</h2>
-            {card && (
-              <ZigZagBox
-                id={o.id}
-                card={card}
-                configured={datalogicsConfigured()}
-                tracking={o.shipping.trackingNumber}
-                labelUrl={o.shipping.labelUrl}
-                history={o.shipping.statusHistory}
-              />
-            )}
-            <form action={setTracking.bind(null, o.id)} className="mt-3 space-y-2">
-              <input name="carrier" defaultValue={o.shipping.carrier} placeholder="חברת שילוח" className="input !py-1.5 text-sm" />
-              <input name="trackingNumber" defaultValue={o.shipping.trackingNumber} placeholder="מספר מעקב" className="input !py-1.5 text-sm" dir="ltr" />
-              <input name="trackingUrl" defaultValue={o.shipping.trackingUrl} placeholder="קישור מעקב" className="input !py-1.5 text-sm" dir="ltr" />
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="ship" value="1" className="accent-blue" /> סמן כנשלח
-              </label>
-              <button className="btn-outline btn-sm w-full sm:w-auto">שמירת משלוח</button>
-            </form>
-          </section>
+
 
           <section className="card p-4 sm:p-5">
             <h2 className="font-bold">הערות פנימיות</h2>

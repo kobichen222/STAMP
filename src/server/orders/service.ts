@@ -353,6 +353,8 @@ export async function confirmPayment(o: Order, payment: { ref?: string; amount: 
  * the order: it is written to the order history and the manual button stays in the admin.
  */
 export async function autoShip(o: Order, actor: string) {
+  // The studio approves every shipment by hand (the ZigZag button in the order); automatic only when switched on.
+  if (process.env.ZIGZAG_AUTO_SHIP !== '1') return;
   const card = carrierCardFor(o);
   if (!card || o.shipping.method === 'pickup' || o.shipping.trackingNumber || !datalogicsConfigured()) return;
   try {
