@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { composeForProduction } from '@/designer/autofix';
 import type { DesignerProduct } from '@/designer/editor/Editor';
@@ -19,6 +19,9 @@ import { formatPrice } from '@/lib/format';
 import { lineInputFor, quoteLine } from '@/lib/pricing';
 import { toProductionSvg } from '@/designer/production';
 
+/** The studio's default stamps – offered first. */
+const DEFAULTS = ['חותמת-פרינט-20', 'print-r-540'];
+
 const STEPS = ['תוכן', 'מוצר', 'עיצוב', 'המחשה והזמנה'] as const;
 const EXAMPLES = [
   { label: 'עורך דין', text: 'עו״ד ישראל ישראלי\nמ.ר. 12345\nטל׳ 050-1234567' },
@@ -27,7 +30,11 @@ const EXAMPLES = [
   { label: 'פרטית', text: 'משפחת כהן\nהגפן 5, רמת גן' },
 ];
 
-const linesOf = (t: string) => t.split('\n').map((l) => l.trim()).filter(Boolean);
+const linesOf = (t: string) =>
+  t
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
 
 function compose(p: DesignerProduct, s: Suggestion, resolve: Parameters<typeof renderDesign>[1]): Design {
   return composeForProduction(p.model, s.content, s.style, resolve, profileForModel(p.model), { strict: true }).design;
@@ -38,7 +45,7 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
   const [step, setStep] = useState(0);
   const [text, setText] = useState('');
   const [shape, setShape] = useState<'rect' | 'round'>('rect');
-  const [slug, setSlug] = useState('');
+  const [slug, setSlug] = useState(DEFAULTS[0]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
@@ -46,6 +53,15 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
   const [ink, setInk] = useState<InkColor>('black');
 
   const lines = linesOf(text);
+  const card = useRef<HTMLDivElement>(null);
+  const goBtn = useRef<HTMLButtonElement>(null);
+  // Every step starts at the top of the card (under the fixed header).
+  useEffect(() => {
+    const el = card.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 88;
+    if (window.scrollY > top) window.scrollTo({ top, behavior: 'smooth' });
+  }, [step]);
   const product = products.find((p) => p.slug === slug) ?? null;
 
   // Sizes that fit the text: enough rows, cheapest first – the top three are recommended.
@@ -53,8 +69,14 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
     const n = Math.max(1, lines.length);
     const byShape = products.filter((p) => (shape === 'round' ? p.model.shape === 'round' : p.model.shape !== 'round'));
     const fits = byShape.filter((p) => shape === 'round' || !p.model.maxLines || p.model.maxLines >= n);
-    return (fits.length ? fits : byShape).sort((a, b) => (a.price ?? 999) - (b.price ?? 999) || a.model.width * a.model.height - b.model.width * b.model.height);
+    const rank = (p: DesignerProduct) => (DEFAULTS.includes(p.slug) ? 0 : 1);
+    return (fits.length ? fits : byShape).sort((a, b) => rank(a) - rank(b) || (a.price ?? 999) - (b.price ?? 999) || a.model.width * a.model.height - b.model.width * b.model.height);
   }, [products, shape, lines.length]);
+
+  // Keep a valid choice: the recommended (first) size when the current one does not fit.
+  useEffect(() => {
+    if (list.length && !list.some((p) => p.slug === slug)) setSlug(list[0].slug);
+  }, [list, slug]);
 
   // Designs of every suggestion on the chosen product (fonts load, then they are measured again).
   const [designs, setDesigns] = useState<Design[]>([]);
@@ -153,7 +175,7 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
           ))}
         </ol>
 
-        <div className="mt-8 rounded-3xl border border-line/70 bg-white p-5 shadow-[0_30px_70px_-35px_rgba(11,20,38,.35)] sm:p-8">
+        <div ref={card} className="mt-8 rounded-3xl border border-line/70 bg-white p-5 shadow-[0_30px_70px_-35px_rgba(11,20,38,.35)] sm:p-8">
           {step === 0 && (
             <>
               <h2 className="text-xl font-bold">מה יהיה כתוב על החותמת?</h2>
@@ -183,25 +205,34 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
           {step === 1 && (
             <>
               <h2 className="text-xl font-bold">בחרו מוצר ומידה</h2>
-              <p className="mt-1 text-sm text-muted">
-                {lines.length} שורות – הצגנו רק מידות שהטקסט נכנס בהן. <strong className="text-ink">מומלץ</strong> = הכי משתלם.
-              </p>
+              <p className="mt-1 text-sm text-muted">{lines.length} שורות – הצגנו רק מידות שהטקסט נכנס בהן. הראשון ברשימה הוא הדגם המומלץ שלנו.</p>
               <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-surface p-1 text-sm font-semibold">
                 {(['rect', 'round'] as const).map((s) => (
-                  <button key={s} type="button" onClick={() => setShape(s)} className={`rounded-lg py-2 transition ${shape === s ? 'bg-white text-ink shadow-sm' : 'text-muted'}`}>
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setShape(s);
+                      setSlug(DEFAULTS[s === 'round' ? 1 : 0]);
+                    }}
+                    className={`rounded-lg py-2 transition ${shape === s ? 'bg-white text-ink shadow-sm' : 'text-muted'}`}
+                  >
                     {s === 'rect' ? 'מלבניות' : 'עגולות'}
                   </button>
                 ))}
               </div>
-              <ul className="mt-4 grid max-h-[26rem] gap-2 overflow-y-auto pe-1 sm:grid-cols-2">
+              <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {list.map((p, i) => (
-                  <li key={p.slug}>
+                  <li key={p.slug} className="min-w-0">
                     <button
                       type="button"
-                      onClick={() => setSlug(p.slug)}
-                      className={`relative flex w-full items-center gap-3 rounded-xl border p-2.5 text-start transition ${slug === p.slug ? 'border-blue bg-blue-50/60 ring-2 ring-blue/15' : 'border-line hover:border-ink/25'}`}
+                      onClick={() => {
+                        setSlug(p.slug);
+                        // Straight on to the next action.
+                        setTimeout(() => goBtn.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+                      }}
+                      className={`flex w-full min-w-0 items-center gap-3 rounded-xl border p-2.5 text-start transition ${slug === p.slug ? 'border-blue bg-blue-50/60 ring-2 ring-blue/15' : 'border-line hover:border-ink/25'}`}
                     >
-                      {i < 3 && <span className="absolute -top-2 left-2 rounded-full bg-ok px-2 py-0.5 text-[10px] font-bold text-white">מומלץ</span>}
                       {p.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={p.image} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-lg bg-white object-contain" />
@@ -209,7 +240,10 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
                         <span className="h-14 w-14 shrink-0 rounded-lg bg-surface" />
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-bold">{p.title}</span>
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate text-sm font-bold">{p.title}</span>
+                          {i === 0 && <span className="shrink-0 rounded-full bg-ok/10 px-1.5 py-0.5 text-[10px] font-bold text-ok">מומלץ</span>}
+                        </span>
                         <span className="block text-xs text-muted">
                           {formatSize(p.model)}
                           {p.model.maxLines ? ` · עד ${p.model.maxLines} שורות` : ''}
@@ -221,7 +255,7 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
                 ))}
               </ul>
               {error && <p className="mt-3 text-sm text-bad">{error}</p>}
-              <button type="button" className="btn-primary mt-6 !h-13 w-full !text-base font-bold" disabled={!product || busy} onClick={() => product && generate(product)}>
+              <button ref={goBtn} type="button" className="btn-primary mt-6 !h-13 w-full !text-base font-bold" disabled={!product || busy} onClick={() => product && generate(product)}>
                 {busy ? 'מעצבים… (כמה שניות)' : 'צרו לי 3 עיצובים'}
               </button>
             </>

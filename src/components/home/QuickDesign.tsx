@@ -72,15 +72,19 @@ function FlowArt() {
         </div>
 
         {/* step 4 – ready */}
-        <div className="qd-pop mt-5 flex items-center gap-3 rounded-2xl bg-gradient-to-l from-blue-50 to-white p-3 ring-1 ring-blue/15">
-          <div className="w-28 shrink-0">
+        <div className="qd-pop mt-5 rounded-2xl bg-gradient-to-l from-blue-50 to-white p-3 ring-1 ring-blue/15 sm:flex sm:items-center sm:gap-3">
+          <div className="mx-auto w-full max-w-[220px] sm:mx-0 sm:w-28 sm:shrink-0">
             <MiniStamp variant="classic" />
           </div>
-          <div className="min-w-0 flex-1 leading-tight">
-            <p className="text-sm font-bold">חותמת פרינט 20 · 38×14 מ״מ</p>
-            <p className="mt-1 text-xs font-semibold text-ok">✓ מוכן לייצור</p>
+          <div className="mt-3 flex items-center gap-3 sm:mt-0 sm:min-w-0 sm:flex-1">
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="text-sm font-bold whitespace-nowrap">חותמת פרינט 20</p>
+              <p className="mt-1 text-xs text-muted">
+                38×14 מ״מ · <span className="font-semibold text-ok">✓ מוכן לייצור</span>
+              </p>
+            </div>
+            <span className="shrink-0 rounded-xl bg-blue px-4 py-2.5 text-sm font-bold whitespace-nowrap text-white">להזמנה</span>
           </div>
-          <span className="rounded-xl bg-blue px-3 py-2 text-sm font-bold whitespace-nowrap text-white">להזמנה</span>
         </div>
       </div>
     </div>
