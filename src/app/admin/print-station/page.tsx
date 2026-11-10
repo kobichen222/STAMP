@@ -19,9 +19,14 @@ export default async function PrintStationPage() {
             <h2 className="font-bold">התקנה בקובץ אחד (Windows XP / 7 / 10 / 11)</h2>
             <p className="text-ink-2">מגדיר הכול לבד: דפדפן, Trotec כמדפסת ברירת מחדל, אייקון בשולחן העבודה ופתיחה אוטומטית בהפעלת המחשב.</p>
           </div>
-          <a href="/downloads/stamp2go-station-setup.bat" download className="btn-primary">
-            הורדת קובץ ההתקנה
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a href="/downloads/stamp2go-station-setup.bat" download className="btn-primary">
+              הורדת קובץ ההתקנה
+            </a>
+            <a href="/downloads/stamp2go-station-uninstall.bat" download className="btn-outline">
+              קובץ הסרה
+            </a>
+          </div>
         </div>
         <ol className="mt-3 list-decimal space-y-1.5 ps-5 text-ink-2">
           <li>
@@ -34,6 +39,9 @@ export default async function PrintStationPage() {
           <li>ללחוץ פעמיים על <span dir="ltr">stamp2go-station-setup.bat</span> במחשב של המכונה ולעקוב אחרי ההודעות.</li>
           <li>בחלון שנפתח: להתחבר לניהול פעם אחת וללחוץ ״הפעלת הדפסה אוטומטית״.</li>
         </ol>
+        <p className="mt-2 text-xs text-muted">
+          להסרה: לחיצה כפולה על <span dir="ltr">stamp2go-station-uninstall.bat</span> – סוגר את חלון התחנה, מוחק את האייקון, את הפתיחה האוטומטית ואת תיקיית התחנה. הדפדפן והדרייבר של Trotec נשארים.
+        </p>
       </section>
 
       <section className="card p-4 text-sm leading-6 sm:p-5">
