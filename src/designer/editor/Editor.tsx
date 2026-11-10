@@ -409,6 +409,10 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
     setPanelOpen(true);
     setSheet('half');
   }, []);
+  const closePanel = useCallback(() => {
+    setPanelOpen(false);
+    setSheet('closed');
+  }, []);
 
   const fixAll = () => {
     actions.set(autoFix(design, resolve, profile));
@@ -485,6 +489,7 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
     resolveFace: resolve,
     issues,
     openPanel,
+    closePanel,
     toast,
     view,
     setView,

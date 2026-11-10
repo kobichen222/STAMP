@@ -20,6 +20,8 @@ export interface EditorContextValue {
   resolveFace: FaceResolver;
   issues: Issue[];
   openPanel: (p: PanelId) => void;
+  /** Closes the side panel / bottom sheet (back to the stamp). */
+  closePanel: () => void;
   view: ViewSettings;
   setView: (fn: (v: ViewSettings) => ViewSettings) => void;
   setAdvanced: (v: boolean) => void;

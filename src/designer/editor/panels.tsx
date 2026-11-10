@@ -32,7 +32,7 @@ function TemplateThumb({ t }: { t: StampTemplate }) {
 }
 
 export function TemplatesPanel() {
-  const { model, design, actions, toast, resolveFace, profile } = useEditor();
+  const { model, design, actions, toast, resolveFace, profile, closePanel } = useEditor();
   const [cat, setCat] = useState<string>('all');
   const [q, setQ] = useState('');
   const list = TEMPLATES.filter((t) => (cat === 'all' || t.category === cat) && (!q || `${t.name} ${t.content.lines.join(' ')} ${t.content.arcTop ?? ''}`.includes(q))).sort(
@@ -54,8 +54,12 @@ export function TemplatesPanel() {
         ? 'התבנית הוחלה עם לוגו לדוגמה – החליפו אותו בלשונית "לוגו"'
         : dropped.length
           ? `התבנית הותאמה לגודל החותמת (${dropped.length === 1 ? 'שורה אחת הוסרה' : `${dropped.length} שורות הוסרו`})`
-          : 'התבנית הוחלה · אפשר לבטל עם Undo',
+          : 'התבנית הוחלה – הקישו על כל שורה כדי לערוך',
     );
+    // Back to the stamp with the main line selected, ready for editing.
+    closePanel();
+    const firstText = next.elements.find((e) => e.type === 'text');
+    if (firstText) actions.select([firstText.id]);
   };
 
   return (

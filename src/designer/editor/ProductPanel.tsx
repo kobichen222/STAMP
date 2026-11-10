@@ -20,7 +20,7 @@ const price = (p: DesignerProduct) => (p.price != null ? formatPrice(p.price) : 
  * sample) on that size, and a button to confirm.
  */
 export function ProductPanel() {
-  const { design, resolveFace, openPanel } = useEditor();
+  const { design, resolveFace, openPanel, closePanel } = useEditor();
   const products = productSwitcher.products;
   const current = products.find((p) => p.slug === productSwitcher.current) ?? products[0];
   const [shape, setShape] = useState<'rect' | 'round'>(current?.model.shape === 'round' ? 'round' : 'rect');
@@ -49,6 +49,7 @@ export function ProductPanel() {
   const choose = (p: DesignerProduct) => {
     if (p.slug !== current.slug) productSwitcher.onChange(p.slug);
     if (empty) openPanel('templates');
+    else closePanel();
   };
 
   return (
