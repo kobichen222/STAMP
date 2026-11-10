@@ -103,7 +103,16 @@ export function createShippingPayload(o: Order) {
   const { street, house } = splitStreet(locker ? '' : (addr?.street ?? ''));
   const card = carrierCardFor(o);
   const supplier = Number(process.env.DATALOGICS_SUPPLIER || ZIGZAG_PLATFORM);
-  const products = o.items.map((i) => ({ sku: i.productSlug, name: `${i.productName} ${i.size}`, quantity: i.quantity }));
+  const weight = Number(process.env.DATALOGICS_WEIGHT) || 0.5;
+  const units = Math.max(1, o.items.reduce((n, i) => n + i.quantity, 0));
+  const products = o.items.map((i) => ({
+    sku: i.productSlug ?? i.productName,
+    name: `${i.productName} ${i.size}`,
+    quantity: i.quantity,
+    price: i.unitPrice ?? 0,
+    total: i.total ?? 0,
+    weight: Math.round((weight / units) * 1000) / 1000,
+  }));
   // For the courier: pickup point, address notes and the customer's note first; the products once (short).
   const comment = [
     locker && addr?.street ? `נקודת מסירה מועדפת: ${addr.street}` : '',
@@ -115,8 +124,23 @@ export function createShippingPayload(o: Order) {
     .join(' | ')
     .slice(0, 250);
   // ZigZag only accepts a complete shipment: weight, date and a full pickup location are required.
-  const weight = Number(process.env.DATALOGICS_WEIGHT) || 0.5;
   const shippingDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+  // The full WooCommerce-style address (DataLogics reads that shape) – shipping and billing alike.
+  const recipient = {
+    first_name: first ?? o.customer.name,
+    last_name: rest.join(' ') || (first ?? o.customer.name),
+    email: o.customer.email ?? '',
+    phone: israeliPhone(o.customer.phone),
+    company: o.customer.company ?? '',
+    country: 'IL',
+    state: '',
+    city: addr?.city ?? '',
+    address_1: street,
+    address_2: '',
+    street,
+    house,
+    postcode: addr?.zip ?? '',
+  };
   return {
     url: SITE.url,
     order: {
@@ -128,17 +152,14 @@ export function createShippingPayload(o: Order) {
       ref: card,
       comment,
       house,
-      shipping: {
-        first_name: first ?? o.customer.name,
-        last_name: rest.join(' '),
-        email: o.customer.email ?? '',
-        phone: israeliPhone(o.customer.phone),
-        company: o.customer.company ?? '',
-        city: addr?.city ?? '',
-        address_1: street,
-        house,
-        postcode: addr?.zip ?? '',
-      },
+      weight_unit: 'kg',
+      currency: 'ILS',
+      total: o.total ?? 0,
+      shipping_total: o.shippingPrice ?? o.shipping.price ?? 0,
+      payment_method: o.paymentMethod ?? '',
+      customer_note: o.notes ?? '',
+      shipping: recipient,
+      billing: recipient,
       products,
     },
     ...(card
@@ -160,13 +181,47 @@ export interface ShipmentResult {
   platform?: string;
 }
 
+type CreateReply = { success?: number | boolean; tracking_number?: string | number; label_url?: string; platform_name?: string; msg?: string; error?: string };
+
+/**
+ * The payload variants tried in order. DataLogics answers a bare "התרחשה שגיאה" when a setting we send
+ * does not match the merchant's saved setup, while the same order broadcasts fine from their panel with
+ * the saved settings – so on that answer we retry with fewer of our own settings. Retrying is safe:
+ * DataLogics keys the shipment by order.id and returns an existing one instead of a duplicate.
+ */
+export function shippingAttempts(o: Order): { name: string; payload: ReturnType<typeof createShippingPayload> }[] {
+  const full = createShippingPayload(o);
+  const out: { name: string; payload: ReturnType<typeof createShippingPayload> }[] = [{ name: 'full', payload: full }];
+  if (!full.settings) return out;
+  const card = carrierCardFor(o)!;
+  const supplier = full.settings.shipping_push_supplier;
+  const { locations: _l, ...noLoc } = full.settings;
+  void _l;
+  out.push({ name: 'no-locations', payload: { ...full, settings: noLoc } as typeof full });
+  const bare = { shipping_push_supplier: supplier, shipping_push_supplier_id: card };
+  out.push({ name: 'card-only', payload: { ...full, settings: { ...bare, shipping_method: [bare] } } as typeof full });
+  // The account's own saved settings – only for the regular home-courier card, so no other service is used by mistake.
+  if (card === '28973') {
+    const { settings: _s, ...rest } = full;
+    void _s;
+    out.push({ name: 'account-defaults', payload: rest as typeof full });
+  }
+  return out;
+}
+
 export async function createShipment(o: Order): Promise<ShipmentResult> {
-  const r = await call<{ success?: number | boolean; tracking_number?: string | number; label_url?: string; platform_name?: string; msg?: string; error?: string }>(
-    'create_shipping',
-    createShippingPayload(o),
-  );
-  if (!r.success || !r.tracking_number) throw new ShippingApiError(r.msg || r.error || `המשלוח לא נוצר: ${JSON.stringify(r).slice(0, 200)}`);
-  return { trackingNumber: String(r.tracking_number), labelUrl: r.label_url || undefined, platform: r.platform_name || undefined };
+  let last: CreateReply = {};
+  for (const a of shippingAttempts(o)) {
+    const r = await call<CreateReply>('create_shipping', a.payload);
+    if (r.success && r.tracking_number) {
+      if (a.name !== 'full') console.log('[datalogics] shipment created with variant', a.name, o.id);
+      return { trackingNumber: String(r.tracking_number), labelUrl: r.label_url || undefined, platform: r.platform_name || undefined };
+    }
+    last = r;
+    // Only the generic error is worth another shape; a specific message (bad address, card …) is shown as is.
+    if (r.msg && r.msg !== 'התרחשה שגיאה') break;
+  }
+  throw new ShippingApiError(last.msg || last.error || `המשלוח לא נוצר: ${JSON.stringify(last).slice(0, 200)}`);
 }
 
 export async function cancelShipment(o: Order): Promise<void> {

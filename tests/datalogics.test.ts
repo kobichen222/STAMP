@@ -57,6 +57,32 @@ describe('DataLogics shipping', () => {
     await expect(cancelShipment(order)).rejects.toBeInstanceOf(ShippingApiError);
   });
 
+  it('retries the generic error with fewer of our settings', async () => {
+    vi.stubEnv('DATALOGICS_TOKEN', 'tok');
+    const replies = [{ success: 0, msg: 'התרחשה שגיאה' }, { success: 0, msg: 'התרחשה שגיאה' }, { success: 1, tracking_number: 42 }];
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(replies.shift())));
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await createShipment(order);
+    expect(r.trackingNumber).toBe('42');
+    const bodies = fetchMock.mock.calls.map((c) => JSON.parse(String((c as unknown as [string, RequestInit])[1].body)));
+    expect(bodies[0].settings.locations).toBeDefined();
+    expect(bodies[1].settings.locations).toBeUndefined();
+    expect(bodies[2].settings).toEqual({ shipping_push_supplier: 52, shipping_push_supplier_id: '28973', shipping_method: [{ shipping_push_supplier: 52, shipping_push_supplier_id: '28973' }] });
+  });
+
+  it('falls back to the account settings only for the home-courier card', async () => {
+    vi.stubEnv('DATALOGICS_TOKEN', 'tok');
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: 0, msg: 'התרחשה שגיאה' })));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(createShipment(order)).rejects.toThrow('התרחשה שגיאה');
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(JSON.parse(String((fetchMock.mock.calls[3] as unknown as [string, RequestInit])[1].body)).settings).toBeUndefined();
+    fetchMock.mockClear();
+    const express = { ...order, shipping: { ...order.shipping, method: 'express', carrierAccount: '28974' } } as Order;
+    await expect(createShipment(express)).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it('accepts the token as TOKEN_SWAGGER', async () => {
     vi.stubEnv('TOKEN_SWAGGER', 'sw');
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: 1, tracking_number: 1 })));
