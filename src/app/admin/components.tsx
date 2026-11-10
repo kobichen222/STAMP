@@ -30,7 +30,7 @@ export function Preview({ order, index = 0, className = 'h-16 w-24' }: { order: 
 
 export function OrderRow({ o }: { o: Order }) {
   const date = new Date(o.createdAt).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
-  const items = o.items.map((i) => `${i.productName} ×${i.quantity}`).join(', ');
+  const items = o.items.map((i) => `${i.productName} ×${i.quantity} ₪${i.total}`).join(', ');
   return (
     <Link
       href={`/admin/orders/${o.id}/`}

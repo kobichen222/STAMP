@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { notFound } from 'next/navigation';
 import { INK_COLORS } from '@/designer/types';
-import { ADDONS } from '@/lib/pricing';
+import { ADDONS, DEFAULT_RULES } from '@/lib/pricing';
 import { formatDate } from '@/lib/format';
 import { trackingLink } from '@/server/notifications';
 import { loadOrder } from '@/server/orders/service';
@@ -44,6 +44,8 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
   if (!o) notFound();
   await ensureSettings();
   const card = carrierCardFor(o);
+  const shipRule = DEFAULT_RULES.shipping.find((m) => m.id === o.shipping.method);
+  const shipPrice = `${o.shipping.price ? `₪${o.shipping.price}` : 'חינם'}`;
   const payLog = o.paymentMethod === 'manual' ? [] : await paymentLog({ orderId: o.id, limit: 30 }).catch(() => []);
   const next = TRANSITIONS[o.status];
   const primary = PRIMARY[o.status];
@@ -67,8 +69,17 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
           </Link>
         </div>
         <p className="mt-1 text-sm text-muted">
-          {formatDate(o.createdAt)} · <strong className="text-ink tabular-nums">₪{o.total}</strong> · {o.paymentStatus === 'paid' ? <span className="text-ok">שולם</span> : <span className="text-warn">לא שולם</span>} · {o.shipping.label}
+          {formatDate(o.createdAt)} · <strong className="text-ink tabular-nums">₪{o.total}</strong> · {o.paymentStatus === 'paid' ? <span className="text-ok">שולם</span> : <span className="text-warn">לא שולם</span>} </p>
+        <p className="mt-2 inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg border border-blue/30 bg-blue-50 px-3 py-1.5 text-sm">
+          <Icon name="truck" size={16} className="text-blue" />
+          <span className="text-muted">סוג משלוח:</span>
+          <strong>{o.shipping.label}</strong>
+          <span className="tabular-nums">· {shipPrice}</span>
+          {shipRule?.eta && <span className="text-xs text-muted">· {shipRule.eta}</span>}
         </p>
+        <Link href={`/admin/orders/${o.id}/courier/`} className="btn-outline btn-sm ms-2 mt-2 align-top">
+          <Icon name="truck" size={15} /> דף לשליח
+        </Link>
         {!closed && (
           <ol className="mt-3 grid grid-cols-6 gap-1" aria-label="התקדמות ההזמנה">
             {TIMELINE.map((t, n) => (
@@ -88,7 +99,13 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
               <div className="flex flex-wrap gap-4 sm:gap-5">
                 <Preview order={o} index={i} className="h-36 w-full sm:h-40 sm:w-64" />
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-lg font-bold">{it.productName}</h2>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <h2 className="text-lg font-bold">{it.productName}</h2>
+                    <p className="text-lg font-bold tabular-nums text-blue">
+                      ₪{it.total}
+                      {it.quantity > 1 && <span className="ms-1 text-xs font-normal text-muted">(₪{it.unitPrice} × {it.quantity})</span>}
+                    </p>
+                  </div>
                   <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
                     <dt className="text-muted">מידה</dt>
                     <dd className="font-semibold">{it.size}</dd>
@@ -144,6 +161,37 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
                       הורד {KIND_LABEL[f.kind] ?? f.kind}
                     </a>
                   ))}
+          <section className="card p-4 sm:p-5">
+            <h2 className="mb-2 font-bold">סיכום מחיר</h2>
+            <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm tabular-nums">
+              {o.items.map((it) => (
+                <div key={it.id} className="contents">
+                  <dt>
+                    {it.productName} {it.size} <span className="text-muted">× {it.quantity}</span>
+                  </dt>
+                  <dd className="font-semibold">₪{it.total}</dd>
+                </div>
+              ))}
+              {o.discount > 0 && (
+                <>
+                  <dt className="text-ok">הנחה{o.couponCode ? ` (${o.couponCode})` : ''}</dt>
+                  <dd className="text-ok">−₪{o.discount}</dd>
+                </>
+              )}
+              <dt>משלוח: {o.shipping.label}</dt>
+              <dd className="font-semibold">{shipPrice}</dd>
+              {!!o.adjustment && (
+                <>
+                  <dt>התאמת מחיר</dt>
+                  <dd>
+                    {o.adjustment < 0 ? '−' : '+'}₪{Math.abs(o.adjustment)}
+                  </dd>
+                </>
+              )}
+              <dt className="mt-1 border-t border-line pt-1 font-bold">סה״כ</dt>
+              <dd className="mt-1 border-t border-line pt-1 text-base font-bold text-blue">₪{o.total}</dd>
+            </dl>
+          </section>
                 {!it.files.length && <span className="text-sm text-muted">קבצי ייצור עוד לא נוצרו</span>}
               </div>
               <div className="mt-3">
@@ -200,6 +248,11 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
               {o.shipping.label}
               {o.shipping.address && ` · ${[o.shipping.address.street, o.shipping.address.city].filter(Boolean).join(', ')}`}
             </p>
+            {o.shipping.method !== 'pickup' && (
+              <Link href={`/admin/orders/${o.id}/courier/`} className="btn-outline btn-sm mt-2 w-full">
+                <Icon name="truck" size={15} /> הדפסת דף לשליח
+              </Link>
+            )}
             {card && (
               <p className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-sm">
                 זיג זג · כרטיס לקוח <strong dir="ltr">{card}</strong> ·{' '}
