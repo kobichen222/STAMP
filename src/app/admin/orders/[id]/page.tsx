@@ -12,6 +12,7 @@ import { Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
 import { ZigZagBox } from '../../ZigZagBox';
 import { DeleteOrder } from './DeleteOrder';
+import { NextStatusButton, StatusPicker } from './StatusPicker';
 import { PaymentLogList } from '../../PaymentLogList';
 import { paymentLog } from '@/server/payment-log';
 import { carrierCardFor, datalogicsConfigured } from '@/server/shipping/datalogics';
@@ -309,18 +310,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
 
           <section className="card p-4 sm:p-5">
             <h2 className="font-bold">סטטוס</h2>
-            {primary && (
-              <form action={setStatus.bind(null, o.id, primary, undefined)} className="mt-3">
-                <button className="btn-primary w-full">העברה ל: {STATUS_LABEL[primary]}</button>
-              </form>
-            )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {next.filter((x) => x !== primary).map((s) => (
-                <form key={s} action={setStatus.bind(null, o.id, s, undefined)}>
-                  <button className={['CANCELLED', 'REFUNDED'].includes(s) ? 'btn-ghost btn-sm text-bad' : 'btn-outline btn-sm'}>{STATUS_LABEL[s]}</button>
-                </form>
-              ))}
-            </div>
+            <StatusPicker key={o.status} id={o.id} status={o.status} primary={primary} />
             {o.status === 'PRODUCTION_FILE_ERROR' && (
               <form action={retryProduction.bind(null, o.id)} className="mt-3">
                 <button className="btn-primary btn-sm w-full">נסה שוב ליצור קבצים</button>
@@ -402,9 +392,9 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             <Icon name="whatsapp" size={18} />
           </a>
           {primary ? (
-            <form action={setStatus.bind(null, o.id, primary, undefined)} className="min-w-0 flex-1">
-              <button className="btn-primary !h-11 w-full truncate text-sm">העברה ל: {STATUS_LABEL[primary]}</button>
-            </form>
+            <div className="min-w-0 flex-1">
+              <NextStatusButton key={o.status} id={o.id} status={o.status} primary={primary} />
+            </div>
           ) : o.paymentStatus !== 'paid' && !closed ? (
             <a href="#pay" className="btn-dark !h-11 min-w-0 flex-1 text-sm">
               סימון תשלום

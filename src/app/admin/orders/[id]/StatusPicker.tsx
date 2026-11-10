@@ -1,0 +1,108 @@
+'use client';
+
+import { useOptimistic, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { STATUS_LABEL, TRANSITIONS, type OrderStatus } from '@/server/orders/types';
+import { setStatus } from '../../actions';
+
+/** The regular path of an order, in order. */
+const FLOW: OrderStatus[] = ['PAYMENT_PENDING', 'PAID', 'PREFLIGHT', 'AWAITING_APPROVAL', 'READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'QUALITY_CHECK', 'READY_FOR_SHIPPING', 'SHIPPED', 'DELIVERED'];
+/** Side statuses – off the regular path. */
+const SIDE: OrderStatus[] = ['CHANGE_REQUESTED', 'PRODUCTION_FILE_ERROR', 'PAYMENT_FAILED', 'CANCELLED', 'PARTIALLY_REFUNDED', 'REFUNDED'];
+const DANGER: OrderStatus[] = ['CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'];
+
+function useStatus(id: string, status: OrderStatus) {
+  const router = useRouter();
+  const [shown, setShown] = useOptimistic(status);
+  const [pending, start] = useTransition();
+  const [target, setTarget] = useState<OrderStatus | null>(null);
+  const [error, setError] = useState('');
+  const go = (to: OrderStatus) => {
+    if (to === shown || pending) return;
+    if (DANGER.includes(to) && !window.confirm(`להעביר את ההזמנה ל"${STATUS_LABEL[to]}"?`)) return;
+    setError('');
+    setTarget(to);
+    start(async () => {
+      setShown(to);
+      try {
+        await setStatus(id, to);
+        router.refresh();
+      } catch {
+        setError('השינוי לא נשמר – נסו שוב');
+      }
+    });
+  };
+  return { shown, pending, target, error, go };
+}
+
+const Spinner = () => <span aria-hidden className="inline-block size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />;
+
+/** Every step on view, the current one marked; a click moves the order there at once. */
+export function StatusPicker({ id, status, primary }: { id: string; status: OrderStatus; primary?: OrderStatus }) {
+  const { shown, pending, target, error, go } = useStatus(id, status);
+  const at = FLOW.indexOf(shown);
+  const allowed = TRANSITIONS[shown] ?? [];
+  const next = primary && shown === status ? primary : allowed.find((s) => FLOW.indexOf(s) > at);
+
+  return (
+    <div className="mt-3 space-y-3">
+      {next && (
+        <button type="button" onClick={() => go(next)} disabled={pending} className="btn-primary w-full">
+          {pending && target === next ? <Spinner /> : null} העברה ל: {STATUS_LABEL[next]}
+        </button>
+      )}
+      <ol className="grid gap-1" aria-label="שלבי ההזמנה">
+        {FLOW.map((s, n) => {
+          const current = s === shown;
+          const done = at >= 0 && n < at;
+          return (
+            <li key={s}>
+              <button
+                type="button"
+                onClick={() => go(s)}
+                disabled={pending && target !== s}
+                aria-current={current ? 'step' : undefined}
+                className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-right text-sm transition active:scale-[0.98] ${
+                  current ? 'border-blue bg-blue text-white font-bold' : done ? 'border-blue/20 bg-blue-50 text-ink hover:border-blue' : 'border-line bg-white text-muted hover:border-blue hover:text-ink'
+                }`}
+              >
+                <span className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] ${current ? 'bg-white text-blue' : done ? 'bg-blue text-white' : 'bg-line text-muted'}`}>
+                  {pending && target === s ? <Spinner /> : done ? '✓' : n + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{STATUS_LABEL[s]}</span>
+                {!current && allowed.includes(s) && <span className="text-[10px] text-blue">הבא</span>}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="flex flex-wrap gap-1.5">
+        {SIDE.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => go(s)}
+            disabled={pending && target !== s}
+            className={`btn-sm rounded-full border px-3 transition active:scale-95 ${
+              s === shown ? 'border-bad bg-bad text-white' : DANGER.includes(s) ? 'border-bad/30 text-bad hover:bg-bad/5' : 'border-line text-muted hover:border-blue hover:text-ink'
+            }`}
+          >
+            {pending && target === s ? <Spinner /> : null} {STATUS_LABEL[s]}
+          </button>
+        ))}
+      </div>
+      {error && <p role="alert" className="text-sm text-bad">{error}</p>}
+    </div>
+  );
+}
+
+/** The sticky phone bar button – same instant response. */
+export function NextStatusButton({ id, status, primary }: { id: string; status: OrderStatus; primary: OrderStatus }) {
+  const { shown, pending, go } = useStatus(id, status);
+  const done = shown !== status;
+  return (
+    <button type="button" onClick={() => go(primary)} disabled={pending || done} className="btn-primary !h-11 w-full truncate text-sm">
+      {pending ? <Spinner /> : null} {done ? STATUS_LABEL[shown] : `העברה ל: ${STATUS_LABEL[primary]}`}
+    </button>
+  );
+}

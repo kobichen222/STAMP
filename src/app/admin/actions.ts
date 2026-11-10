@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { applyStatus, audit, autoShip, issueReward, loadOrder, resendOrderEmails, runPreflight, saveOrder } from '@/server/orders/service';
+import { after } from 'next/server';
+import { applyStatus, audit, autoShip, issueReward, loadOrder, resendOrderEmails, runPreflight, saveOrder, sendStatusEmail } from '@/server/orders/service';
 import { ORDER_STATUSES, type OrderStatus } from '@/server/orders/types';
 import { cancelShipment, createShipment, shipmentStatus, ShippingApiError } from '@/server/shipping/datalogics';
 import { requireStaff } from '@/server/staff';
@@ -19,9 +20,16 @@ async function withOrder(id: string, roles: ('admin' | 'production')[], fn: (o: 
 
 export async function setStatus(id: string, to: string, note?: string) {
   if (!(ORDER_STATUSES as readonly string[]).includes(to)) throw new Error('bad status');
+  let event: Parameters<typeof sendStatusEmail>[1] | undefined;
   await withOrder(id, ['admin'], async (o, role) => {
-    await applyStatus(o, to as OrderStatus, role, note);
+    const r = await applyStatus(o, to as OrderStatus, role, note, { force: true, deferNotify: true });
+    if (typeof r === 'string') event = r;
   });
+  // The customer e-mail goes out after the answer, so the button responds at once.
+  if (event) {
+    const e = event;
+    after(() => sendStatusEmail(id, e).catch((err) => console.error('[status-email]', id, err)));
+  }
 }
 
 export async function addNote(id: string, formData: FormData) {

@@ -120,13 +120,14 @@ function audit(o: Order, actor: string, action: string, extra: Partial<Order['au
   o.audit.push({ at: now(), actor, action, ...extra });
 }
 
-export function transition(o: Order, to: OrderStatus, actor: string, note?: string): boolean {
+export function transition(o: Order, to: OrderStatus, actor: string, note?: string, force = false): boolean {
   if (o.status === to) return true;
-  if (!canTransition(o.status, to)) {
+  // Staff may pick any step by hand (force); automatic flows stay on the allowed paths.
+  if (!force && !canTransition(o.status, to)) {
     audit(o, actor, 'transition_rejected', { from: o.status, to, note });
     return false;
   }
-  audit(o, actor, 'status', { from: o.status, to, note });
+  audit(o, actor, 'status', { from: o.status, to, note: force && !canTransition(o.status, to) ? `${note ? `${note} · ` : ''}בחירה ידנית` : note });
   o.status = to;
   o.updatedAt = now();
   return true;
@@ -388,13 +389,33 @@ export async function saveOrder(o: Order) {
   await getStore().saveOrder(o);
 }
 
-export async function applyStatus(o: Order, to: OrderStatus, actor: string, note?: string) {
-  if (!transition(o, to, actor, note)) return false;
-  if (to === 'IN_PRODUCTION') o.notificationsSent.push(...(await notify(o, 'production.started')));
-  if (to === 'READY_FOR_SHIPPING') o.notificationsSent.push(...(await notify(o, 'order.ready_for_pickup')));
-  if (to === 'SHIPPED') o.notificationsSent.push(...(await notify(o, 'order.shipped')));
-  if (to === 'PREFLIGHT') await runPreflight(o, actor);
-  return true;
+const STATUS_EVENTS: Partial<Record<OrderStatus, Parameters<typeof notify>[1]>> = {
+  IN_PRODUCTION: 'production.started',
+  READY_FOR_SHIPPING: 'order.ready_for_pickup',
+  SHIPPED: 'order.shipped',
+};
+
+/**
+ * Moves the order to `to`. With `deferNotify` the customer e-mail is not awaited: the event is
+ * returned so the caller sends it after answering (staff see the new status at once).
+ */
+export async function applyStatus(o: Order, to: OrderStatus, actor: string, note?: string, opts: { force?: boolean; deferNotify?: boolean } = {}) {
+  const from = o.status;
+  if (!transition(o, to, actor, note, opts.force)) return false;
+  const event = from !== to ? STATUS_EVENTS[to] : undefined;
+  if (event && !opts.deferNotify) o.notificationsSent.push(...(await notify(o, event)));
+  if (to === 'PREFLIGHT' && from !== to) await runPreflight(o, actor);
+  return event && opts.deferNotify ? event : true;
+}
+
+/** Sends a status e-mail that applyStatus deferred, and records it on the (fresh) order. */
+export async function sendStatusEmail(id: string, event: Parameters<typeof notify>[1]) {
+  const o = await loadOrder(id);
+  if (!o) return;
+  const sent = await notify(o, event);
+  if (!sent.length) return;
+  o.notificationsSent.push(...sent);
+  await saveOrder(o);
 }
 
 export const verifyToken = (o: Order | null, token: string | null) =>
