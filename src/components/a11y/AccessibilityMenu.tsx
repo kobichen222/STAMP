@@ -535,13 +535,15 @@ export function AccessibilityMenu() {
   const left = s.side === 'left';
   const designer = pathname?.startsWith('/designer');
   const product = pathname?.startsWith('/stamp/');
+  // Admin on phones has a bottom tab bar – sit above it.
+  const admin = pathname?.startsWith('/admin') && !pathname.startsWith('/admin/login');
   const changed = !isDefault(s);
   const big = s.bigUi;
 
   // Trigger placement: away from the product buy-bar and the editor's own controls.
   const triggerPos = designer
     ? `${left ? 'left-0 rounded-r-2xl' : 'right-0 rounded-l-2xl'} top-[42%] h-12 w-10`
-    : `${left ? 'left-3 sm:left-5' : 'right-3 sm:right-5'} ${product ? 'bottom-[88px] lg:bottom-5' : 'bottom-3 sm:bottom-5'} h-14 w-14 rounded-full`;
+    : `${left ? 'left-3 sm:left-5' : 'right-3 sm:right-5'} ${product ? 'bottom-[88px] lg:bottom-5' : admin ? 'bottom-[76px] h-11! w-11! lg:bottom-5' : 'bottom-3 sm:bottom-5'} h-14 w-14 rounded-full`;
 
   return (
     <div id="a11y-ui" dir="rtl" lang="he">

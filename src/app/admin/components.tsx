@@ -28,19 +28,29 @@ export function Preview({ order, index = 0, className = 'h-16 w-24' }: { order: 
 }
 
 export function OrderRow({ o }: { o: Order }) {
+  const date = new Date(o.createdAt).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+  const items = o.items.map((i) => `${i.productName} ×${i.quantity}`).join(', ');
   return (
-    <Link href={`/admin/orders/${o.id}/`} className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-line px-4 py-3 last:border-0 hover:bg-surface md:grid-cols-[auto_1.2fr_1fr_1fr_auto_auto]">
-      <Preview order={o} />
-      <div className="min-w-0">
-        <p className="font-semibold" dir="ltr">
+    <Link
+      href={`/admin/orders/${o.id}/`}
+      className="flex items-center gap-3 border-b border-line px-3 py-3 last:border-0 hover:bg-surface sm:px-4 md:grid md:grid-cols-[auto_1.2fr_1fr_1fr_auto_auto] md:gap-4"
+    >
+      <Preview order={o} className="h-12 w-16 sm:h-16 sm:w-24" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold sm:text-base" dir="ltr">
           {o.id}
         </p>
-        <p className="truncate text-sm text-muted">{o.customer.name}</p>
+        <p className="truncate text-sm text-ink-2">{o.customer.name}</p>
+        <p className="truncate text-xs text-muted md:hidden">
+          {date} · {items}
+        </p>
       </div>
-      <p className="hidden truncate text-sm md:block">{o.items.map((i) => `${i.productName} ×${i.quantity}`).join(', ')}</p>
-      <p className="hidden text-sm text-muted md:block">{new Date(o.createdAt).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p>
-      <StatusBadge status={o.status} />
-      <p className="hidden font-semibold md:block">₪{o.total}</p>
+      <p className="hidden truncate text-sm md:block">{items}</p>
+      <p className="hidden text-sm text-muted md:block">{date}</p>
+      <div className="flex shrink-0 flex-col items-end gap-1 md:contents">
+        <StatusBadge status={o.status} />
+        <p className="text-sm font-bold tabular-nums md:text-base">₪{o.total}</p>
+      </div>
     </Link>
   );
 }

@@ -13,14 +13,31 @@ export default async function CouponsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">קופונים</h1>
+        <h1 className="text-xl font-bold sm:text-2xl">קופונים</h1>
         <p className="mt-1 text-sm text-muted">קודי הנחה כלליים שהלקוח מקליד בקופה.</p>
         <CouponsEditor initial={s.coupons} />
       </div>
       <section>
         <h2 className="text-lg font-bold">קודים אישיים להזמנה הבאה ({rewards.length})</h2>
         <p className="mt-1 text-sm text-muted">נוצרים אוטומטית אחרי תשלום, לשימוש חד־פעמי.</p>
-        <div className="card mt-3 overflow-x-auto">
+        <ul className="mt-3 space-y-2 md:hidden">
+          {rewards.map((c) => (
+            <li key={c.code} className="card flex items-center gap-3 p-3 text-sm">
+              <span className="grid h-10 w-12 shrink-0 place-items-center rounded-lg bg-blue-50 font-bold text-blue">{c.pct}%</span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-mono font-semibold" dir="ltr">
+                  {c.code}
+                </span>
+                <a href={`/admin/orders/${c.orderId}/`} className="block truncate text-xs text-blue" dir="ltr">
+                  {c.orderId} · {c.phone ?? c.email ?? ''}
+                </a>
+              </span>
+              {c.usedAt ? <span className="shrink-0 rounded-full bg-ok/10 px-2 py-0.5 text-xs text-ok">מומש</span> : <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-xs text-muted">ממתין</span>}
+            </li>
+          ))}
+          {!rewards.length && <li className="card p-6 text-center text-sm text-muted">עדיין לא נוצרו קודים אישיים.</li>}
+        </ul>
+        <div className="card mt-3 hidden overflow-x-auto md:block">
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-surface text-right text-xs text-muted">
               <tr>

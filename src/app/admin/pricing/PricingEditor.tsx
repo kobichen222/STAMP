@@ -60,20 +60,20 @@ export function PricingEditor({ initial }: { initial: PricingSettings }) {
           {v.shipping.map((m, i) => {
             const set = (patch: Partial<typeof m>) => up('shipping', v.shipping.map((x, j) => (j === i ? { ...x, ...patch } : x)));
             return (
-              <div key={m.id} className={`grid items-end gap-3 rounded-xl border border-line p-3 sm:grid-cols-[1fr_auto_auto_1fr_auto_auto] ${m.active === false ? 'opacity-60' : ''}`}>
-                <label className="block">
+              <div key={m.id} className={`grid grid-cols-2 items-end gap-3 rounded-xl border border-line p-3 sm:grid-cols-[1fr_auto_auto_1fr_auto_auto] ${m.active === false ? 'opacity-60' : ''}`}>
+                <label className="col-span-2 block sm:col-span-1">
                   <span className="mb-1 block text-sm font-medium">שם</span>
                   <input value={m.label} onChange={(e) => set({ label: e.target.value })} className="input" />
                 </label>
                 <NumberField label="מחיר" value={m.price} onChange={(x) => set({ price: x ?? 0 })} suffix="₪" />
                 <NumberField label="חינם מעל" value={m.freeFrom} allowEmpty onChange={(x) => set({ freeFrom: x })} suffix="₪" />
-                <label className="block">
+                <label className="col-span-2 block sm:col-span-1">
                   <span className="mb-1 block text-sm font-medium">זמן אספקה</span>
                   <input value={m.eta} onChange={(e) => set({ eta: e.target.value })} className="input" />
                 </label>
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium">כרטיס זיג זג</span>
-                  <input value={m.carrierAccount ?? ''} onChange={(e) => set({ carrierAccount: e.target.value.trim() || undefined })} className="input !w-24" dir="ltr" inputMode="numeric" />
+                  <input value={m.carrierAccount ?? ''} onChange={(e) => set({ carrierAccount: e.target.value.trim() || undefined })} className="input sm:!w-24" dir="ltr" inputMode="numeric" />
                 </label>
                 <div className="flex items-center gap-2 pb-2">
                   <Switch on={m.active !== false} onChange={(on) => set({ active: on })} label={`הפעלת ${m.label}`} />

@@ -5,9 +5,9 @@ import { OrderRow } from './components';
 
 function Kpi({ label, value, tone = '', href }: { label: string; value: string | number; tone?: string; href?: string }) {
   const body = (
-    <div className="card p-5">
-      <p className="text-sm text-muted">{label}</p>
-      <p className={`mt-1 text-3xl font-extrabold tabular-nums ${tone}`}>{value}</p>
+    <div className="card h-full p-3.5 transition hover:shadow-soft sm:p-5">
+      <p className="text-xs text-muted sm:text-sm">{label}</p>
+      <p className={`mt-1 text-2xl font-extrabold tabular-nums sm:text-3xl ${tone}`}>{value}</p>
     </div>
   );
   return href ? <Link href={href}>{body}</Link> : body;
@@ -42,19 +42,19 @@ export default async function Dashboard() {
   const unpaid = orders.filter((o) => o.paymentStatus !== 'paid' && o.status !== 'CANCELLED').length;
   const openLeads = (await listContacts(500).catch(() => [])).filter((l) => !l.handled).length;
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">לוח בקרה</h1>
-        <div className="flex gap-2">
-          <Link href="/admin/reports/" className="btn-outline btn-sm">
+        <h1 className="text-xl font-bold sm:text-2xl max-lg:hidden">לוח בקרה</h1>
+        <div className="flex w-full gap-2 sm:w-auto">
+          <Link href="/admin/reports/" className="btn-outline btn-sm max-sm:flex-1">
             דוחות
           </Link>
-          <Link href="/designer/?new=1" target="_blank" className="btn-primary btn-sm">
+          <Link href="/designer/?new=1" target="_blank" className="btn-primary btn-sm max-sm:flex-[2]">
             הזמנה טלפונית – לעורך
           </Link>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         <Kpi label="הזמנות היום" value={todays.length} />
         <Kpi label="הכנסות היום" value={`₪${revenueToday.toLocaleString('he-IL')}`} />
         <Kpi label="ממתינות לייצור" value={pending} tone="text-blue" href="/admin/production/" />
@@ -62,7 +62,7 @@ export default async function Dashboard() {
         <Kpi label="למשלוח" value={toShip} href="/admin/orders/?status=READY_FOR_SHIPPING" />
         <Kpi label="ממוצע הזמנה" value={`₪${aov}`} />
       </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
         <Kpi label="הכנסות החודש" value={`₪${Math.round(revenueMonth).toLocaleString('he-IL')}`} href="/admin/reports/" />
         <Kpi label="הזמנות החודש" value={month.length} href="/admin/reports/" />
         <Kpi label="ממתינות לתשלום" value={unpaid} tone={unpaid ? 'text-warn' : ''} href="/admin/orders/?status=PAYMENT_PENDING" />
@@ -86,10 +86,10 @@ export default async function Dashboard() {
           <ul className="mt-2 divide-y divide-line">
             <Health label={`מסד נתונים / אחסון${store.kind === 'neon' ? ' (Neon)' : ''}`} ok={store.durable} warn={store.kind === 'filesystem' ? 'זמני – הגדירו DATABASE_URL (Neon)' : 'לא מוגדר'} />
             <Health label="מנוע ייצור" ok />
-            <Health label="אימייל (Resend)" ok={!!process.env.RESEND_API_KEY} warn="לא מוגדר" />
-            <Health label="סליקה" ok={false} warn="ידני (טלפון/איסוף)" />
-            <Health label="עוזר AI" ok={!!process.env.ANTHROPIC_API_KEY} warn="מצב מקומי" />
-            <Health label="WhatsApp" ok={false} warn="לא מחובר" />
+            <Health label={`שליחת מיילים${process.env.SMTP_HOST ? ' (SMTP)' : process.env.RESEND_API_KEY ? ' (Resend)' : ''}`} ok={!!(process.env.SMTP_HOST || process.env.RESEND_API_KEY)} warn="לא מוגדר" />
+            <Health label="סליקה (טרנזילה)" ok={(process.env.PAYMENT_PROVIDER ?? 'tranzila') === 'tranzila'} warn="ידני" />
+            <Health label="משלוחים (זיג זג)" ok={!!(process.env.TOKEN_SWAGGER || process.env.DATALOGICS_TOKEN)} warn="שידור ידני" />
+            <Health label="עוזר עיצוב" ok={!!process.env.ANTHROPIC_API_KEY} warn="מצב מקומי" />
           </ul>
         </section>
       </div>

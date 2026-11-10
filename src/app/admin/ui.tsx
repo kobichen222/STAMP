@@ -15,12 +15,12 @@ export function SaveBar({ dirty, onSave, onReset }: { dirty: boolean; onSave: ()
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
   return (
-    <div className="sticky bottom-0 z-20 -mx-4 mt-6 border-t border-line bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+    <div className="sticky bottom-[calc(57px+env(safe-area-inset-bottom))] z-20 -mx-3 mt-6 border-t border-line bg-white/95 px-3 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:bottom-0">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
         <button
           type="button"
           disabled={!dirty || pending}
-          className="btn-primary"
+          className="btn-primary max-sm:flex-1"
           onClick={() =>
             start(async () => {
               const r = await onSave();

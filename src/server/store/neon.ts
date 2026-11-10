@@ -194,6 +194,13 @@ export async function addSubscriber(email: string, source?: string): Promise<boo
   return rows.length > 0;
 }
 
+export async function listSubscribers(limit = 1000): Promise<{ email: string; at: string; source: string | null }[]> {
+  if (!databaseUrl()) return [];
+  const sql = await db();
+  const rows = await sql`select email, at, source from s2g_subscribers order by at desc limit ${limit}`;
+  return rows.map((r) => ({ email: String(r.email), at: new Date(r.at as string).toISOString(), source: (r.source as string) ?? null }));
+}
+
 export async function listContacts(limit = 200) {
   if (!databaseUrl()) return [];
   const sql = await db();

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Icon } from '@/components/ui/Icon';
 import { notFound } from 'next/navigation';
 import { INK_COLORS } from '@/designer/types';
 import { ADDONS } from '@/lib/pricing';
@@ -30,12 +31,12 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
   const next = TRANSITIONS[o.status];
   const wa = `https://wa.me/972${o.customer.phone.replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(`שלום ${o.customer.name}, לגבי הזמנה ${o.id} מ-Stamp2Go: `)}`;
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <Link href="/admin/orders/" className="text-sm text-muted">
-          ← הזמנות
+    <div className="mx-auto max-w-6xl space-y-4 sm:space-y-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <Link href="/admin/orders/" className="w-full text-sm text-muted sm:w-auto">
+          → כל ההזמנות
         </Link>
-        <h1 className="text-2xl font-bold" dir="ltr">
+        <h1 className="text-xl font-bold sm:text-2xl" dir="ltr">
           {o.id}
         </h1>
         <StatusBadge status={o.status} />
@@ -43,12 +44,12 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
         <span className="text-sm text-muted">{formatDate(o.createdAt)}</span>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-        <div className="space-y-5">
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-[1fr_340px]">
+        <div className="space-y-4 sm:space-y-5">
           {o.items.map((it, i) => (
-            <section key={it.id} className="card p-5">
-              <div className="flex flex-wrap gap-5">
-                <Preview order={o} index={i} className="h-40 w-64" />
+            <section key={it.id} className="card p-4 sm:p-5">
+              <div className="flex flex-wrap gap-4 sm:gap-5">
+                <Preview order={o} index={i} className="h-36 w-full sm:h-40 sm:w-64" />
                 <div className="min-w-0 flex-1">
                   <h2 className="text-lg font-bold">{it.productName}</h2>
                   <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
@@ -122,12 +123,12 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             </section>
           ))}
 
-          <section className="card p-5">
-            <h2 className="font-bold">יומן פעולות (Audit)</h2>
+          <section className="card p-4 sm:p-5">
+            <h2 className="font-bold">יומן פעולות</h2>
             <ul className="mt-3 space-y-1.5 text-sm">
               {[...o.audit].reverse().map((a, n) => (
-                <li key={n} className="flex gap-3">
-                  <span className="w-32 shrink-0 text-muted tabular-nums">{formatDate(a.at)}</span>
+                <li key={n} className="flex flex-col gap-0.5 border-b border-line/60 pb-1.5 last:border-0 sm:flex-row sm:gap-3 sm:border-0 sm:pb-0">
+                  <span className="shrink-0 text-xs text-muted tabular-nums sm:w-32 sm:text-sm">{formatDate(a.at)}</span>
                   <span>
                     <strong>{a.actor}</strong> · {a.action}
                     {a.to && ` → ${STATUS_LABEL[a.to]}`}
@@ -139,8 +140,8 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
           </section>
         </div>
 
-        <aside className="space-y-5">
-          <section className="card p-5">
+        <aside className="space-y-4 max-lg:order-first sm:space-y-5">
+          <section className="card p-4 sm:p-5">
             <h2 className="font-bold">לקוח</h2>
             <p className="mt-2 font-semibold">{o.customer.name}</p>
             <p className="text-sm" dir="ltr">
@@ -166,25 +167,25 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
               </p>
             )}
             {o.notes && <p className="mt-2 rounded-lg bg-warn/10 p-2 text-sm">הערת לקוח: {o.notes}</p>}
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
               <a href={`tel:${o.customer.phone}`} className="btn-outline btn-sm">
-                חיוג
+                <Icon name="phone" size={15} /> חיוג
               </a>
               <a href={wa} target="_blank" rel="noopener" className="btn-outline btn-sm">
-                WhatsApp
+                <Icon name="whatsapp" size={15} /> וואטסאפ
               </a>
               {o.customer.email && (
                 <a href={`mailto:${o.customer.email}?subject=${encodeURIComponent(`הזמנה ${o.id}`)}`} className="btn-outline btn-sm">
-                  Email
+                  <Icon name="mail" size={15} /> מייל
                 </a>
               )}
-              <a href={trackingLink(o)} target="_blank" rel="noopener" className="btn-ghost btn-sm">
+              <a href={trackingLink(o)} target="_blank" rel="noopener" className="btn-ghost btn-sm col-span-3">
                 קישור מעקב ללקוח
               </a>
             </div>
           </section>
 
-          <section className="card p-5">
+          <section className="card p-4 sm:p-5">
             <h2 className="font-bold">סטטוס</h2>
             <div className="mt-3 flex flex-wrap gap-2">
               {next.map((s) => (
@@ -208,20 +209,20 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             </form>
           </section>
 
-          <section className="card p-5">
+          <section className="card p-4 sm:p-5">
             <h2 className="font-bold">תשלום</h2>
             <p className="mt-2 text-sm">
               ₪{o.total} · {o.paymentStatus === 'paid' ? `שולם ${o.paymentRef ?? ''}` : 'לא שולם'} ({o.paymentMethod})
             </p>
             {o.paymentStatus !== 'paid' && (
               <form action={markPaid.bind(null, o.id)} className="mt-3 flex gap-2">
-                <input name="ref" placeholder="אסמכתא" className="input !py-1.5 text-sm" />
-                <button className="btn-dark btn-sm">סמן כשולם</button>
+                <input name="ref" placeholder="אסמכתא" className="input min-w-0 !py-1.5 text-sm" />
+                <button className="btn-dark btn-sm shrink-0">סמן כשולם</button>
               </form>
             )}
           </section>
 
-          <section className="card p-5">
+          <section className="card p-4 sm:p-5">
             <h2 className="font-bold">משלוח</h2>
             {card && (
               <ZigZagBox
@@ -240,11 +241,11 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="ship" value="1" className="accent-blue" /> סמן כנשלח
               </label>
-              <button className="btn-outline btn-sm">שמירה</button>
+              <button className="btn-outline btn-sm w-full sm:w-auto">שמירת משלוח</button>
             </form>
           </section>
 
-          <section className="card p-5">
+          <section className="card p-4 sm:p-5">
             <h2 className="font-bold">הערות פנימיות</h2>
             <ul className="mt-2 space-y-2 text-sm">
               {o.staffNotes.map((n, i) => (

@@ -40,7 +40,7 @@ export function ProductsEditor({ rows, initial }: { rows: AdminProductRow[]; ini
   return (
     <>
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש מוצר…" className="input max-w-xs" />
+        <input value={q} type="search" onChange={(e) => setQ(e.target.value)} placeholder="חיפוש מוצר…" className="input w-full sm:max-w-xs" />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={onlyHidden} onChange={(e) => setOnlyHidden(e.target.checked)} className="h-4 w-4 accent-blue" /> רק מוסתרים
         </label>
@@ -48,7 +48,53 @@ export function ProductsEditor({ rows, initial }: { rows: AdminProductRow[]; ini
           {rows.length} מוצרים · {changedCount} עם שינוי
         </span>
       </div>
-      <div className="card mt-4 overflow-x-auto">
+      {/* Phones: one card per product */}
+      <ul className="mt-4 space-y-2 md:hidden">
+        {list.map((r) => {
+          const o = value[r.slug];
+          const price = o?.price !== undefined ? o.price : r.basePrice;
+          return (
+            <li key={r.slug} className={`card flex items-center gap-3 p-3 ${o?.hidden ? 'opacity-60' : ''}`}>
+              {r.image ? <img src={encodeURI(r.image)} alt="" className="h-12 w-12 shrink-0 rounded-lg object-contain mix-blend-multiply" /> : <span className="h-12 w-12 shrink-0 rounded-lg bg-surface" />}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">{r.title}</p>
+                <p className="truncate text-xs text-muted">
+                  {r.size ?? r.series}
+                  {r.basePrice != null && o?.price !== undefined ? ` · מקורי ₪${r.basePrice}` : ''}
+                </p>
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <span className="text-sm text-muted">₪</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    dir="ltr"
+                    value={price ?? ''}
+                    placeholder="הצעה"
+                    onChange={(e) => {
+                      const v = e.target.value === '' ? null : Number(e.target.value);
+                      set(r.slug, { price: v === r.basePrice ? undefined : v });
+                    }}
+                    className={`input !h-9 !w-24 !py-1 tabular-nums ${o?.price !== undefined ? '!border-blue font-semibold text-blue' : ''}`}
+                    aria-label={`מחיר ${r.title}`}
+                  />
+                  {o?.price !== undefined && (
+                    <button type="button" className="text-xs text-muted" onClick={() => set(r.slug, { price: undefined })}>
+                      איפוס
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-col items-center gap-1">
+                <Switch on={!o?.hidden} onChange={(on) => set(r.slug, { hidden: !on })} label={`הצגת ${r.title}`} />
+                <span className="text-[10px] text-muted">{o?.hidden ? 'מוסתר' : 'באתר'}</span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="card mt-4 hidden overflow-x-auto md:block">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-surface text-right text-xs text-muted">
             <tr>

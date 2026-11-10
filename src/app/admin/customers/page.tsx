@@ -59,12 +59,12 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         </a>
       </div>
       <form className="flex gap-2">
-        <input name="q" defaultValue={q} placeholder="חיפוש: שם, טלפון, אימייל, חברה…" className="input max-w-md" />
+        <input name="q" type="search" defaultValue={q} placeholder="חיפוש: שם, טלפון, מייל, חברה…" className="input min-w-0 sm:max-w-md" />
         <button className="btn-dark">חיפוש</button>
       </form>
 
       {open && (
-        <section className="card border-blue/30 p-5">
+        <section className="card border-blue/30 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-bold">{open.name}</h2>
@@ -91,7 +91,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           <ul className="mt-4 divide-y divide-line rounded-xl border border-line">
             {open.orders.map((o) => (
               <li key={o.id}>
-                <Link href={`/admin/orders/${o.id}/`} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm hover:bg-surface">
+                <Link href={`/admin/orders/${o.id}/`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-sm hover:bg-surface sm:px-4">
                   <span className="font-mono font-semibold" dir="ltr">
                     {o.id}
                   </span>
@@ -106,7 +106,36 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         </section>
       )}
 
-      <div className="card overflow-x-auto">
+      {/* Phones: cards */}
+      <ul className="space-y-2 md:hidden">
+        {list.map((r) => (
+          <li key={r.key}>
+            <Link
+              href={`/admin/customers/?c=${encodeURIComponent(r.key)}${q ? `&q=${encodeURIComponent(q)}` : ''}`}
+              className={`card flex items-center gap-3 p-3.5 ${open?.key === r.key ? 'ring-2 ring-blue/30' : ''}`}
+            >
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 font-bold text-blue">{r.name.trim().charAt(0)}</span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5">
+                  <span className="truncate font-bold">{r.name}</span>
+                  {r.orders.length > 1 && <span className="shrink-0 rounded-full bg-ok/10 px-1.5 text-[11px] text-ok">חוזר</span>}
+                </span>
+                <span className="block truncate text-xs text-muted" dir="ltr">
+                  {r.phone}
+                  {r.email ? ` · ${r.email}` : ''}
+                </span>
+              </span>
+              <span className="shrink-0 text-left">
+                <span className="block font-bold tabular-nums">₪{Math.round(r.total).toLocaleString('he-IL')}</span>
+                <span className="block text-[11px] text-muted">{r.orders.length} הזמנות</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+        {!list.length && <li className="card p-6 text-center text-sm text-muted">{map.size ? 'לא נמצאו לקוחות לחיפוש.' : 'עדיין אין לקוחות.'}</li>}
+      </ul>
+
+      <div className="card hidden overflow-x-auto md:block">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-surface text-right text-xs text-muted">
             <tr>

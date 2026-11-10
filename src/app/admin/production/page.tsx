@@ -19,20 +19,20 @@ export default async function ProductionQueue({ searchParams }: { searchParams: 
     { key: 'PRODUCTION_FILE_ERROR', title: 'בעייתיות' },
   ];
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">תור ייצור</h1>
+        <h1 className="text-xl font-bold sm:text-2xl">תור ייצור</h1>
         <WorkerName />
-        <form className="ms-auto flex gap-2">
-          <select name="ink" defaultValue={ink ?? ''} className="input !w-auto !py-1.5 text-sm">
-            <option value="">כל צבעי הדיו</option>
+        <form className="grid w-full grid-cols-[1fr_1fr_auto] gap-2 sm:ms-auto sm:flex sm:w-auto">
+          <select name="ink" defaultValue={ink ?? ''} className="input !py-1.5 text-sm sm:!w-auto">
+            <option value="">כל הדיו</option>
             {Object.entries(INK_COLORS).map(([k, v]) => (
               <option key={k} value={k}>
                 {v.label}
               </option>
             ))}
           </select>
-          <select name="size" defaultValue={size ?? ''} className="input !w-auto !py-1.5 text-sm">
+          <select name="size" defaultValue={size ?? ''} className="input !py-1.5 text-sm sm:!w-auto">
             <option value="">כל המידות</option>
             {sizes.map((s) => (
               <option key={s}>{s}</option>
@@ -51,7 +51,7 @@ export default async function ProductionQueue({ searchParams }: { searchParams: 
               </h2>
               <div className="space-y-4">
                 {list.map((o) => (
-                  <article key={o.id} className={`card p-5 ${o.urgent ? 'ring-2 ring-bad' : ''}`}>
+                  <article key={o.id} className={`card p-4 sm:p-5 ${o.urgent ? 'ring-2 ring-bad' : ''}`}>
                     <div className="flex items-center justify-between">
                       <p className="text-xl font-extrabold" dir="ltr">
                         {o.id}
@@ -59,9 +59,9 @@ export default async function ProductionQueue({ searchParams }: { searchParams: 
                       {o.urgent && <span className="rounded-full bg-bad px-2 py-0.5 text-xs font-bold text-white">דחוף</span>}
                     </div>
                     {o.items.map((it, i) => (
-                      <div key={it.id} className="mt-3 flex gap-4">
-                        <Preview order={o} index={i} className="h-28 w-40" />
-                        <dl className="text-sm">
+                      <div key={it.id} className="mt-3 flex flex-col gap-3 sm:flex-row sm:gap-4">
+                        <Preview order={o} index={i} className="h-32 w-full sm:h-28 sm:w-40" />
+                        <dl className="min-w-0 text-sm">
                           <dd className="font-semibold">{it.productName}</dd>
                           <dd className="text-lg font-bold">{it.size}</dd>
                           <dd>
