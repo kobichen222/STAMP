@@ -2,6 +2,7 @@ import { requireStaff } from '@/server/staff';
 import { Icon } from '@/components/ui/Icon';
 import { databaseUrl, listContacts, listSubscribers } from '@/server/store/neon';
 import { LeadToggle } from './LeadToggle';
+import { ABANDON_MINUTES, listCarts } from '@/server/abandoned';
 
 export const metadata = { title: 'פניות' };
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,9 @@ export default async function LeadsPage() {
   await requireStaff(['admin']);
   const leads = await listContacts(300);
   const subs = await listSubscribers().catch(() => []);
+  const carts = await listCarts(60).catch(() => []);
+  const sentCount = carts.filter((c) => c.sentAt).length;
+  const recovered = carts.filter((c) => c.sentAt && c.convertedOrder).length;
   const fmt = new Intl.DateTimeFormat('he-IL', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Jerusalem' });
   return (
     <div className="mx-auto max-w-6xl space-y-4 sm:space-y-5">
@@ -51,6 +55,51 @@ export default async function LeadsPage() {
           </div>
         ))}
         {!leads.length && <p className="p-8 text-center text-sm text-muted">אין עדיין פניות.</p>}
+      </section>
+
+      <section className="card overflow-hidden">
+        <div className="border-b border-line px-4 py-3">
+          <h2 className="font-bold">
+            עגלות נטושות <span className="font-normal text-muted">({carts.length})</span>
+          </h2>
+          <p className="mt-0.5 text-xs text-muted">
+            מי שהקליד מייל בקופה ולא הזמין מקבל תזכורת אחת אחרי {ABANDON_MINUTES} דקות · {sentCount} תזכורות נשלחו · {recovered} חזרו והזמינו
+          </p>
+        </div>
+        <ul className="divide-y divide-line text-sm">
+          {carts.map((c) => (
+            <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">
+                  {c.name || c.email}{' '}
+                  {c.total != null && <span className="font-normal text-muted tabular-nums">· ₪{c.total}</span>}
+                </span>
+                <span className="block truncate text-xs text-muted">
+                  <a href={`mailto:${c.email}`} dir="ltr" className="text-blue">
+                    {c.email}
+                  </a>
+                  {c.phone && (
+                    <>
+                      {' · '}
+                      <a href={`tel:${c.phone}`} dir="ltr" className="text-blue">
+                        {c.phone}
+                      </a>
+                    </>
+                  )}
+                  {' · '}
+                  {c.items}
+                </span>
+              </span>
+              <span className="shrink-0 text-xs text-muted tabular-nums">{fmt.format(new Date(c.updatedAt))}</span>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${c.convertedOrder ? 'bg-ok/10 text-ok' : c.unsubscribed ? 'bg-line text-muted' : c.sentAt ? 'bg-blue-50 text-blue' : 'bg-warn/10 text-warn'}`}
+              >
+                {c.convertedOrder ? (c.sentAt ? 'חזר והזמין' : 'הזמין') : c.unsubscribed ? 'ביקש להסיר' : c.sentAt ? 'נשלחה תזכורת' : 'ממתין'}
+              </span>
+            </li>
+          ))}
+          {!carts.length && <li className="p-6 text-center text-muted">עדיין אין עגלות נטושות.</li>}
+        </ul>
       </section>
 
       <section className="card overflow-hidden">

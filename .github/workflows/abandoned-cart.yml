@@ -1,0 +1,14 @@
+# Wakes the site every 10 minutes so abandoned-checkout reminders go out on time
+# even when nobody is browsing. The endpoint only sends reminders that are due, once each.
+name: Abandoned checkout reminders
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+permissions: {}
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: curl -fsS --max-time 60 https://www.stamp2go.co.il/api/cron/abandoned/ || true

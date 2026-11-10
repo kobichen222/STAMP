@@ -65,6 +65,20 @@ export const SCHEMA = [
     used_at        timestamptz,
     used_order_id  text
   )`,
+  `create table if not exists s2g_carts (
+    id               text primary key,
+    email            text not null,
+    name             text,
+    phone            text,
+    items            jsonb not null,
+    total            numeric(10,2),
+    updated_at       timestamptz not null default now(),
+    sent_at          timestamptz,
+    converted_order  text,
+    unsubscribed     boolean not null default false
+  )`,
+  `create index if not exists s2g_carts_due_idx on s2g_carts (updated_at) where sent_at is null and converted_order is null`,
+  `create index if not exists s2g_carts_email_idx on s2g_carts (lower(email))`,
 ];
 
 let ready: Promise<void> | null = null;

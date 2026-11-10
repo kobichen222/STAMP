@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
+import { markCartConverted } from '@/server/abandoned';
 import { checkoutSchema, CheckoutError, createOrder } from '@/server/orders/service';
 import { getPaymentProvider } from '@/server/payments';
 import { rateLimit } from '@/server/rate-limit';
@@ -17,6 +18,7 @@ export async function POST(req: Request) {
   }
   try {
     const order = await createOrder(parsed.data);
+    after(() => markCartConverted(order.customer.email, order.id).catch((e) => console.error('[abandoned] convert', e)));
     // Card payment: the browser continues to the payment page.
     const provider = getPaymentProvider();
     let paymentUrl: string | undefined;

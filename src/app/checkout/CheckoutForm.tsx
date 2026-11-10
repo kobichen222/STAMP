@@ -12,6 +12,8 @@ import { formatPrice } from '@/lib/format';
 import { addressNeed, lineInputFor, quoteCart, quoteLine, type CartQuote, type ShippingMethod } from '@/lib/pricing';
 
 const DRAFT_KEY = 's2g-checkout';
+const LEAD_KEY = 's2g-cart-lead';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: ShippingMethod[]; paymentLabel: string; manual: boolean }) {
   const items = useCart();
@@ -49,6 +51,38 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
   const lineTotals = useMemo(() => items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons })).total)), [items]);
   const localQuote = quoteCart(lineTotals, { shippingId: method });
   const q = serverQuote ?? localQuote;
+
+  // Abandoned-checkout reminder: once a valid e-mail is typed, save this cart (debounced).
+  useEffect(() => {
+    if (!items.length || !EMAIL_RE.test(form.email.trim())) return;
+    const t = window.setTimeout(() => {
+      let id = '';
+      try {
+        id = localStorage.getItem(LEAD_KEY) || '';
+        if (!id) {
+          id = `cl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}${Math.random().toString(36).slice(2, 8)}`;
+          localStorage.setItem(LEAD_KEY, id);
+        }
+      } catch {
+        return;
+      }
+      fetch('/api/cart-lead/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({
+          id,
+          email: form.email.trim(),
+          name: form.name.trim() || undefined,
+          phone: form.phone.trim() || undefined,
+          total: q.total || undefined,
+          items: items.map((i) => ({ productSlug: i.productSlug, productName: i.productName, modelId: i.modelId, size: i.size, design: i.design, ink: i.ink, bodyColor: i.bodyColor, quantity: i.quantity, unitPrice: i.unitPrice, addons: i.addons, previewSvg: i.previewSvg?.length < 80000 ? i.previewSvg : undefined })),
+        }),
+      }).catch(() => undefined);
+    }, 1800);
+    return () => window.clearTimeout(t);
+  }, [items, form.email, form.name, form.phone, q.total]);
+
 
   useEffect(() => {
     let alive = true;
@@ -93,6 +127,11 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
       ...l,
     ]);
     clearCart();
+    try {
+      localStorage.removeItem(LEAD_KEY);
+    } catch {
+      /* ignore */
+    }
     if (data.paymentUrl) {
       // Card payment inside the checkout.
       setPay({ url: data.paymentUrl, id: data.id, token: data.token, total: data.total });
@@ -161,6 +200,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
             <label className="sm:col-span-2">
               <span className="label">אימייל (לאישור ומעקב)</span>
               <input className="input text-right" type="email" dir="ltr" value={form.email} onChange={set('email')} autoComplete="email" />
+              <span className="mt-1 block text-xs text-muted">אם ההזמנה לא תושלם, נשלח תזכורת אחת עם קישור להמשך.</span>
             </label>
           </div>
           <label className="mt-4 flex items-center gap-2 text-sm">
