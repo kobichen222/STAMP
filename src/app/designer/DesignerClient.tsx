@@ -75,6 +75,7 @@ export function DesignerClient({ product: requested, products, generic = false }
       bodyColor={params.get('body') ?? undefined}
       startWithUpload={params.get('upload') === '1'}
       chooseProduct={generic && !saved && !params.get('template') && params.get('upload') !== '1'}
+      autoOrder={params.get('order') === '1' && !!initial.design}
     />
   );
 }

@@ -212,8 +212,8 @@ export function StampHero() {
                   <path d="M19 12H5M11 6l-6 6 6 6" />
                 </svg>
               </Link>
-              <Link href="/how-it-works/" className="font-semibold text-blue underline-offset-4 hover:underline max-sm:hidden sm:px-3">
-                איך זה עובד?
+              <Link href="/ai-design/" className="inline-flex items-center gap-1.5 font-semibold text-blue underline-offset-4 hover:underline max-sm:w-full max-sm:justify-center sm:px-3">
+                ✨ או: עיצוב עם AI תוך דקה
               </Link>
             </div>
             <div ref={storyRef} className="relative mt-10 hidden h-20 lg:block" aria-hidden={!ready}>

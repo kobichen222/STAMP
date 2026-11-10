@@ -155,9 +155,11 @@ export interface EditorProps {
   resumed?: boolean;
   /** Start on the product & size step (a fresh design from the general designer). */
   chooseProduct?: boolean;
+  /** Open the order dialog right away (design prepared elsewhere, e.g. the AI wizard). */
+  autoOrder?: boolean;
 }
 
-export function Editor({ product: initialProduct, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice, resumed, chooseProduct }: EditorProps) {
+export function Editor({ product: initialProduct, products, initialDesign, designId, templateId, initialInk, initialQty = 1, bodyColor, startWithUpload, notice, resumed, chooseProduct, autoOrder }: EditorProps) {
   const router = useRouter();
   // Product / size changes happen in place – the customer stays in the editor with their design.
   const [product, setProduct] = useState(initialProduct);
@@ -188,6 +190,7 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
   const [fitSignal, setFitSignal] = useState(0);
   const [preview, setPreview] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const autoOrdered = useRef(false);
   const [qty, setQty] = useState(initialQty);
   const [addons, setAddons] = useState<AddonSelection>({});
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'offline'>('saved');
@@ -231,6 +234,11 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
   const render = useMemo(() => (ready ? renderDesign(design, resolve) : null), [design, resolve, ready, version]);
   const issues = useMemo(() => (render ? validateDesign(design, render, profile) : []), [design, render, profile]);
   const productionReady = isProductionReady(issues);
+  useEffect(() => {
+    if (!autoOrder || autoOrdered.current || !render) return;
+    autoOrdered.current = true;
+    setCartOpen(true);
+  }, [autoOrder, render]);
 
   // A template opened from a link is composed before fonts load; once they
   // are ready, adapt it to this stamp size so it starts production-ready.

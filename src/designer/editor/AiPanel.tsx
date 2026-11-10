@@ -70,6 +70,14 @@ export function AiPanel() {
   return (
     <>
       <Section>
+        <a href="/ai-design/" className="mb-4 flex items-center gap-3 rounded-xl bg-gradient-to-l from-blue to-violet p-3 text-white shadow-soft">
+          <Icon name="sparkles" size={22} />
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block text-sm font-bold">אשף העיצוב המלא</span>
+            <span className="block text-xs text-white/85">תוכן → מוצר → עיצוב → המחשה והזמנה</span>
+          </span>
+          <Icon name="arrowLeft" size={18} />
+        </a>
         <label className="block">
           <span className="label">תארו את החותמת שאתם צריכים</span>
           <textarea
