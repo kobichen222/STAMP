@@ -84,6 +84,18 @@ const zigzagMethod = (supplier: number, card: string) => ({
   ...(supplierCode(card) ? { shipping_push_supplier_code: supplierCode(card) } : {}),
 });
 
+/** The studio's pickup location (sender) – sent with every shipment. */
+const ORIGIN = {
+  enabled: true,
+  name: 'ראשי',
+  label: 'חתום ונעול – Stamp2Go',
+  city: 'רמת גן',
+  street: 'הרא"ה',
+  house: '3',
+  phone: '036733770',
+  email: 'mira@stamp2go.co.il',
+};
+
 export function createShippingPayload(o: Order) {
   const [first, ...rest] = o.customer.name.trim().split(/\s+/);
   const addr = o.shipping.address;
@@ -92,19 +104,26 @@ export function createShippingPayload(o: Order) {
   const card = carrierCardFor(o);
   const supplier = Number(process.env.DATALOGICS_SUPPLIER || ZIGZAG_PLATFORM);
   const products = o.items.map((i) => ({ sku: i.productSlug, name: `${i.productName} ${i.size}`, quantity: i.quantity }));
+  // For the courier: pickup point, address notes and the customer's note first; the products once (short).
   const comment = [
     locker && addr?.street ? `נקודת מסירה מועדפת: ${addr.street}` : '',
     addr?.notes ?? '',
+    o.notes ? `הערת לקוח: ${o.notes}` : '',
     o.items.map((i) => `${i.productName} ×${i.quantity}`).join(', '),
   ]
     .filter(Boolean)
     .join(' | ')
     .slice(0, 250);
+  // ZigZag only accepts a complete shipment: weight, date and a full pickup location are required.
+  const weight = Number(process.env.DATALOGICS_WEIGHT) || 0.5;
+  const shippingDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
   return {
     url: SITE.url,
     order: {
       id: numericOrderId(o),
       number: o.id,
+      weight,
+      shipping_date: shippingDate,
       packs: 1,
       ref: card,
       comment,
@@ -128,6 +147,7 @@ export function createShippingPayload(o: Order) {
             // Both the flat keys and shipping_method[0] – DataLogics reads either, depending on the merchant setup.
             ...zigzagMethod(supplier, card),
             shipping_method: [zigzagMethod(supplier, card)],
+            locations: [ORIGIN],
           },
         }
       : {}),
