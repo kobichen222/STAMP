@@ -124,17 +124,8 @@
 @keyframes wa-wiggle { 0%, 82%, 100% { transform: rotate(0); } 85% { transform: rotate(-14deg) scale(1.08); } 88% { transform: rotate(12deg) scale(1.08); } 91% { transform: rotate(-8deg); } 94% { transform: rotate(4deg); } }
 @media (prefers-reduced-motion: reduce) { .wa-ring, .wa-icon { animation: none; } .wa-ring { display: none; } }
 
-/* Home hero: the "new site" badge – a soft gradient ring and a light sweep on the tag. */
+/* Home hero: the admin message – a soft gradient ring. */
 .hero-news {
   background: linear-gradient(#fff, #fff) padding-box, linear-gradient(90deg, rgb(36 87 255 / .45), rgb(124 58 237 / .45)) border-box;
   border: 1.5px solid transparent;
 }
-.hero-news-shine {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .55) 50%, transparent 70%);
-  transform: translateX(-120%);
-  animation: hero-news-shine 3.2s ease-in-out 1s infinite;
-}
-@keyframes hero-news-shine { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
-@media (prefers-reduced-motion: reduce) { .hero-news-shine { animation: none; display: none; } }
