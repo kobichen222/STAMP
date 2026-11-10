@@ -4,7 +4,7 @@ import { Icon } from '@/components/ui/Icon';
 const STEPS = [
   ['כותבים את התוכן', 'שם, תפקיד, טלפון – שורה אחרי שורה.'],
   ['בוחרים מוצר', 'רק מידות שהטקסט נכנס בהן, עם מחיר.'],
-  ['בוחרים עיצוב', '3 עיצובים מוכנים במידה המדויקת.'],
+  ['בוחרים עיצוב', '13 עיצובים מוכנים במידה המדויקת.'],
   ['רואים ומזמינים', 'המחשה מלאה, צבע דיו – ולהזמנה.'],
 ] as const;
 
@@ -102,7 +102,7 @@ export function QuickDesign() {
             <br />
             <span className="grad-text">מקבלים חותמת מעוצבת.</span>
           </h2>
-          <p className="mt-4 text-lg leading-8 text-muted">בלי ניסיון בעיצוב ובלי לגרור כלום: כותבים מה צריך להופיע, ותוך דקה יש 3 עיצובים מוכנים לייצור – במידה של החותמת שבחרתם.</p>
+          <p className="mt-4 text-lg leading-8 text-muted">בלי ניסיון בעיצוב ובלי לגרור כלום: כותבים מה צריך להופיע, ותוך דקה יש 13 עיצובים מוכנים לייצור – במידה של החותמת שבחרתם.</p>
           <ol className="mt-7 grid grid-cols-2 gap-2.5 sm:gap-3">
             {STEPS.map(([t, d], i) => (
               <li key={t} className="flex gap-2.5 rounded-2xl border border-line/80 bg-white p-3 max-sm:flex-col sm:gap-3 sm:p-4">

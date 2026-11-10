@@ -68,7 +68,43 @@ export function newShape(design: Design, kind: ShapeElement['kind'], over: Parti
 
 export type LayoutStyle = 'classic' | 'modern' | 'minimal';
 
+/**
+ * Popular looks on top of the three base styles: a font, a frame and an
+ * optional separator under the title. Every look is laid out for the exact
+ * stamp size like the base styles (and checked for production the same way).
+ */
+export type LookId = 'elegant' | 'rounded' | 'bold' | 'thick' | 'clean' | 'title-line' | 'dashed' | 'double-modern' | 'alef-frame' | 'rubik-line';
+
+export interface Look {
+  label: string;
+  style: LayoutStyle;
+  font: string;
+  rect: Border;
+  round: Border;
+  /** Thin centred line between the first and second line (rectangular stamps). */
+  separator?: boolean;
+}
+
+export const LOOKS: Record<LookId, Look> = {
+  elegant: { label: 'אלגנטי', style: 'classic', font: 'david-libre', rect: { style: 'double', thickness: 0.5, inset: 0.3, gap: 0.45 }, round: { style: 'double', thickness: 0.7, inset: 0.3, gap: 0.5 } },
+  rounded: { label: 'מסגרת מעוגלת', style: 'classic', font: 'heebo', rect: { style: 'rounded', thickness: 0.55, inset: 0.3, gap: 0.5 }, round: { style: 'circle', thickness: 0.7, inset: 0.3, gap: 0.5 } },
+  bold: { label: 'כותרת בולטת', style: 'classic', font: 'secular-one', rect: { style: 'none', thickness: 0.5, inset: 0.3, gap: 0.5 }, round: { style: 'circle', thickness: 0.8, inset: 0.3, gap: 0.5 }, separator: true },
+  thick: { label: 'מסגרת עבה', style: 'classic', font: 'suez-one', rect: { style: 'rect', thickness: 0.8, inset: 0.3, gap: 0.5 }, round: { style: 'circle', thickness: 1, inset: 0.3, gap: 0.5 } },
+  clean: { label: 'נקי', style: 'minimal', font: 'rubik', rect: { style: 'none', thickness: 0.4, inset: 0.3, gap: 0.5 }, round: { style: 'minimal', thickness: 0.7, inset: 0.3, gap: 0.5 } },
+  'title-line': { label: 'כותרת עם קו', style: 'classic', font: 'frank-ruhl-libre', rect: { style: 'none', thickness: 0.5, inset: 0.3, gap: 0.5 }, round: { style: 'double', thickness: 0.6, inset: 0.3, gap: 0.45 }, separator: true },
+  dashed: { label: 'מסגרת מקווקוות', style: 'minimal', font: 'assistant', rect: { style: 'dashed', thickness: 0.5, inset: 0.3, gap: 0.5 }, round: { style: 'dashed', thickness: 0.6, inset: 0.3, gap: 0.5 } },
+  'double-modern': { label: 'מסגרת כפולה', style: 'classic', font: 'heebo', rect: { style: 'double', thickness: 0.6, inset: 0.3, gap: 0.5 }, round: { style: 'double', thickness: 0.8, inset: 0.3, gap: 0.5 } },
+  'alef-frame': { label: 'מסגרת דקה', style: 'classic', font: 'alef', rect: { style: 'rect', thickness: 0.4, inset: 0.3, gap: 0.5 }, round: { style: 'circle', thickness: 0.6, inset: 0.3, gap: 0.5 } },
+  'rubik-line': { label: 'מודרני עם קו', style: 'minimal', font: 'rubik', rect: { style: 'rounded', thickness: 0.45, inset: 0.3, gap: 0.5 }, round: { style: 'minimal', thickness: 0.8, inset: 0.3, gap: 0.5 }, separator: true },
+};
+export const LOOK_IDS = Object.keys(LOOKS) as LookId[];
+
+/** Room a border takes from the edge inwards (mm). */
+const borderDepth = (b: Border) => (b.style === 'none' ? 0 : b.inset + b.thickness + (b.style === 'double' ? b.gap + Math.max(0.2, b.thickness * 0.6) : 0));
+
 export interface LayoutContent {
+  /** One of the popular looks (font + frame), on top of the style. */
+  look?: LookId;
   /** Main lines, most important first. */
   lines: string[];
   /** Round stamps: text around the top / bottom of the ring. */
@@ -89,17 +125,19 @@ const round1 = (v: number) => Math.round(v * 10) / 10;
 function stackLines(
   lines: string[],
   box: { x: number; y: number; w: number; h: number },
-  opts: { font: string; emphasis: number; align: TextElement['align']; boldFirst: boolean; maxPt?: number },
+  opts: { font: string; emphasis: number; align: TextElement['align']; boldFirst: boolean; maxPt?: number; gapAfterFirst?: number; onGap?: (y: number) => void },
 ): TextElement[] {
   const n = lines.length;
   if (!n) return [];
   const weights = lines.map((_, i) => (i === 0 ? opts.emphasis : 1));
   const lh = 1.18;
   const sumW = weights.reduce((a, b) => a + b, 0);
+  // Room reserved under the title (for a separator line).
+  const gap = n > 1 ? (opts.gapAfterFirst ?? 0) : 0;
   // Height used ≈ sum(size_i) * lh – leading of the last line.
-  const unitMm = box.h / (sumW * lh);
+  const unitMm = (box.h - gap) / (sumW * lh);
   const out: TextElement[] = [];
-  let y = box.y + (box.h - sumW * unitMm * lh) / 2;
+  let y = box.y + (box.h - gap - sumW * unitMm * lh) / 2;
   lines.forEach((text, i) => {
     const sizeMm = unitMm * weights[i];
     const pt = clamp(sizeMm / PT_TO_MM, MIN_FONT_PT, opts.maxPt ?? 16);
@@ -121,21 +159,27 @@ function stackLines(
       rotation: 0,
     });
     y += pitch;
+    if (i === 0 && gap) {
+      opts.onGap?.(y + gap / 2);
+      y += gap;
+    }
   });
   return out;
 }
 
-export function composeLayout(model: StampModel, content: LayoutContent, style: LayoutStyle = 'classic'): Design {
+export function composeLayout(model: StampModel, content: LayoutContent, baseStyle: LayoutStyle = 'classic'): Design {
   const d = newDesign(model);
-  const font = content.font || (style === 'classic' ? 'frank-ruhl-libre' : style === 'modern' ? 'heebo' : 'assistant');
+  const look = content.look ? LOOKS[content.look] : undefined;
+  const style = look?.style ?? baseStyle;
+  const font = content.font || look?.font || (style === 'classic' ? 'frank-ruhl-libre' : style === 'modern' ? 'heebo' : 'assistant');
   const lines = content.lines.map((l) => l.trim()).filter(Boolean);
   const els: DesignElement[] = [];
 
   if (model.shape === 'round') {
     const W = model.width;
     const c = W / 2;
-    d.border = { style: style === 'classic' ? 'double' : style === 'minimal' ? 'minimal' : 'circle', thickness: 0.7, inset: 0.3, gap: 0.5 };
-    const borderW = d.border.style === 'double' ? 0.3 + 0.7 + 0.5 + 0.42 : 0.3 + 0.7;
+    d.border = look ? { ...look.round } : { style: style === 'classic' ? 'double' : style === 'minimal' ? 'minimal' : 'circle', thickness: 0.7, inset: 0.3, gap: 0.5 };
+    const borderW = borderDepth(d.border);
     // Arc text never goes below the production minimum: on small stamps the
     // ring grows instead (unchanged from ~22mm up).
     const minTextMm = MIN_FONT_PT * PT_TO_MM;
@@ -185,11 +229,18 @@ export function composeLayout(model: StampModel, content: LayoutContent, style: 
     if (content.arcBottom) lines.push(content.arcBottom);
     const W = model.width;
     const H = model.height;
-    if (style === 'classic') d.border = { style: 'rect', thickness: 0.5, inset: 0.3, gap: 0.5 };
+    if (look) {
+      d.border = { ...look.rect };
+      // Tiny stamps: a double / rounded frame eats the text area – a thin plain frame instead.
+      if (Math.min(W, H) < 18 && (d.border.style === 'double' || d.border.style === 'rounded')) d.border = { style: 'rect', thickness: 0.4, inset: 0.3, gap: 0.5 };
+    }
+    else if (style === 'classic') d.border = { style: 'rect', thickness: 0.5, inset: 0.3, gap: 0.5 };
     else if (style === 'modern') d.border = { style: 'none', thickness: 0.5, inset: 0.3, gap: 0.5 };
     else d.border = { style: 'none', thickness: 0.4, inset: 0.3, gap: 0.5 };
-    const pad = d.border.style === 'none' ? 1.2 : 1.8;
-    let box = { x: pad, y: pad, w: W - 2 * pad, h: H - 2 * pad };
+    // Same room as before for the plain frames (1.8 mm); more for double frames, and rounded corners keep text off the curve.
+    const pad = d.border.style === 'none' ? 1.2 : Math.max(1.8, borderDepth(d.border) + 1);
+    const padX = pad + (d.border.style === 'rounded' ? Math.min(W, H) * 0.06 : 0);
+    let box = { x: padX, y: pad, w: W - 2 * padX, h: H - 2 * pad };
 
     if (content.logo) {
       // Date stamps keep the middle window free: the logo sits beside the top text block only.
@@ -213,13 +264,28 @@ export function composeLayout(model: StampModel, content: LayoutContent, style: 
       els.push(...stackLines(lines.slice(0, half), { ...box, h: topH }, { font, emphasis: 1.2, align, boldFirst: true }));
       els.push(...stackLines(lines.slice(half), { ...box, y: box.y + topH + band, h: topH }, { font, emphasis: 1, align, boldFirst: false }));
     } else {
-      const texts = stackLines(lines, box, { font, emphasis: style === 'minimal' ? 1.1 : 1.35, align, boldFirst: style !== 'minimal' });
+      // A separator line under the title gets its own room (modern style, and looks with a separator).
+      const withSep = lines.length > 1 && (style === 'modern' || !!look?.separator);
+      let sepY: number | null = null;
+      const texts = stackLines(lines, box, {
+        font,
+        emphasis: style === 'minimal' ? 1.1 : 1.35,
+        align,
+        boldFirst: style !== 'minimal',
+        gapAfterFirst: withSep ? Math.max(0.8, box.h * 0.09) : 0,
+        onGap: (y) => (sepY = y),
+      });
       els.push(...texts);
-      if (style === 'modern' && texts.length > 1) {
-        // Thin separator under the title.
-        const t0 = texts[0];
-        const t1 = texts[1];
-        els.push(newShape(d, 'line', { width: round1(box.w * 0.5), stroke: 0.3, x: round1(box.x + box.w - box.w * 0.25), y: round1((t0.y + t1.y) / 2) }));
+      if (withSep && sepY != null) {
+        const centred = style !== 'modern';
+        els.push(
+          newShape(d, 'line', {
+            width: round1(box.w * (centred ? 0.42 : 0.5)),
+            stroke: 0.3,
+            x: round1(centred ? box.x + box.w / 2 : box.x + box.w - box.w * 0.25),
+            y: round1(sepY),
+          }),
+        );
       }
     }
   }

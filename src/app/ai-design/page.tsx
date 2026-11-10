@@ -5,7 +5,7 @@ import { AiWizard } from './AiWizard';
 
 export const metadata: Metadata = {
   title: 'עיצוב חותמת מהיר – תוך דקה',
-  description: 'כותבים את התוכן, בוחרים מוצר ומקבלים 3 עיצובים מוכנים לייצור – עם המחשה מלאה לפני ההזמנה.',
+  description: 'כותבים את התוכן, בוחרים מוצר ומקבלים 13 עיצובים מוכנים לייצור – עם המחשה מלאה לפני ההזמנה.',
   alternates: { canonical: '/ai-design/' },
 };
 

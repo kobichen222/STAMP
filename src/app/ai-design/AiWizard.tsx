@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { composeForProduction } from '@/designer/autofix';
+import { LOOK_IDS, LOOKS } from '@/designer/compose';
 import type { DesignerProduct } from '@/designer/editor/Editor';
 import { formatSize } from '@/designer/models';
 import { profileForModel } from '@/designer/profiles';
@@ -86,7 +87,9 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
     return suggestions.map((s) => {
       const d = compose(product, s, resolve);
       const r = renderDesign(d, resolve);
-      return { d, r, ok: isProductionReady(validateDesign(d, r, profileForModel(product.model))) };
+      const issues = validateDesign(d, r, profileForModel(product.model));
+      // Ready = no production errors and nothing running into anything else.
+      return { d, r, ok: isProductionReady(issues) && !issues.some((i) => i.code === 'overlap') };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product, suggestions, ready, version]);
@@ -107,7 +110,11 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setSuggestions(data.suggestions);
+      // The 3 base styles, then 10 popular looks with exactly the same lines.
+      const base: Suggestion[] = data.suggestions ?? [];
+      const seed = base[0];
+      const looks: Suggestion[] = seed ? LOOK_IDS.map((id) => ({ style: LOOKS[id].style, title: LOOKS[id].label, content: { ...seed.content, look: id } })) : [];
+      setSuggestions([...base, ...looks]);
       setPick(0);
       setStep(2);
     } catch (e) {
@@ -256,7 +263,7 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
               </ul>
               {error && <p className="mt-3 text-sm text-bad">{error}</p>}
               <button ref={goBtn} type="button" className="btn-primary mt-6 !h-13 w-full !text-base font-bold" disabled={!product || busy} onClick={() => product && generate(product)}>
-                {busy ? 'מעצבים… (כמה שניות)' : 'צרו לי 3 עיצובים'}
+                {busy ? 'מעצבים… (כמה שניות)' : 'צרו לי עיצובים'}
               </button>
             </>
           )}
@@ -265,21 +272,21 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
             <>
               <h2 className="text-xl font-bold">בחרו עיצוב</h2>
               <p className="mt-1 text-sm text-muted">
-                3 עיצובים על {product.title} ({formatSize(product.model)}) – כל השורות שלכם בכל אחד מהם.
+                {suggestions?.length ?? 0} עיצובים על {product.title} ({formatSize(product.model)}) – כל השורות שלכם בכל אחד מהם.
               </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
                 {suggestions?.map((s, i) => (
                   <button
                     key={s.title + i}
                     type="button"
                     onClick={() => setPick(i)}
-                    className={`rounded-2xl border p-3 text-start transition ${pick === i ? 'border-blue bg-blue-50/50 ring-2 ring-blue/15' : 'border-line hover:border-ink/25'}`}
+                    className={`rounded-2xl border p-2 text-start transition sm:p-3 ${pick === i ? 'border-blue bg-blue-50/50 ring-2 ring-blue/15' : 'border-line hover:border-ink/25'}`}
                   >
-                    <div className="grid h-32 place-items-center rounded-xl bg-white p-2 shadow-sm">
-                      {composed[i] ? <StampSvg render={composed[i].r} ink={ink} className="max-h-28 w-full" pad={0.8} /> : <span className="h-full w-full animate-pulse rounded-lg bg-line/50" />}
+                    <div className="grid h-24 place-items-center rounded-xl bg-white p-1.5 shadow-sm sm:h-32 sm:p-2">
+                      {composed[i] ? <StampSvg render={composed[i].r} ink={ink} className="max-h-20 w-full sm:max-h-28" pad={0.8} /> : <span className="h-full w-full animate-pulse rounded-lg bg-line/50" />}
                     </div>
-                    <span className="mt-2 flex items-center justify-between text-sm font-bold">
-                      {{ classic: 'קלאסי', modern: 'מודרני', minimal: 'מינימלי' }[s.style] ?? s.title}
+                    <span className="mt-2 flex flex-wrap items-center justify-between gap-x-2 text-[13px] font-bold sm:text-sm">
+                      {s.content.look ? LOOKS[s.content.look].label : ({ classic: 'קלאסי', modern: 'מודרני', minimal: 'מינימלי' }[s.style] ?? s.title)}
                       {composed[i] && <span className={`text-[11px] font-semibold ${composed[i].ok ? 'text-ok' : 'text-warn'}`}>{composed[i].ok ? '✓ מוכן לייצור' : 'צפוף – מומלץ גדול יותר'}</span>}
                     </span>
                   </button>
@@ -290,7 +297,7 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
                   להמחשה ולהזמנה <Icon name="arrowLeft" size={18} />
                 </button>
                 <button type="button" className="btn-outline !h-13" disabled={busy} onClick={() => generate(product)}>
-                  {busy ? 'מעצב…' : '3 עיצובים חדשים'}
+                  {busy ? 'מעצב…' : 'עיצובים חדשים'}
                 </button>
               </div>
             </>

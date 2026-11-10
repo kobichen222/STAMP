@@ -1,5 +1,6 @@
 import { BASE_PROFILE, type ProductionProfile } from './profiles';
 import { pathPoints, type Pt } from './geometry';
+import type { Path } from './geometry';
 import type { RenderItem, RenderResult } from './render';
 import type { Design, DesignElement, ImageElement } from './types';
 
@@ -67,6 +68,91 @@ export function dateBandRect(design: Design) {
 const label = (el?: DesignElement) =>
   !el ? 'המסגרת' : el.type === 'text' ? `הטקסט "${el.text.split('\n')[0].slice(0, 18)}"` : el.type === 'image' ? 'הלוגו' : 'הצורה';
 
+/** Gap (mm) under which two parts merge into one blob on the rubber. */
+const OVERLAP_GAP = 0.15;
+
+type PartBox = { minX: number; minY: number; maxX: number; maxY: number; pts: Pt[] };
+
+/** One box per contour (glyph / shape part) – tight enough to tell lines of text apart. */
+function partBoxes(item: RenderItem): PartBox[] {
+  const box = (pts: Pt[]): PartBox => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+    return { minX, minY, maxX, maxY, pts };
+  };
+  if (item.kind === 'image') return [box(itemPoints(item))];
+  const out: PartBox[] = [];
+  let cur: Path = [];
+  for (const c of item.path) {
+    if (c.t === 'M' && cur.length) {
+      out.push(box(pathPoints(cur)));
+      cur = [];
+    }
+    cur.push(c);
+  }
+  if (cur.length) out.push(box(pathPoints(cur)));
+  return out.filter((b) => b.pts.length);
+}
+
+const boxesHit = (a: PartBox, b: PartBox, gap: number) => a.minX < b.maxX - gap && b.minX < a.maxX - gap && a.minY < b.maxY - gap && b.minY < a.maxY - gap;
+
+/**
+ * Elements running into each other: text / logo over other text or logo, over a
+ * separator line, across the frame or across the inner ring of a round stamp.
+ */
+function overlapIssues(design: Design, render: RenderResult, byId: Record<string, DesignElement>): Issue[] {
+  const issues: Issue[] = [];
+  const parts = new Map<string, PartBox[]>();
+  for (const it of render.items) if (it.kind === 'image' || it.path.length) parts.set(it.id, [...(parts.get(it.id) ?? []), ...partBoxes(it)]);
+  const isContent = (id: string) => id !== 'border' && (byId[id]?.type === 'text' || byId[id]?.type === 'image');
+  const content = [...parts.entries()].filter(([id]) => isContent(id));
+  const add = (id: string, msg: string) => {
+    if (!issues.some((i) => i.elementId === id)) issues.push({ code: 'overlap', severity: 'warning', elementId: id, message: msg, fix: 'move-inside' });
+  };
+
+  for (let i = 0; i < content.length; i++)
+    for (let j = i + 1; j < content.length; j++) {
+      const [ia, A] = content[i];
+      const [ib, B] = content[j];
+      if (A.some((a) => B.some((b) => boxesHit(a, b, OVERLAP_GAP)))) add(ib, `${label(byId[ib])} נוגע ב${label(byId[ia])} – בהחתמה הם יתמזגו`);
+    }
+
+  for (const el of design.elements) {
+    if (el.type !== 'shape' || el.hidden) continue;
+    const S = parts.get(el.id) ?? [];
+    if (el.kind === 'line') {
+      for (const [cid, C] of content) if (C.some((c) => S.some((s) => c.minX < s.maxX && s.minX < c.maxX && c.minY < s.maxY + OVERLAP_GAP && s.minY - OVERLAP_GAP < c.maxY))) add(cid, `${label(byId[cid])} נוגע בקו המפריד`);
+    } else if (el.kind === 'ellipse' && !el.filled) {
+      const rIn = Math.min(el.width, el.height) / 2 - el.stroke / 2 - OVERLAP_GAP;
+      const rOut = Math.max(el.width, el.height) / 2 + el.stroke / 2 + OVERLAP_GAP;
+      for (const [cid, C] of content) {
+        const ds = C.flatMap((c) => c.pts).map(([x, y]) => Math.hypot(x - el.x, y - el.y));
+        if (!ds.every((v) => v < rIn) && !ds.every((v) => v > rOut)) add(cid, `${label(byId[cid])} חוצה את העיגול הפנימי`);
+      }
+    }
+  }
+
+  const b = design.border;
+  if (b.style !== 'none') {
+    const depth = b.inset + b.thickness + (b.style === 'double' ? b.gap + Math.max(0.2, b.thickness * 0.6) : 0);
+    const { width: W, height: H } = design;
+    for (const [cid, C] of content) {
+      const pts = C.flatMap((c) => c.pts);
+      const hit =
+        design.shape === 'round' || b.style === 'circle' || b.style === 'oval'
+          ? pts.some(([x, y]) => Math.hypot((x - W / 2) / (W / 2 - depth), (y - H / 2) / (H / 2 - depth)) > 1 - OVERLAP_GAP / (Math.min(W, H) / 2 - depth))
+          : pts.some(([x, y]) => x < depth + OVERLAP_GAP || x > W - depth - OVERLAP_GAP || y < depth + OVERLAP_GAP || y > H - depth - OVERLAP_GAP);
+      if (hit) add(cid, `${label(byId[cid])} נוגע במסגרת`);
+    }
+  }
+  return issues;
+}
+
 export function validateDesign(design: Design, render: RenderResult, profile: ProductionProfile = BASE_PROFILE): Issue[] {
   const issues: Issue[] = [];
   const P = profile;
@@ -128,6 +214,7 @@ export function validateDesign(design: Design, render: RenderResult, profile: Pr
       issues.push({ code: 'logo-raster', severity: 'warning', elementId: el.id, message: 'הלוגו הוא תמונה – מומלץ "המרה לקווים" לקובץ וקטורי נקי', fix: 'vectorize' });
     }
   }
+  issues.push(...overlapIssues(design, render, byId));
   if (Math.abs(render.width - design.width) > 0.01 || Math.abs(render.height - design.height) > 0.01) {
     issues.push({ code: 'size-mismatch', severity: 'error', message: 'מידות הקובץ אינן תואמות למוצר' });
   }

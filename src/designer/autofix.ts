@@ -119,7 +119,8 @@ export function composeForProduction(
   profile: ProductionProfile = BASE_PROFILE,
   opts: { strict?: boolean } = {},
 ): { design: Design; dropped: string[] } {
-  const hasErrors = (d: Design) => validateDesign(d, renderDesign(d, resolveFace), profile).some((i) => i.severity === 'error' && i.code !== 'empty');
+  // Generated layouts must also be free of overlaps (a warning for hand-placed designs, a rejection here).
+  const hasErrors = (d: Design) => validateDesign(d, renderDesign(d, resolveFace), profile).some((i) => (i.severity === 'error' && i.code !== 'empty') || i.code === 'overlap');
   const compose = (c: LayoutContent) => composeLayout(model, c, style);
   const ok = (c: LayoutContent) => {
     const d = compose(c);
@@ -161,7 +162,8 @@ export function composeForProduction(
       for (let guard = 0; guard < 12; guard++) {
         const d = attempt(c);
         if (d) return { design: d, dropped };
-        if (c.lines.length > 1) dropped.push(c.lines.pop()!);
+        // Middle lines go first (also the last one when ring texts remain), then the bottom ring text.
+        if (c.lines.length > 1 || (c.lines.length === 1 && (c.arcTop || c.arcBottom))) dropped.push(c.lines.pop()!);
         else if (c.arcBottom && (c.arcTop || c.lines.length)) {
           dropped.push(c.arcBottom);
           c = { ...c, arcBottom: undefined };
