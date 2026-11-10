@@ -59,13 +59,13 @@ export default async function Dashboard() {
         <Kpi label="הכנסות היום" value={`₪${revenueToday.toLocaleString('he-IL')}`} />
         <Kpi label="ממתינות לייצור" value={pending} tone="text-blue" href="/admin/production/" />
         <Kpi label="שגיאות קבצים" value={errors} tone={errors ? 'text-bad' : ''} href="/admin/orders/?status=PRODUCTION_FILE_ERROR" />
-        <Kpi label="למשלוח" value={toShip} href="/admin/orders/?status=READY_FOR_SHIPPING" />
+        <Kpi label="למשלוח" value={toShip} href="/admin/orders/?view=ship" />
         <Kpi label="ממוצע הזמנה" value={`₪${aov}`} />
       </div>
       <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
         <Kpi label="הכנסות החודש" value={`₪${Math.round(revenueMonth).toLocaleString('he-IL')}`} href="/admin/reports/" />
         <Kpi label="הזמנות החודש" value={month.length} href="/admin/reports/" />
-        <Kpi label="ממתינות לתשלום" value={unpaid} tone={unpaid ? 'text-warn' : ''} href="/admin/orders/?status=PAYMENT_PENDING" />
+        <Kpi label="ממתינות לתשלום" value={unpaid} tone={unpaid ? 'text-warn' : ''} href="/admin/orders/?view=pending" />
         <Kpi label="פניות פתוחות" value={openLeads} tone={openLeads ? 'text-blue' : ''} href="/admin/leads/" />
       </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">

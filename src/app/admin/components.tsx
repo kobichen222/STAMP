@@ -37,12 +37,15 @@ export function OrderRow({ o }: { o: Order }) {
     >
       <Preview order={o} className="h-12 w-16 sm:h-16 sm:w-24" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold sm:text-base" dir="ltr">
-          {o.id}
+        <p className="flex items-center gap-1.5 text-sm font-bold sm:text-base">
+          <span className="truncate" dir="ltr">
+            {o.id}
+          </span>
+          {o.urgent && <span className="shrink-0 rounded-full bg-bad px-1.5 text-[10px] font-bold text-white">דחוף</span>}
         </p>
         <p className="truncate text-sm text-ink-2">{o.customer.name}</p>
         <p className="truncate text-xs text-muted md:hidden">
-          {date} · {items}
+          {new Date(o.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })} · {items} · {o.shipping.label}
         </p>
       </div>
       <p className="hidden truncate text-sm md:block">{items}</p>

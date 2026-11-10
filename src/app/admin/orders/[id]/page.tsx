@@ -6,7 +6,7 @@ import { ADDONS } from '@/lib/pricing';
 import { formatDate } from '@/lib/format';
 import { trackingLink } from '@/server/notifications';
 import { loadOrder } from '@/server/orders/service';
-import { STATUS_LABEL, TRANSITIONS } from '@/server/orders/types';
+import { STATUS_LABEL, TIMELINE, TRANSITIONS, type OrderStatus } from '@/server/orders/types';
 import { addNote, markPaid, resendEmails, retryProduction, setStatus, setTracking, toggleUrgent } from '../../actions';
 import { Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
@@ -22,6 +22,19 @@ const KIND_LABEL: Record<string, string> = {
   metadata: 'JSON',
 };
 
+/** The usual next step for each status – shown as the main action button. */
+const PRIMARY: Partial<Record<OrderStatus, OrderStatus>> = {
+  PAID: 'PREFLIGHT',
+  PREFLIGHT: 'READY_FOR_PRODUCTION',
+  AWAITING_APPROVAL: 'READY_FOR_PRODUCTION',
+  CHANGE_REQUESTED: 'PREFLIGHT',
+  READY_FOR_PRODUCTION: 'IN_PRODUCTION',
+  IN_PRODUCTION: 'READY_FOR_SHIPPING',
+  QUALITY_CHECK: 'READY_FOR_SHIPPING',
+  READY_FOR_SHIPPING: 'SHIPPED',
+  SHIPPED: 'DELIVERED',
+};
+
 export default async function AdminOrder({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const o = await loadOrder(id);
@@ -29,19 +42,36 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
   await ensureSettings();
   const card = carrierCardFor(o);
   const next = TRANSITIONS[o.status];
+  const primary = PRIMARY[o.status];
+  const stepsDone = TIMELINE.filter((t) => t.reached.includes(o.status)).length;
+  const closed = ['CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'PAYMENT_FAILED'].includes(o.status);
   const wa = `https://wa.me/972${o.customer.phone.replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(`שלום ${o.customer.name}, לגבי הזמנה ${o.id} מ-Stamp2Go: `)}`;
   return (
-    <div className="mx-auto max-w-6xl space-y-4 sm:space-y-5">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <Link href="/admin/orders/" className="w-full text-sm text-muted sm:w-auto">
+    <div className="mx-auto max-w-6xl space-y-4 pb-20 sm:space-y-5 lg:pb-0">
+      <div>
+        <Link href="/admin/orders/" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
           → כל ההזמנות
         </Link>
-        <h1 className="text-xl font-bold sm:text-2xl" dir="ltr">
-          {o.id}
-        </h1>
-        <StatusBadge status={o.status} />
-        {o.urgent && <span className="rounded-full bg-bad px-2 py-0.5 text-xs font-bold text-white">דחוף</span>}
-        <span className="text-sm text-muted">{formatDate(o.createdAt)}</span>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <h1 className="text-xl font-bold sm:text-2xl" dir="ltr">
+            {o.id}
+          </h1>
+          <StatusBadge status={o.status} />
+          {o.urgent && <span className="rounded-full bg-bad px-2 py-0.5 text-xs font-bold text-white">דחוף</span>}
+        </div>
+        <p className="mt-1 text-sm text-muted">
+          {formatDate(o.createdAt)} · <strong className="text-ink tabular-nums">₪{o.total}</strong> · {o.paymentStatus === 'paid' ? <span className="text-ok">שולם</span> : <span className="text-warn">לא שולם</span>} · {o.shipping.label}
+        </p>
+        {!closed && (
+          <ol className="mt-3 grid grid-cols-6 gap-1" aria-label="התקדמות ההזמנה">
+            {TIMELINE.map((t, n) => (
+              <li key={t.key} className="min-w-0">
+                <span className={`block h-1.5 rounded-full ${n < stepsDone ? 'bg-blue' : 'bg-line'}`} />
+                <span className={`mt-1 block truncate text-[10px] sm:text-xs ${n === stepsDone - 1 ? 'font-bold text-blue' : 'text-muted'}`}>{t.label}</span>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-[1fr_340px]">
@@ -79,10 +109,10 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
                         <dd className="text-xs text-muted">{it.priceLines.map((l) => `${l.label} ${l.amount < 0 ? '−' : ''}₪${Math.abs(l.amount)}`).join(' · ')}</dd>
                       </>
                     )}
-                    <dt className="text-muted">Profile</dt>
-                    <dd>{it.profileId}</dd>
-                    <dt className="text-muted">Design version</dt>
-                    <dd dir="ltr" className="text-right text-xs">
+                    <dt className="text-muted max-sm:hidden">Profile</dt>
+                    <dd className="max-sm:hidden">{it.profileId}</dd>
+                    <dt className="text-muted max-sm:hidden">Design version</dt>
+                    <dd dir="ltr" className="text-right text-xs max-sm:hidden">
                       {it.designVersionId}
                     </dd>
                     {it.worker && (
@@ -123,8 +153,10 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             </section>
           ))}
 
-          <section className="card p-4 sm:p-5">
-            <h2 className="font-bold">יומן פעולות</h2>
+          <details className="card group p-4 sm:p-5" open>
+            <summary className="flex cursor-pointer list-none items-center justify-between font-bold">
+              יומן פעולות <span className="text-xs font-normal text-muted">({o.audit.length})</span>
+            </summary>
             <ul className="mt-3 space-y-1.5 text-sm">
               {[...o.audit].reverse().map((a, n) => (
                 <li key={n} className="flex flex-col gap-0.5 border-b border-line/60 pb-1.5 last:border-0 sm:flex-row sm:gap-3 sm:border-0 sm:pb-0">
@@ -137,7 +169,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
                 </li>
               ))}
             </ul>
-          </section>
+          </details>
         </div>
 
         <aside className="space-y-4 max-lg:order-first sm:space-y-5">
@@ -187,8 +219,13 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
 
           <section className="card p-4 sm:p-5">
             <h2 className="font-bold">סטטוס</h2>
+            {primary && (
+              <form action={setStatus.bind(null, o.id, primary, undefined)} className="mt-3">
+                <button className="btn-primary w-full">העברה ל: {STATUS_LABEL[primary]}</button>
+              </form>
+            )}
             <div className="mt-3 flex flex-wrap gap-2">
-              {next.map((s) => (
+              {next.filter((x) => x !== primary).map((s) => (
                 <form key={s} action={setStatus.bind(null, o.id, s, undefined)}>
                   <button className={['CANCELLED', 'REFUNDED'].includes(s) ? 'btn-ghost btn-sm text-bad' : 'btn-outline btn-sm'}>{STATUS_LABEL[s]}</button>
                 </form>
@@ -209,7 +246,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             </form>
           </section>
 
-          <section className="card p-4 sm:p-5">
+          <section id="pay" className="card scroll-mt-20 p-4 sm:p-5">
             <h2 className="font-bold">תשלום</h2>
             <p className="mt-2 text-sm">
               ₪{o.total} · {o.paymentStatus === 'paid' ? `שולם ${o.paymentRef ?? ''}` : 'לא שולם'} ({o.paymentMethod})
@@ -263,6 +300,29 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             </form>
           </section>
         </aside>
+      </div>
+
+      {/* Phones: quick actions always at hand, above the bottom tabs */}
+      <div className="fixed inset-x-0 bottom-[calc(57px+env(safe-area-inset-bottom))] z-30 border-t border-line bg-white/95 px-3 py-2 backdrop-blur lg:hidden">
+        <div className="flex items-center gap-2">
+          <a href={`tel:${o.customer.phone}`} className="btn-outline btn-sm !h-11 !w-11 shrink-0 !p-0" aria-label="חיוג ללקוח">
+            <Icon name="phone" size={18} />
+          </a>
+          <a href={wa} target="_blank" rel="noopener" className="btn-outline btn-sm !h-11 !w-11 shrink-0 !p-0 text-[#25D366]" aria-label="וואטסאפ ללקוח">
+            <Icon name="whatsapp" size={18} />
+          </a>
+          {primary ? (
+            <form action={setStatus.bind(null, o.id, primary, undefined)} className="min-w-0 flex-1">
+              <button className="btn-primary !h-11 w-full truncate text-sm">העברה ל: {STATUS_LABEL[primary]}</button>
+            </form>
+          ) : o.paymentStatus !== 'paid' && !closed ? (
+            <a href="#pay" className="btn-dark !h-11 min-w-0 flex-1 text-sm">
+              סימון תשלום
+            </a>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-center text-sm text-muted">{STATUS_LABEL[o.status]}</span>
+          )}
+        </div>
       </div>
     </div>
   );

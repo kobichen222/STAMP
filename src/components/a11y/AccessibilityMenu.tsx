@@ -541,9 +541,9 @@ export function AccessibilityMenu() {
   const big = s.bigUi;
 
   // Trigger placement: away from the product buy-bar and the editor's own controls.
-  const triggerPos = designer
+  const triggerPos = designer || admin
     ? `${left ? 'left-0 rounded-r-2xl' : 'right-0 rounded-l-2xl'} top-[42%] h-12 w-10`
-    : `${left ? 'left-3 sm:left-5' : 'right-3 sm:right-5'} ${product ? 'bottom-[88px] lg:bottom-5' : admin ? 'bottom-[76px] h-11! w-11! lg:bottom-5' : 'bottom-3 sm:bottom-5'} h-14 w-14 rounded-full`;
+    : `${left ? 'left-3 sm:left-5' : 'right-3 sm:right-5'} ${product ? 'bottom-[88px] lg:bottom-5' : 'bottom-3 sm:bottom-5'} h-14 w-14 rounded-full`;
 
   return (
     <div id="a11y-ui" dir="rtl" lang="he">
@@ -573,7 +573,7 @@ export function AccessibilityMenu() {
         title="תפריט נגישות (Alt+A)"
         className={`fixed z-[2147483600] grid place-items-center bg-[#2457ff] text-white shadow-[0_10px_30px_-8px_rgba(36,87,255,.75)] ring-2 ring-white transition hover:scale-105 hover:bg-[#1a46e0] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffd400] ${triggerPos} ${open ? 'pointer-events-none opacity-0' : ''}`}
       >
-        <Svg name="access" size={designer ? 24 : 30} />
+        <Svg name="access" size={designer || admin ? 24 : 30} />
         {changed && <span className="absolute top-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#16a34a]" aria-hidden />}
       </button>
 
