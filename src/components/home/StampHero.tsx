@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react';
 import { motionReduced, useMotionReduced } from '@/lib/motion';
 import type { StampScene } from './stamp-scene';
 import { PART_LABELS } from './stamp-labels';
-import { HeroAnnouncement } from '@/components/site/AnnouncementBar';
 
 const STORY = [
   { from: 0, to: 0.1, eyebrow: 'חותמות 2 דקות', title: null },
@@ -187,7 +186,6 @@ export function StampHero() {
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
         <div className={`container-x relative grid w-full gap-4 pt-[6rem] pb-24 sm:pt-[4.5rem] sm:pb-16 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:gap-6 lg:pt-28 lg:pb-16 ${animated ? 'content-start' : ''}`}>
           <div ref={introRef} className="relative z-10 max-w-xl will-change-transform max-lg:mx-auto max-lg:text-center lg:max-w-2xl">
-            <HeroAnnouncement />
             <h1 className="animate-fade-up text-[1.85rem] leading-[1.15] font-extrabold max-[360px]:text-[1.65rem] sm:text-5xl lg:text-[2.6rem] lg:leading-[1.15] xl:text-[2.9rem]">
               מעצבים חותמת אונליין,
               <br />

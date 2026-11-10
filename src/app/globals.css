@@ -124,8 +124,13 @@
 @keyframes wa-wiggle { 0%, 82%, 100% { transform: rotate(0); } 85% { transform: rotate(-14deg) scale(1.08); } 88% { transform: rotate(12deg) scale(1.08); } 91% { transform: rotate(-8deg); } 94% { transform: rotate(4deg); } }
 @media (prefers-reduced-motion: reduce) { .wa-ring, .wa-icon { animation: none; } .wa-ring { display: none; } }
 
-/* Home hero: the admin message – a soft gradient ring. */
-.hero-news {
-  background: linear-gradient(#fff, #fff) padding-box, linear-gradient(90deg, rgb(36 87 255 / .45), rgb(124 58 237 / .45)) border-box;
-  border: 1.5px solid transparent;
+/* Announcement ticker – endless loop (RTL: moves to the right); static text with reduced motion. */
+.ticker-track { animation: ticker 38s linear infinite; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+.ticker-static { display: none; }
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .ticker { justify-content: center; }
+  .ticker-track { display: none; }
+  .ticker-static { display: block; }
 }
