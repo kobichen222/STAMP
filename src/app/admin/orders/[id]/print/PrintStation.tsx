@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
-import { withCutLine } from '@/lib/cut-line';
+import { printSize, withCutLine } from '@/lib/cut-line';
 import { logPrint, markInProduction } from '../../../actions';
 
 const PRINTER_KEY = 's2g-printer';
@@ -62,6 +62,7 @@ export function PrintStation(p: {
     }
   }, []);
 
+  const page = printSize(p.mm.w, p.mm.h, cut);
   const go = (q: { item?: number; mirror?: boolean }) =>
     router.replace(`/admin/orders/${p.orderId}/print/?item=${q.item ?? p.index}&mirror=${(q.mirror ?? p.mirror) ? 1 : 0}`, { scroll: false });
 
@@ -85,11 +86,11 @@ export function PrintStation(p: {
       <style>{`
         #print-root { display: none }
         @media print {
-          @page { size: ${p.mm.w}mm ${p.mm.h}mm; margin: 0 }
+          @page { size: ${page.w}mm ${page.h}mm; margin: 0 }
           html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; overflow: visible !important }
           body > *:not(#print-root) { display: none !important }
-          #print-root { display: block !important; position: static; margin: 0; padding: 0; width: ${p.mm.w}mm; height: ${p.mm.h}mm; overflow: hidden; break-after: avoid; page-break-after: avoid }
-          #print-root svg { display: block; width: ${p.mm.w}mm; height: ${p.mm.h}mm }
+          #print-root { display: block !important; position: static; margin: 0; padding: 0; width: ${page.w}mm; height: ${page.h}mm; overflow: hidden; break-after: avoid; page-break-after: avoid }
+          #print-root svg { display: block; width: ${page.w}mm; height: ${page.h}mm }
         }
       `}</style>
       {/* What actually goes to the printer: the plate at its true size in millimetres. */}

@@ -157,14 +157,16 @@ export async function toProductionPdf(r: RenderResult, opts: ExportOptions = {},
   if (meta) doc.setSubject(JSON.stringify(meta));
   const W = r.width * MM_TO_PT;
   const H = r.height * MM_TO_PT;
-  const page = doc.addPage([W, H]);
+  // With a Trotec cut line the page is 1 mm larger on every side (a line on the page edge is dropped).
+  const M = opts.cutLine ? 1 * MM_TO_PT : 0;
+  const page = doc.addPage([W + 2 * M, H + 2 * M]);
   // Page boxes = exact impression size so CorelDRAW imports 1:1.
-  page.setTrimBox(0, 0, W, H);
-  page.setArtBox(0, 0, W, H);
+  page.setTrimBox(M, M, W, H);
+  page.setArtBox(M, M, W, H);
 
   // Work in millimetres with a y-down origin at the top-left, like the SVG.
   const m = mirrorMatrix(r, opts);
-  const ops: PDFOperator[] = [pushGraphicsState(), concatTransformationMatrix(MM_TO_PT, 0, 0, -MM_TO_PT, 0, H), setFillingCmykColor(0, 0, 0, 1)];
+  const ops: PDFOperator[] = [pushGraphicsState(), concatTransformationMatrix(MM_TO_PT, 0, 0, -MM_TO_PT, M, H + M), setFillingCmykColor(0, 0, 0, 1)];
 
   let imgIndex = 0;
   for (const item of r.items as RenderItem[]) {
@@ -190,8 +192,8 @@ export async function toProductionPdf(r: RenderResult, opts: ExportOptions = {},
     // Pure RGB red, 0.01 mm – the Trotec driver cuts red hairlines and engraves black.
     const hair = 0.01 * MM_TO_PT;
     const color = rgb(1, 0, 0);
-    if (opts.cutLine === 'round') page.drawEllipse({ x: W / 2, y: H / 2, xScale: W / 2 - hair / 2, yScale: H / 2 - hair / 2, borderColor: color, borderWidth: hair });
-    else page.drawRectangle({ x: hair / 2, y: hair / 2, width: W - hair, height: H - hair, borderColor: color, borderWidth: hair });
+    if (opts.cutLine === 'round') page.drawEllipse({ x: M + W / 2, y: M + H / 2, xScale: W / 2, yScale: H / 2, borderColor: color, borderWidth: hair });
+    else page.drawRectangle({ x: M, y: M, width: W, height: H, borderColor: color, borderWidth: hair });
   }
   // Classic cross-reference table (no object streams): older CorelDRAW versions cannot read PDF 1.5 xref streams.
   return doc.save({ useObjectStreams: false });

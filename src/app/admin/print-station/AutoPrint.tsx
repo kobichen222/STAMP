@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { withCutLine } from '@/lib/cut-line';
+import { printSize, withCutLine } from '@/lib/cut-line';
 import { logPrint, markInProduction, printQueue, type PrintJob } from '../actions';
 
 const ON_KEY = 's2g-autoprint-since';
@@ -57,7 +57,9 @@ export function AutoPrint() {
   const printJob = useCallback(async (job: PrintJob) => {
     for (const it of job.items) {
       for (let c = 0; c < Math.max(1, it.quantity); c++) {
-        setPlate({ svg: cutOn() ? withCutLine(it.svg, it.shape, it.w, it.h) : it.svg, w: it.w, h: it.h });
+        const cut = cutOn();
+        const size = printSize(it.w, it.h, cut);
+        setPlate({ svg: cut ? withCutLine(it.svg, it.shape, it.w, it.h) : it.svg, w: size.w, h: size.h });
         await nextFrame();
         window.print(); // kiosk-printing: straight to the default printer
         await new Promise((r) => setTimeout(r, 400));
