@@ -72,9 +72,6 @@ const tranzila: PaymentProvider = {
       email: order.customer.email ?? '',
       company: order.customer.company ?? '',
       pdesc: `Stamp2Go ${order.id}`,
-      // Documents module: invoice / receipt with the order lines, sent to the customer's e-mail.
-      u71: '1',
-      json_purchase_data: JSON.stringify(tranzilaPurchaseData(order)),
       // Shown inside the checkout (iframe): no Tranzila logo, our button colour.
       nologo: '1',
       trButtonColor: '2457ff',
@@ -85,6 +82,12 @@ const tranzila: PaymentProvider = {
       fail_url_address: urls.fail,
       notify_url_address: urls.notify,
     });
+    // Documents module (invoice / receipt with the order lines). Off unless the terminal has the
+    // module enabled – with u71 on a terminal without it, card charges fail inside the payment form.
+    if (process.env.TRANZILA_DOCUMENTS === '1') {
+      params.set('u71', '1');
+      params.set('json_purchase_data', JSON.stringify(tranzilaPurchaseData(order)));
+    }
     return { type: 'redirect', redirectUrl: `https://direct.tranzila.com/${tranzilaTerminal()}/iframenew.php?${params}` };
   },
 };

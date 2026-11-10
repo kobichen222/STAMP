@@ -20,6 +20,7 @@ function leaveFrame(target: URL) {
 async function handle(req: Request) {
   const url = new URL(req.url);
   const f = await readFields(req);
+  console.info('[tranzila] return', url.searchParams.get('result'), f.order_id, 'Response', f.Response);
   const o = await orderFor(f);
   if (!o) return leaveFrame(new URL('/', url.origin));
   const failed = url.searchParams.get('result') === 'fail' || (f.Response !== undefined && f.Response !== '000');

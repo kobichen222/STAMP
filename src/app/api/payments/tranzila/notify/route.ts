@@ -7,6 +7,7 @@ export const maxDuration = 60;
 /** Server-to-server result from Tranzila ("notify" address). The only place a card payment is marked paid. */
 export async function POST(req: Request) {
   const f = await readFields(req);
+  console.info('[tranzila] notify in', f.order_id, 'Response', f.Response, 'sum', f.sum);
   const o = await orderFor(f);
   if (!o) {
     console.warn('[tranzila] notify for unknown order', f.order_id);
