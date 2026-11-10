@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { CategoryCard } from '@/components/catalog/CategoryCard';
 import { AboutSection } from '@/components/home/AboutSection';
 import { HowItWorks } from '@/components/home/HowItWorks';
+import { QuickDesign } from '@/components/home/QuickDesign';
 import { StampHero } from '@/components/home/StampHero';
 import { TemplateStrip } from '@/components/home/TemplateStrip';
 import { WhyUs } from '@/components/home/WhyUs';
@@ -33,6 +34,7 @@ export default async function HomePage() {
     <>
       <StampHero />
       <HowItWorks />
+      <QuickDesign />
       <WhyUs />
 
       <section className="py-12 sm:py-16">
