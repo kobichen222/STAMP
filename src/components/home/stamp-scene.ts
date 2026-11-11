@@ -96,6 +96,9 @@ function labelTexture() {
   c.width = 1024;
   c.height = 380;
   const g = c.getContext('2d')!;
+  // Opaque white card: the label sits behind the clear frame.
+  g.fillStyle = '#f6f8fb';
+  g.fillRect(0, 0, c.width, c.height);
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.direction = 'rtl';
@@ -216,63 +219,17 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   };
   const rbox = (w: number, h: number, d: number, r: number, mat: THREE.Material) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, RS, r), mat);
 
-  // Handle: COLOP Printer C20 style – a boxy housing with vertical sides, softly rounded top
-  // corners and a flat top carrying a long window, plus the small lock button on the front.
-  const handle = new THREE.Group();
-  const capH = 1.12;
-  const capW = W * 1.04;
-  const capProfile = (() => {
-    const sh = new THREE.Shape();
-    const w = capW / 2;
-    const y0 = -capH / 2;
-    const y1 = capH / 2;
-    const rb = 0.08; // bottom corners
-    const rt = 0.34; // rounded top shoulders
-    sh.moveTo(-w + rb, y0);
-    sh.lineTo(w - rb, y0);
-    sh.quadraticCurveTo(w, y0, w, y0 + rb);
-    sh.lineTo(w, y1 - rt);
-    sh.quadraticCurveTo(w, y1, w - rt, y1);
-    // Almost flat top with a hint of a crown.
-    sh.quadraticCurveTo(0, y1 + 0.04, -w + rt, y1);
-    sh.quadraticCurveTo(-w, y1, -w, y1 - rt);
-    sh.lineTo(-w, y0 + rb);
-    sh.quadraticCurveTo(-w, y0, -w + rb, y0);
-    return sh;
-  })();
-  const capDepth = D * 1.06;
-  const capGeo = new THREE.ExtrudeGeometry(capProfile, {
-    depth: capDepth - 0.2,
-    bevelEnabled: true,
-    bevelThickness: 0.1,
-    bevelSize: 0.1,
-    bevelSegments: opts.lowPower ? 2 : 6,
-    curveSegments: opts.lowPower ? 8 : 20,
-  });
-  capGeo.translate(0, 0, -(capDepth - 0.2) / 2);
-  handle.add(new THREE.Mesh(capGeo, navy));
-  // The long window on the top (C20's clear insert), in the accent colour, with two moulded ribs.
-  const win = rbox(capW * 0.82, 0.07, capDepth * 0.62, 0.035, blue);
-  win.position.set(0, capH / 2 + 0.05, -0.02);
-  handle.add(win);
-  for (const z of [-0.16, 0.1]) {
-    const rib = rbox(capW * 0.74, 0.025, 0.05, 0.012, new THREE.MeshPhysicalMaterial({ color: 0x5b82ff, roughness: 0.2, clearcoat: 1 }));
-    rib.position.set(0, capH / 2 + 0.095, z);
-    handle.add(rib);
-  }
-  // A shallow recess along the front, as on the moulded housing.
-  const panel = rbox(capW * 0.78, 0.4, 0.04, 0.08, new THREE.MeshPhysicalMaterial({ color: 0x1e2f55, roughness: 0.5, clearcoat: 0.3 }));
-  panel.position.set(0, 0.06, capDepth / 2 + 0.03);
-  handle.add(panel);
-  // Lock button: a small rounded knob at the bottom centre of the front.
-  const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.14, SEG), navy);
-  knob.rotation.x = Math.PI / 2;
-  knob.scale.set(1.25, 1, 0.75);
-  knob.position.set(0, -capH / 2 + 0.06, capDepth / 2 + 0.06);
-  handle.add(knob);
-  add('handle', handle, 3.46, 6.7, 0);
+  // ───────── The stamp: modelled on a COLOP Printer C20 ─────────
+  // A boxy handle with rounded shoulders that slides over a clear frame; its side walls reach
+  // further down than its front, a long window sits on the top-front edge and the lock button
+  // on the front edge. Under the front edge: the ink pad, then the white label card.
+  const FW = 2.24; // clear frame width
+  const FD = 1.08; // clear frame depth
+  const Y0 = 0.48; // bottom of the stamp
+  const TOP = 3.88;
+  const FRONT_EDGE = 2.42; // bottom of the handle's front face
+  const SKIRT = 1.78; // bottom of the handle's side walls
 
-  // Frame: hollow housing with rounded corners (extruded ring) + brand label.
   const ringShape = (w: number, d: number, r: number) => {
     const sh = new THREE.Shape();
     const x = -w / 2;
@@ -288,96 +245,195 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     sh.quadraticCurveTo(x, y, x + r, y);
     return sh;
   };
-  const wallH = 1.9;
-  const t = 0.09;
-  const outer = ringShape(W, D, 0.22);
-  outer.holes.push(ringShape(W - 2 * t, D - 2 * t, 0.16) as unknown as THREE.Path);
-  const frameGeo = new THREE.ExtrudeGeometry(outer, { depth: wallH, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: opts.lowPower ? 1 : 3, curveSegments: opts.lowPower ? 6 : 14 });
-  frameGeo.rotateX(-Math.PI / 2);
-  frameGeo.translate(0, -wallH / 2, 0);
+  /** A hollow rounded tube standing on y = 0 (walls `t` thick, `h` high). */
+  const tube = (w: number, d: number, r: number, t: number, h: number, bevel = 0.02) => {
+    const outer = ringShape(w, d, r);
+    outer.holes.push(ringShape(w - 2 * t, d - 2 * t, Math.max(0.02, r - t)) as unknown as THREE.Path);
+    const g = new THREE.ExtrudeGeometry(outer, { depth: h, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel, bevelSegments: opts.lowPower ? 1 : 3, curveSegments: opts.lowPower ? 6 : 14 });
+    g.rotateX(-Math.PI / 2);
+    return g;
+  };
+
+  // Handle – front silhouette (an upside-down U: full-height side walls, shorter front) extruded through the depth.
+  const handle = new THREE.Group();
+  const HY = (TOP + FRONT_EDGE) / 2; // the handle's origin: the middle of its front face
+  const BEV = 0.05;
+  const hw = W / 2 - BEV;
+  const capProfile = (() => {
+    const sh = new THREE.Shape();
+    const top = TOP - HY - BEV;
+    const front = FRONT_EDGE - HY - BEV; // the bevel grows the solid by BEV on every side
+    const skirt = SKIRT - HY + BEV;
+    const wall = 0.035; // + 2 × BEV = the side walls' real thickness
+    const rt = 0.3; // rounded shoulders
+    sh.moveTo(-hw, skirt);
+    sh.lineTo(-hw, top - rt);
+    sh.quadraticCurveTo(-hw, top, -hw + rt, top);
+    sh.lineTo(hw - rt, top);
+    sh.quadraticCurveTo(hw, top, hw, top - rt);
+    sh.lineTo(hw, skirt);
+    sh.lineTo(hw - wall, skirt);
+    sh.lineTo(hw - wall, front);
+    sh.lineTo(-hw + wall, front);
+    sh.lineTo(-hw + wall, skirt);
+    sh.lineTo(-hw, skirt);
+    return sh;
+  })();
+  const capGeo = new THREE.ExtrudeGeometry(capProfile, {
+    depth: D - 2 * BEV,
+    bevelEnabled: true,
+    bevelThickness: BEV,
+    bevelSize: BEV,
+    bevelSegments: opts.lowPower ? 2 : 5,
+    curveSegments: opts.lowPower ? 8 : 20,
+  });
+  capGeo.translate(0, 0, -(D - 2 * BEV) / 2);
+  handle.add(new THREE.Mesh(capGeo, navy));
+  // The long window wrapping the top-front edge (the C20's clear index window), in the accent colour.
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0x2457ff, roughness: 0.12, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05 });
+  const winW = W * 0.74;
+  const winTop = rbox(winW, 0.05, D * 0.46, 0.022, glass);
+  winTop.position.set(0, TOP - HY + 0.012, D / 2 - D * 0.23 - 0.06);
+  handle.add(winTop);
+  const winFront = rbox(winW, 0.2, 0.05, 0.022, glass);
+  winFront.position.set(0, TOP - HY - 0.16, D / 2 + 0.008);
+  handle.add(winFront);
+  for (const x of [-winW / 2 + 0.16, winW / 2 - 0.16]) {
+    const notch = rbox(0.05, 0.1, 0.02, 0.008, navy);
+    notch.position.set(x, TOP - HY - 0.13, D / 2 + 0.03);
+    handle.add(notch);
+  }
+  // Lock button: a low dome sitting on the front edge, with its short stem.
+  const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.3, 0.14, SEG), navy);
+  knob.rotation.x = Math.PI / 2;
+  knob.scale.set(1, 1, 0.62); // after the rotation: local z is the screen's vertical
+  knob.position.set(0, FRONT_EDGE - HY + 0.03, D / 2 + 0.03);
+  handle.add(knob);
+  const stem = rbox(0.34, 0.1, 0.1, 0.03, navy);
+  stem.position.set(0, FRONT_EDGE - HY - 0.14, D / 2 - 0.04);
+  handle.add(stem);
+  // Grip ribs on both side walls.
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 5; i++) {
+      const rib = rbox(0.03, 0.03, D * 0.42, 0.012, navy);
+      rib.position.set(side * (W / 2 + 0.006), FRONT_EDGE - HY + 0.12 + i * 0.075, 0);
+      handle.add(rib);
+    }
+  }
+  add('handle', handle, HY, 7.1, 0);
+
+  // Frame: the clear housing (springs and mechanism show through) with the white label card.
+  // Clear plastic as blended glass (the canvas is see-through, so true transmission would turn milky):
+  // a faint blue tint, strong reflections, and fine outlines that draw the clear edges.
+  const clear = new THREE.MeshPhysicalMaterial({
+    color: 0xd9e4ff,
+    roughness: 0.04,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.26,
+    clearcoat: 1,
+    clearcoatRoughness: 0.03,
+    envMapIntensity: 1.8,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x8ea6dc, transparent: true, opacity: 0.75 });
+  const outline = (geo: THREE.BufferGeometry) => new THREE.LineSegments(new THREE.EdgesGeometry(geo, 35), edgeMat);
+  const frameH = 3.0 - Y0;
+  const FY = Y0 + frameH / 2;
   const frame = new THREE.Group();
-  // Clear housing like the C20's: the springs and the mechanism show through.
-  const clear = opts.lowPower
-    ? new THREE.MeshPhysicalMaterial({ color: 0xeef3ff, roughness: 0.08, metalness: 0, transparent: true, opacity: 0.32, clearcoat: 1, clearcoatRoughness: 0.05, depthWrite: false })
-    : new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.04, metalness: 0, transmission: 0.94, thickness: 0.35, ior: 1.46, clearcoat: 1, clearcoatRoughness: 0.03, attenuationColor: new THREE.Color(0xdfe8ff), attenuationDistance: 2.5 });
+  const frameGeo = tube(FW, FD, 0.1, 0.055, frameH, 0);
+  frameGeo.translate(0, -frameH / 2, 0);
   const frameMesh = new THREE.Mesh(frameGeo, clear);
+  frameMesh.renderOrder = 2;
   frame.add(frameMesh);
-  // The white label card inside the clear front, as on the C20.
-  const card = rbox(W * 0.78, 0.72, 0.02, 0.04, shell);
-  card.position.set(0, 0.22, D / 2 - 0.12);
+  frame.add(outline(frameGeo));
+  // The four upright corners of the clear frame.
+  const posts: number[] = [];
+  for (const x of [-1, 1]) for (const z of [-1, 1]) posts.push(x * (FW / 2 - 0.03), -frameH / 2, z * (FD / 2 - 0.03), x * (FW / 2 - 0.03), frameH / 2, z * (FD / 2 - 0.03));
+  const postGeo = new THREE.BufferGeometry();
+  postGeo.setAttribute('position', new THREE.Float32BufferAttribute(posts, 3));
+  frame.add(new THREE.LineSegments(postGeo, edgeMat));
+  const cardH = 0.98;
+  const cardY = 1.5 - FY; // the card's middle
+  const card = rbox(FW * 0.86, cardH, 0.03, 0.03, shell);
+  card.position.set(0, cardY, FD / 2 - 0.1);
   frame.add(card);
-  const label = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.62, 0.46), new THREE.MeshStandardMaterial({ map: labelTexture(), transparent: true, roughness: 0.4 }));
-  label.position.set(0, 0.25, D / 2 - 0.105);
+  const labelTex = labelTexture();
+  labelTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(FW * 0.8, FW * 0.8 * (380 / 1024)), new THREE.MeshStandardMaterial({ map: labelTex, roughness: 0.45 }));
+  label.position.set(0, cardY, FD / 2 - 0.083);
   frame.add(label);
-  // Accent band following the housing's rounded corners.
-  const band = ringShape(W + 0.1, D + 0.1, 0.26);
-  band.holes.push(ringShape(W - 0.02, D - 0.02, 0.2) as unknown as THREE.Path);
-  const bandGeo = new THREE.ExtrudeGeometry(band, { depth: 0.07, bevelEnabled: false, curveSegments: opts.lowPower ? 6 : 14 });
-  bandGeo.rotateX(-Math.PI / 2);
-  const stripe = new THREE.Mesh(bandGeo, blue);
-  stripe.position.y = -wallH / 2 + 0.1;
-  frame.add(stripe);
-  add('frame', frame, 1.95, 4.9, 0);
+  add('frame', frame, FY, 4.6, 0);
   frameMesh.castShadow = false; // a clear shell barely shades
 
   // Springs
   const springs = new THREE.Group();
-  const sg = springGeometry(0.16, 1.5, 9, 0.025, opts.lowPower ? 90 : 240);
-  for (const x of [-0.8, 0.8]) {
+  const sg = springGeometry(0.15, 1.3, 8, 0.024, opts.lowPower ? 90 : 240);
+  for (const x of [-0.72, 0.72]) {
     const s = new THREE.Mesh(sg, metal);
     s.position.x = x;
     springs.add(s);
   }
-  add('springs', springs, 2.05, 3.55, 0);
+  add('springs', springs, 2.2, 3.0, 0);
 
-  // Mechanism: chrome axle + rounded side arms
+  // Mechanism: chrome axle through the frame + the swing arms
   const mech = new THREE.Group();
-  const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, W + 0.1, SEG), metal);
+  const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, FW + 0.1, SEG), metal);
   axle.rotation.z = Math.PI / 2;
   mech.add(axle);
-  for (const x of [-W / 2 + 0.2, W / 2 - 0.2]) {
-    const arm = rbox(0.13, 1.1, 0.5, 0.05, blue);
+  for (const x of [-FW / 2 + 0.16, FW / 2 - 0.16]) {
+    const arm = rbox(0.1, 0.78, 0.4, 0.04, blue);
     arm.position.set(x, -0.3, 0);
     mech.add(arm);
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.05, SEG), metal);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, SEG), metal);
     cap.rotation.z = Math.PI / 2;
-    cap.position.set(x + Math.sign(x) * 0.09, 0, 0);
+    cap.position.set(Math.sign(x) * (FW / 2 + 0.04), 0, 0);
     mech.add(cap);
   }
-  add('mechanism', mech, 1.45, 2.45, 0);
+  add('mechanism', mech, 1.32, 2.05, 0);
 
-  // Ink cartridge: tray + saturated foam + pull tab
+  // Ink pad: the dark drawer right under the handle's front edge (foam on its underside)
   const inkPad = new THREE.Group();
-  inkPad.add(rbox(W - 0.3, 0.18, D - 0.25, 0.05, smoke));
-  const foam = rbox(W - 0.45, 0.06, D - 0.4, 0.02, ink);
-  foam.position.y = 0.09;
+  inkPad.add(rbox(FW - 0.16, 0.2, FD - 0.14, 0.04, navy));
+  const foam = rbox(FW - 0.34, 0.05, FD - 0.3, 0.02, ink);
+  foam.position.y = -0.11;
   inkPad.add(foam);
-  const tab = rbox(0.34, 0.06, 0.22, 0.02, smoke);
-  tab.position.set(0, 0, (D - 0.25) / 2 + 0.1);
-  inkPad.add(tab);
-  add('pad', inkPad, 1.1, 1.5, 0);
+  const grip = rbox(0.5, 0.07, 0.05, 0.02, navy);
+  grip.position.set(0, 0, (FD - 0.14) / 2 + 0.02);
+  inkPad.add(grip);
+  add('pad', inkPad, 2.2, 1.15, 0);
 
   // Rubber plate with the design (raised text via bump map, faces down)
+  const PW = FW - 0.3;
+  const PD = FD - 0.26;
   const plateGroup = new THREE.Group();
-  plateGroup.add(rbox(W - 0.3, 0.12, D - 0.3, 0.03, navy));
+  plateGroup.add(rbox(PW, 0.12, PD, 0.03, navy));
   const blankTex = plateTexture(['חותמות 2 דקות', 'חותמת אישית'], false);
   const designTex = plateTexture(opts.lines, false);
   const plateFaceMat = new THREE.MeshStandardMaterial({ map: blankTex, bumpMap: blankTex, bumpScale: 3, roughness: 0.8 });
-  const plateFace = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.34, D - 0.34), plateFaceMat);
+  const plateFace = new THREE.Mesh(new THREE.PlaneGeometry(PW - 0.04, PD - 0.04), plateFaceMat);
   plateFace.rotation.x = Math.PI / 2; // facing down
   plateFace.position.y = -0.065;
   plateGroup.add(plateFace);
   // A second, face-up copy while exploded so the design is visible to the camera.
   const plateTopMat = new THREE.MeshStandardMaterial({ map: blankTex, bumpMap: blankTex, bumpScale: 3, roughness: 0.8, transparent: true, opacity: 0 });
-  const plateTop = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.34, D - 0.34), plateTopMat);
+  const plateTop = new THREE.Mesh(new THREE.PlaneGeometry(PW - 0.04, PD - 0.04), plateTopMat);
   plateTop.rotation.x = -Math.PI / 2;
   plateTop.position.y = 0.065;
   plateGroup.add(plateTop);
-  add('plate', plateGroup, 0.72, 0.55, 0);
+  add('plate', plateGroup, 0.74, 0.4, 0);
 
-  // Base: the housing's foot
-  const base = rbox(W + 0.2, 0.14, D + 0.2, 0.06, smoke);
-  add('base', base, 0.55, -0.45, 0);
+  // Base: the clear foot rim the frame stands on
+  const baseGeo = tube(FW + 0.07, FD + 0.07, 0.12, 0.1, 0.1, 0);
+  baseGeo.translate(0, -0.05, 0);
+  const base = new THREE.Group();
+  const baseMesh = new THREE.Mesh(baseGeo, clear);
+  baseMesh.renderOrder = 2;
+  base.add(baseMesh);
+  base.add(outline(baseGeo));
+  add('base', base, Y0 + 0.05, -0.5, 0);
+  baseMesh.castShadow = false;
 
   // Soft contact shadow that follows the stamp (cheap, works without shadow maps).
   const contactMat = new THREE.MeshBasicMaterial({ map: contactShadowTexture(), transparent: true, depthWrite: false, opacity: 0.55 });
@@ -421,7 +477,8 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     const reveal = seg(p, 0.87, 0.91);
     const designSwap = seg(p, 0.45, 0.55);
 
-    root.rotation.y = -0.55 + spin * Math.PI * 0.9 - toSpot * 0.25;
+    // Starts almost front-on (turned a little, like a product photo), then turns as it opens.
+    root.rotation.y = 0.8 + spin * Math.PI * 0.78 - toSpot * 0.25;
     for (const { obj, home, exploded } of Object.values(parts)) {
       tmp.copy(home).lerp(exploded, explode);
       obj.position.copy(tmp);
