@@ -32,11 +32,22 @@ const GROUPS: Group[] = [
 
 const ilDate = (d: Date) => d.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem', weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
 const ilTime = (iso: string) => new Date(iso).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
-const ageText = (iso: string) => {
-  const h = Math.floor((Date.now() - Date.parse(iso)) / 3_600_000);
-  if (h < 24) return `לפני ${Math.max(1, h)} ש׳`;
-  const d = Math.floor(h / 24);
-  return d === 1 ? 'מאתמול' : `לפני ${d} ימים`;
+/** Older orders stand out: grey under a day, orange from a day, red from 3 days. */
+const ageColor = (iso: string) => {
+  const h = (Date.now() - Date.parse(iso)) / 3_600_000;
+  return h >= 72 ? '#d6283b' : h >= 24 ? '#b76e00' : '#5b6678';
+};
+
+/** How long since the order came in: "לפני 3 ש׳ ו-20 ד׳", "לפני יומיים ו-4 ש׳". */
+const ageText = (iso: string, now = Date.now()) => {
+  const min = Math.max(0, Math.floor((now - Date.parse(iso)) / 60_000));
+  const d = Math.floor(min / 1440);
+  const h = Math.floor((min % 1440) / 60);
+  const m = min % 60;
+  const days = d === 1 ? 'יום' : d === 2 ? 'יומיים' : `${d} ימים`;
+  if (d > 0) return `לפני ${days}${h ? ` ו-${h} ש׳` : ''}`;
+  if (h > 0) return `לפני ${h} ש׳${m ? ` ו-${m} ד׳` : ''}`;
+  return `לפני ${Math.max(1, m)} ד׳`;
 };
 
 function row(o: Order, showStatus = false): string {
@@ -47,7 +58,8 @@ function row(o: Order, showStatus = false): string {
       <a href="${SITE.url}/admin/orders/${o.id}/" style="font-weight:700;color:#2457ff;text-decoration:none" dir="ltr">${escapeHtml(o.id)}</a>${urgent}<br>
       <span style="font-weight:600">${escapeHtml(o.customer.company || o.customer.name)}</span> · <a href="tel:${escapeHtml(o.customer.phone)}" style="color:#1c2a44;text-decoration:none" dir="ltr">${escapeHtml(o.customer.phone)}</a><br>
       <span style="color:#5b6678;font-size:13px">${escapeHtml(items)}</span><br>
-      <span style="color:#5b6678;font-size:12.5px">${showStatus ? `<b style="color:#2457ff">${escapeHtml(statusLabel(o.status, o.shipping.method))}</b> · ` : ''}${escapeHtml(o.shipping.label)} · ${o.paymentStatus === 'paid' ? 'שולם' : 'לא שולם'} · ${escapeHtml(showStatus ? ilTime(o.createdAt) : ageText(o.createdAt))}</span>
+      <span style="color:#5b6678;font-size:12.5px">${showStatus ? `<b style="color:#2457ff">${escapeHtml(statusLabel(o.status, o.shipping.method))}</b> · ` : ''}${escapeHtml(o.shipping.label)} · ${o.paymentStatus === 'paid' ? 'שולם' : 'לא שולם'}</span><br>
+      <span style="color:#1c2a44;font-size:12.5px">🕒 נקלטה ${escapeHtml(ilTime(o.createdAt))} · <b style="color:${ageColor(o.createdAt)}">${escapeHtml(ageText(o.createdAt))}</b></span>
     </td>
     <td style="padding:10px 12px;border-bottom:1px solid #eef1f6;vertical-align:top;text-align:left;white-space:nowrap;font:700 14px/1.5 ${FONT};color:#0b1426">₪${o.total}</td>
   </tr>`;
