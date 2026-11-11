@@ -116,7 +116,7 @@ export function reportRecipients(): string[] {
 }
 
 /** Marks a job key as done; false when it already ran (one morning report per day, whatever calls the endpoint). */
-async function claimOnce(key: string): Promise<boolean> {
+export async function claimOnce(key: string): Promise<boolean> {
   if (!databaseUrl()) return true;
   const sql = await db();
   const rows = await sql`insert into s2g_jobs (key) values (${key}) on conflict (key) do nothing returning key`;
