@@ -8,7 +8,7 @@ import { trackingLink } from '@/server/notifications';
 import { loadOrder } from '@/server/orders/service';
 import { statusLabel, STATUS_LABEL, TIMELINE, TRANSITIONS, type OrderStatus } from '@/server/orders/types';
 import { addNote, markPaid, resendEmails, retryProduction, setStatus, setTracking, toggleUrgent } from '../../actions';
-import { Preview, StatusBadge } from '../../components';
+import { OrderAge, Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
 import { ZigZagBox } from '../../ZigZagBox';
 import { DeleteOrder } from './DeleteOrder';
@@ -70,7 +70,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
           </Link>
         </div>
         <p className="mt-1 text-sm text-muted">
-          {formatDate(o.createdAt)} · <strong className="text-ink tabular-nums">₪{o.total}</strong> · {o.paymentStatus === 'paid' ? <span className="text-ok">שולם</span> : <span className="text-warn">לא שולם</span>} </p>
+          <OrderAge o={o} /> · <strong className="text-ink tabular-nums">₪{o.total}</strong> · {o.paymentStatus === 'paid' ? <span className="text-ok">שולם</span> : <span className="text-warn">לא שולם</span>} </p>
         <p className="mt-2 inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg border border-blue/30 bg-blue-50 px-3 py-1.5 text-sm">
           <Icon name="truck" size={16} className="text-blue" />
           <span className="text-muted">סוג משלוח:</span>

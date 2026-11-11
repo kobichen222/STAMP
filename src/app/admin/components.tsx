@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { statusLabel, STATUS_LABEL, type Order, type OrderStatus } from '@/server/orders/types';
+import { ageText, ageTone, orderTime } from '@/lib/age';
 
 const TONE: Partial<Record<OrderStatus, string>> = {
   PRODUCTION_FILE_ERROR: 'bg-bad/10 text-bad',
@@ -28,8 +29,20 @@ export function Preview({ order, index = 0, className = 'h-16 w-24' }: { order: 
   );
 }
 
+/** "🕒 10.11, 22:00 · לפני 3 ש׳" – older open orders in orange / red. */
+export function OrderAge({ o, className = '', stacked = false }: { o: Pick<Order, 'createdAt' | 'status'>; className?: string; stacked?: boolean }) {
+  const closed = ['DELIVERED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(o.status);
+  const tone = closed ? 'fresh' : ageTone(o.createdAt);
+  return (
+    <span className={`whitespace-nowrap tabular-nums ${className}`}>
+      {orderTime(o.createdAt)}
+      {stacked ? <br /> : ' · '}
+      <span className={tone === 'old' ? 'font-bold text-bad' : tone === 'day' ? 'font-semibold text-warn' : ''}>{ageText(o.createdAt)}</span>
+    </span>
+  );
+}
+
 export function OrderRow({ o }: { o: Order }) {
-  const date = new Date(o.createdAt).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
   const items = o.items.map((i) => `${i.productName} ×${i.quantity} ₪${i.total}`).join(', ');
   return (
     <Link
@@ -46,11 +59,16 @@ export function OrderRow({ o }: { o: Order }) {
         </p>
         <p className="truncate text-sm text-ink-2">{o.customer.name}</p>
         <p className="truncate text-xs text-muted md:hidden">
-          {new Date(o.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })} · {items} · {o.shipping.label}
+          {items} · {o.shipping.label}
+        </p>
+        <p className="text-xs text-muted md:hidden">
+          <OrderAge o={o} />
         </p>
       </div>
       <p className="hidden truncate text-sm md:block">{items}</p>
-      <p className="hidden text-sm text-muted md:block">{date}</p>
+      <p className="hidden text-sm text-muted md:block">
+        <OrderAge o={o} stacked />
+      </p>
       <div className="flex shrink-0 flex-col items-end gap-1 md:contents">
         <StatusBadge status={o.status} method={o.shipping.method} />
         <p className="text-sm font-bold tabular-nums md:text-base">₪{o.total}</p>

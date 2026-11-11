@@ -1,5 +1,6 @@
 import 'server-only';
 import { SITE } from '@/lib/config';
+import { ageText, ageTone, orderTime } from '@/lib/age';
 import { emailLayout } from '@/lib/email-template';
 import { escapeHtml, sendMail } from '@/lib/mail';
 import { statusLabel, type Order, type OrderStatus } from './orders/types';
@@ -31,24 +32,9 @@ const GROUPS: Group[] = [
 ];
 
 const ilDate = (d: Date) => d.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem', weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
-const ilTime = (iso: string) => new Date(iso).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+const ilTime = orderTime;
 /** Older orders stand out: grey under a day, orange from a day, red from 3 days. */
-const ageColor = (iso: string) => {
-  const h = (Date.now() - Date.parse(iso)) / 3_600_000;
-  return h >= 72 ? '#d6283b' : h >= 24 ? '#b76e00' : '#5b6678';
-};
-
-/** How long since the order came in: "לפני 3 ש׳ ו-20 ד׳", "לפני יומיים ו-4 ש׳". */
-const ageText = (iso: string, now = Date.now()) => {
-  const min = Math.max(0, Math.floor((now - Date.parse(iso)) / 60_000));
-  const d = Math.floor(min / 1440);
-  const h = Math.floor((min % 1440) / 60);
-  const m = min % 60;
-  const days = d === 1 ? 'יום' : d === 2 ? 'יומיים' : `${d} ימים`;
-  if (d > 0) return `לפני ${days}${h ? ` ו-${h} ש׳` : ''}`;
-  if (h > 0) return `לפני ${h} ש׳${m ? ` ו-${m} ד׳` : ''}`;
-  return `לפני ${Math.max(1, m)} ד׳`;
-};
+const ageColor = (iso: string) => ({ fresh: '#5b6678', day: '#b76e00', old: '#d6283b' })[ageTone(iso)];
 
 function row(o: Order, showStatus = false): string {
   const items = o.items.map((i) => `${i.productName} ${i.size} ×${i.quantity}`).join(', ');
