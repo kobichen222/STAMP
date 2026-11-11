@@ -59,15 +59,17 @@ describe('DataLogics shipping', () => {
 
   it('retries the generic error with fewer of our settings', async () => {
     vi.stubEnv('DATALOGICS_TOKEN', 'tok');
-    const replies = [{ success: 0, msg: 'התרחשה שגיאה' }, { success: 0, msg: 'התרחשה שגיאה' }, { success: 1, tracking_number: 42 }];
+    const replies = [{ success: 0, msg: 'התרחשה שגיאה' }, { success: 0, msg: 'התרחשה שגיאה' }, { success: 0, msg: 'התרחשה שגיאה' }, { success: 1, tracking_number: 42 }];
     const fetchMock = vi.fn(async () => new Response(JSON.stringify(replies.shift())));
     vi.stubGlobal('fetch', fetchMock);
     const r = await createShipment(order);
     expect(r.trackingNumber).toBe('42');
     const bodies = fetchMock.mock.calls.map((c) => JSON.parse(String((c as unknown as [string, RequestInit])[1].body)));
-    expect(bodies[0].settings.locations).toBeDefined();
-    expect(bodies[1].settings.locations).toBeUndefined();
-    expect(bodies[2].settings).toEqual({ shipping_push_supplier: 52, shipping_push_supplier_id: '28973', shipping_method: [{ shipping_push_supplier: 52, shipping_push_supplier_id: '28973' }] });
+    expect(bodies[0].settings).toEqual({});
+    expect(bodies[0].order.shipping_method).toBe('שליח עד הבית');
+    expect(bodies[1].settings.locations).toBeDefined();
+    expect(bodies[2].settings.locations).toBeUndefined();
+    expect(bodies[3].settings).toEqual({ shipping_push_supplier: 52, shipping_push_supplier_id: '28973', shipping_method: [{ shipping_push_supplier: 52, shipping_push_supplier_id: '28973' }] });
   });
 
   it('falls back to the account settings only for the home-courier card', async () => {
@@ -76,12 +78,12 @@ describe('DataLogics shipping', () => {
     vi.stubGlobal('fetch', fetchMock);
     await expect(createShipment(order)).rejects.toThrow('התרחשה שגיאה');
     const perUrl = fetchMock.mock.calls.length / siteUrls().length;
-    expect(perUrl).toBe(4);
-    expect(JSON.parse(String((fetchMock.mock.calls[3] as unknown as [string, RequestInit])[1].body)).settings).toBeUndefined();
+    expect(perUrl).toBe(5);
+    expect(JSON.parse(String((fetchMock.mock.calls[4] as unknown as [string, RequestInit])[1].body)).settings).toBeUndefined();
     fetchMock.mockClear();
     const express = { ...order, shipping: { ...order.shipping, method: 'express', carrierAccount: '28974' } } as Order;
     await expect(createShipment(express)).rejects.toThrow();
-    expect(fetchMock.mock.calls.length / siteUrls().length).toBe(3);
+    expect(fetchMock.mock.calls.length / siteUrls().length).toBe(4);
   });
 
   it('tries the other forms of the site address when the account is not found', async () => {
@@ -90,8 +92,8 @@ describe('DataLogics shipping', () => {
     const fetchMock = vi.fn(async (_u: string, init: RequestInit) => {
       const b = JSON.parse(String(init.body));
       urls.push(b.url);
-      if (b.url === 'https://stamp2go.co.il' && !b.settings) return new Response(JSON.stringify({ success: 1, tracking_number: 7 }));
-      return new Response(JSON.stringify(b.settings ? { success: 0, msg: 'התרחשה שגיאה' } : { success: 0, msg: 'אין חשבון על אתר זה (5)' }));
+      if (b.url === 'https://stamp2go.co.il' && b.settings && !Object.keys(b.settings).length) return new Response(JSON.stringify({ success: 1, tracking_number: 7 }));
+      return new Response(JSON.stringify(b.settings && Object.keys(b.settings).length ? { success: 0, msg: 'התרחשה שגיאה' } : { success: 0, msg: 'אין חשבון על אתר זה (5)' }));
     });
     vi.stubGlobal('fetch', fetchMock);
     expect((await createShipment(order)).trackingNumber).toBe('7');

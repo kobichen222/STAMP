@@ -152,6 +152,10 @@ export function createShippingPayload(o: Order) {
       ref: card,
       comment,
       house,
+      // The site's shipping method – DataLogics links each ZigZag card to it by this name.
+      shipping_method: o.shipping.label,
+      shipping_method_id: o.shipping.method,
+      shipping_lines: [{ method_id: o.shipping.method, method_title: o.shipping.label, total: o.shipping.price ?? 0 }],
       weight_unit: 'kg',
       currency: 'ILS',
       total: o.total ?? 0,
@@ -191,7 +195,10 @@ type CreateReply = { success?: number | boolean; tracking_number?: string | numb
  */
 export function shippingAttempts(o: Order): { name: string; payload: ReturnType<typeof createShippingPayload> }[] {
   const full = createShippingPayload(o);
-  const out: { name: string; payload: ReturnType<typeof createShippingPayload> }[] = [{ name: 'full', payload: full }];
+  // DataLogics (Tal): send settings as an empty object – the account's saved settings (card per shipping
+  // method, password, pickup location) are used then, matched by the order's shipping method name.
+  const out: { name: string; payload: ReturnType<typeof createShippingPayload> }[] = [{ name: 'empty-settings', payload: { ...full, settings: {} } as typeof full }];
+  out.push({ name: 'full', payload: full });
   if (!full.settings) return out;
   const card = carrierCardFor(o)!;
   const supplier = full.settings.shipping_push_supplier;
