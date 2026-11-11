@@ -515,7 +515,9 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     camera.lookAt(-0.9 * cam * (1 - top) + -1.4 * top, (1.3 + 2.1 * explode - 1.0 * cam) * (1 - top), 0.3 * cam * (1 - top) + 0.5 * top);
     // Desktop: pull back while exploded / over the paper so nothing is cropped.
     const desktop = framing.shiftY === 0 && framing.zoom === 1;
-    const zoom = desktop ? 1 - 0.26 * explode - 0.15 * cam : framing.zoom;
+    // Large at rest; back to the wider framing while exploded / over the paper.
+    const big = window.innerWidth >= 1024 ? 1.45 : 1; // desktop only – phones keep their framing
+    const zoom = desktop ? big - (big - 0.74) * explode - (big - 0.85) * cam : framing.zoom;
     if (framing.shiftY || zoom !== 1) {
       camera.zoom = zoom;
       camera.setViewOffset(size.w, size.h, 0, -framing.shiftY * size.h, size.w, size.h);
