@@ -216,49 +216,61 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   };
   const rbox = (w: number, h: number, d: number, r: number, mat: THREE.Material) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, RS, r), mat);
 
-  // Handle: COLOP-style cap – as wide as the housing, gently domed top, sides
-  // tapering slightly towards the frame, with a recessed front label panel.
+  // Handle: COLOP Printer C20 style – a boxy housing with vertical sides, softly rounded top
+  // corners and a flat top carrying a long window, plus the small lock button on the front.
   const handle = new THREE.Group();
-  const capH = 0.92;
+  const capH = 1.12;
+  const capW = W * 1.04;
   const capProfile = (() => {
     const sh = new THREE.Shape();
-    const bw = W * 1.0; // bottom width
-    const tw = W * 0.9; // top width
-    const r = 0.16;
+    const w = capW / 2;
     const y0 = -capH / 2;
     const y1 = capH / 2;
-    sh.moveTo(-bw / 2 + r, y0);
-    sh.lineTo(bw / 2 - r, y0);
-    sh.quadraticCurveTo(bw / 2, y0, bw / 2, y0 + r);
-    sh.lineTo(tw / 2, y1 - 0.22);
-    sh.quadraticCurveTo(tw / 2, y1 - 0.02, tw / 2 - 0.25, y1);
-    // Domed top edge.
-    sh.quadraticCurveTo(0, y1 + 0.2, -tw / 2 + 0.25, y1);
-    sh.quadraticCurveTo(-tw / 2, y1 - 0.02, -tw / 2, y1 - 0.22);
-    sh.lineTo(-bw / 2, y0 + r);
-    sh.quadraticCurveTo(-bw / 2, y0, -bw / 2 + r, y0);
+    const rb = 0.08; // bottom corners
+    const rt = 0.34; // rounded top shoulders
+    sh.moveTo(-w + rb, y0);
+    sh.lineTo(w - rb, y0);
+    sh.quadraticCurveTo(w, y0, w, y0 + rb);
+    sh.lineTo(w, y1 - rt);
+    sh.quadraticCurveTo(w, y1, w - rt, y1);
+    // Almost flat top with a hint of a crown.
+    sh.quadraticCurveTo(0, y1 + 0.04, -w + rt, y1);
+    sh.quadraticCurveTo(-w, y1, -w, y1 - rt);
+    sh.lineTo(-w, y0 + rb);
+    sh.quadraticCurveTo(-w, y0, -w + rb, y0);
     return sh;
   })();
-  const capDepth = D * 1.02;
+  const capDepth = D * 1.06;
   const capGeo = new THREE.ExtrudeGeometry(capProfile, {
-    depth: capDepth - 0.16,
+    depth: capDepth - 0.2,
     bevelEnabled: true,
-    bevelThickness: 0.08,
-    bevelSize: 0.08,
-    bevelSegments: opts.lowPower ? 2 : 5,
+    bevelThickness: 0.1,
+    bevelSize: 0.1,
+    bevelSegments: opts.lowPower ? 2 : 6,
     curveSegments: opts.lowPower ? 8 : 20,
   });
-  capGeo.translate(0, 0, -(capDepth - 0.16) / 2);
+  capGeo.translate(0, 0, -(capDepth - 0.2) / 2);
   handle.add(new THREE.Mesh(capGeo, navy));
-  // Recessed label panel on the front, like the moulded "COLOP Printer" area.
-  const panel = rbox(W * 0.7, 0.34, 0.04, 0.06, new THREE.MeshPhysicalMaterial({ color: 0x1e2f55, roughness: 0.5, clearcoat: 0.3 }));
-  panel.position.set(0, -0.02, capDepth / 2 + 0.005);
+  // The long window on the top (C20's clear insert), in the accent colour, with two moulded ribs.
+  const win = rbox(capW * 0.82, 0.07, capDepth * 0.62, 0.035, blue);
+  win.position.set(0, capH / 2 + 0.05, -0.02);
+  handle.add(win);
+  for (const z of [-0.16, 0.1]) {
+    const rib = rbox(capW * 0.74, 0.025, 0.05, 0.012, new THREE.MeshPhysicalMaterial({ color: 0x5b82ff, roughness: 0.2, clearcoat: 1 }));
+    rib.position.set(0, capH / 2 + 0.095, z);
+    handle.add(rib);
+  }
+  // A shallow recess along the front, as on the moulded housing.
+  const panel = rbox(capW * 0.78, 0.4, 0.04, 0.08, new THREE.MeshPhysicalMaterial({ color: 0x1e2f55, roughness: 0.5, clearcoat: 0.3 }));
+  panel.position.set(0, 0.06, capDepth / 2 + 0.03);
   handle.add(panel);
-  // Small ink-colour window on the top.
-  const insert = rbox(W * 0.32, 0.05, D * 0.34, 0.025, blue);
-  insert.position.y = capH / 2 + 0.07;
-  handle.add(insert);
-  add('handle', handle, 3.35, 6.6, 0);
+  // Lock button: a small rounded knob at the bottom centre of the front.
+  const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.14, SEG), navy);
+  knob.rotation.x = Math.PI / 2;
+  knob.scale.set(1.25, 1, 0.75);
+  knob.position.set(0, -capH / 2 + 0.06, capDepth / 2 + 0.06);
+  handle.add(knob);
+  add('handle', handle, 3.46, 6.7, 0);
 
   // Frame: hollow housing with rounded corners (extruded ring) + brand label.
   const ringShape = (w: number, d: number, r: number) => {
