@@ -33,9 +33,6 @@ export default async function HomePage() {
   return (
     <>
       <StampHero />
-      <HowItWorks />
-      <QuickDesign />
-
       <section className="py-12 sm:py-16">
         <div className="container-x">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -54,9 +51,10 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      <WhyUs />
       <TemplateStrip />
+      <HowItWorks />
+      <QuickDesign />
+      <WhyUs />
       <AboutSection />
 
       <section className="container-x py-12 sm:py-16">
