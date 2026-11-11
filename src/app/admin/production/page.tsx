@@ -1,6 +1,6 @@
 import { INK_COLORS } from '@/designer/types';
 import { getStore } from '@/server/store';
-import { Preview } from '../components';
+import { OrderAge, Preview } from '../components';
 import { ExportMenu } from '../ExportMenu';
 import { ProductionControls, WorkerName } from './ProductionControls';
 
@@ -78,7 +78,7 @@ export default async function ProductionQueue({ searchParams }: { searchParams: 
                       </div>
                     ))}
                     <p className="mt-3 text-xs text-muted">
-                      {o.customer.name} · {new Date(o.createdAt).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+                      {o.customer.name} · <OrderAge o={o} />
                       {o.items[0]?.worker && ` · ${o.items[0].worker}`}
                     </p>
                     <ProductionControls id={o.id} status={o.status} />
