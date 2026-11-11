@@ -395,24 +395,29 @@ const STATUS_EVENTS: Partial<Record<OrderStatus, Parameters<typeof notify>[1]>> 
   SHIPPED: 'order.shipped',
 };
 
+/** The customer's status e-mail for a status, if it has one (in production / ready / shipped). */
+export const statusEvent = (s: OrderStatus) => STATUS_EVENTS[s];
+
 /**
- * Moves the order to `to`. With `deferNotify` the customer e-mail is not awaited: the event is
- * returned so the caller sends it after answering (staff see the new status at once).
+ * Moves the order to `to`. The customer is e-mailed about the new status only when staff chose to
+ * (`notifyCustomer`); the studio copy goes out as before. With `deferNotify` the e-mail is not awaited:
+ * the event is returned so the caller sends it after answering (staff see the new status at once).
  */
-export async function applyStatus(o: Order, to: OrderStatus, actor: string, note?: string, opts: { force?: boolean; deferNotify?: boolean } = {}) {
+export async function applyStatus(o: Order, to: OrderStatus, actor: string, note?: string, opts: { force?: boolean; deferNotify?: boolean; notifyCustomer?: boolean } = {}) {
   const from = o.status;
   if (!transition(o, to, actor, note, opts.force)) return false;
   const event = from !== to ? STATUS_EVENTS[to] : undefined;
-  if (event && !opts.deferNotify) o.notificationsSent.push(...(await notify(o, event)));
+  if (event && !opts.deferNotify) o.notificationsSent.push(...(await notify(o, event, undefined, { customer: !!opts.notifyCustomer })));
   if (to === 'PREFLIGHT' && from !== to) await runPreflight(o, actor);
   return event && opts.deferNotify ? event : true;
 }
 
 /** Sends a status e-mail that applyStatus deferred, and records it on the (fresh) order. */
-export async function sendStatusEmail(id: string, event: Parameters<typeof notify>[1]) {
+export async function sendStatusEmail(id: string, event: Parameters<typeof notify>[1], customer = false, staff = true) {
   const o = await loadOrder(id);
   if (!o) return;
-  const sent = await notify(o, event);
+  const sent = await notify(o, event, undefined, { customer, staff });
+  if (customer && sent.includes(`${event}:customer`)) audit(o, 'admin', 'customer_email', { note: event });
   if (!sent.length) return;
   o.notificationsSent.push(...sent);
   await saveOrder(o);

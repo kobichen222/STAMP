@@ -158,17 +158,22 @@ export function trackingLink(o: Pick<Order, 'id' | 'token'>) {
 }
 
 /** Returns the event ids that were actually sent (caller stores them on the order). */
-export async function notify(order: Order, event: NotifyEvent, attachments?: { filename: string; content: Buffer; contentType?: string }[]): Promise<string[]> {
+export async function notify(
+  order: Order,
+  event: NotifyEvent,
+  attachments?: { filename: string; content: Buffer; contentType?: string }[],
+  opts: { customer?: boolean; staff?: boolean } = {},
+): Promise<string[]> {
   const b = build(event, order);
   const sent: string[] = [];
   const jobs: Promise<void>[] = [];
-  if (b.customer && order.customer.email) {
+  if (b.customer && order.customer.email && opts.customer !== false) {
     const id = `${event}:customer`;
     if (!order.notificationsSent.includes(id)) {
       jobs.push(sendMail({ to: [order.customer.email!], subject: b.subject, html: emailLayout(b.customer) }).then(() => void sent.push(id)));
     }
   }
-  if (b.staff) {
+  if (b.staff && opts.staff !== false) {
     const id = `${event}:staff`;
     if (!order.notificationsSent.includes(id)) {
       jobs.push(

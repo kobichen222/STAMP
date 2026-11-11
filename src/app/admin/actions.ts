@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
-import { applyStatus, audit, autoShip, issueReward, loadOrder, resendOrderEmails, runPreflight, saveOrder, sendStatusEmail } from '@/server/orders/service';
+import { applyStatus, audit, autoShip, issueReward, loadOrder, resendOrderEmails, runPreflight, saveOrder, sendStatusEmail, statusEvent } from '@/server/orders/service';
 import { ORDER_STATUSES, type OrderStatus } from '@/server/orders/types';
 import { cancelShipment, createShipment, shipmentStatus, ShippingApiError } from '@/server/shipping/datalogics';
 import { requireStaff } from '@/server/staff';
@@ -18,18 +18,29 @@ async function withOrder(id: string, roles: ('admin' | 'production')[], fn: (o: 
   revalidatePath('/admin/');
 }
 
-export async function setStatus(id: string, to: string, note?: string) {
+/** `notifyCustomer`: staff approved e-mailing the customer about this step (otherwise only the studio copy). */
+export async function setStatus(id: string, to: string, note?: string, notifyCustomer = false) {
   if (!(ORDER_STATUSES as readonly string[]).includes(to)) throw new Error('bad status');
   let event: Parameters<typeof sendStatusEmail>[1] | undefined;
   await withOrder(id, ['admin'], async (o, role) => {
     const r = await applyStatus(o, to as OrderStatus, role, note, { force: true, deferNotify: true });
     if (typeof r === 'string') event = r;
   });
-  // The customer e-mail goes out after the answer, so the button responds at once.
+  // The e-mails go out after the answer, so the button responds at once.
   if (event) {
     const e = event;
-    after(() => sendStatusEmail(id, e).catch((err) => console.error('[status-email]', id, err)));
+    after(() => sendStatusEmail(id, e, notifyCustomer).catch((err) => console.error('[status-email]', id, err)));
   }
+}
+
+/** Sends the customer the e-mail of the order's current status (in production / ready / shipped), once. */
+export async function sendCustomerUpdate(id: string) {
+  await requireStaff(['admin']);
+  const o = await loadOrder(id);
+  const event = o && statusEvent(o.status);
+  if (!event) return;
+  await sendStatusEmail(id, event, true, false);
+  revalidatePath(`/admin/orders/${id}/`);
 }
 
 export async function addNote(id: string, formData: FormData) {
@@ -47,7 +58,7 @@ export async function setTracking(id: string, formData: FormData) {
     o.shipping.trackingNumber = String(formData.get('trackingNumber') ?? '').slice(0, 80) || undefined;
     o.shipping.trackingUrl = String(formData.get('trackingUrl') ?? '').slice(0, 300) || undefined;
     audit(o, role, 'tracking', { note: o.shipping.trackingNumber });
-    if (formData.get('ship') === '1') await applyStatus(o, 'SHIPPED', role);
+    if (formData.get('ship') === '1') await applyStatus(o, 'SHIPPED', role, undefined, { notifyCustomer: formData.get('notify') === '1' });
   });
 }
 

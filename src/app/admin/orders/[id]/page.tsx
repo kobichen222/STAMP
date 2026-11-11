@@ -5,9 +5,9 @@ import { INK_COLORS } from '@/designer/types';
 import { ADDONS, DEFAULT_RULES } from '@/lib/pricing';
 import { formatDate } from '@/lib/format';
 import { trackingLink } from '@/server/notifications';
-import { loadOrder } from '@/server/orders/service';
+import { loadOrder, statusEvent } from '@/server/orders/service';
 import { statusLabel, STATUS_LABEL, TIMELINE, TRANSITIONS, type OrderStatus } from '@/server/orders/types';
-import { addNote, markPaid, resendEmails, retryProduction, setStatus, setTracking, toggleUrgent } from '../../actions';
+import { addNote, markPaid, resendEmails, retryProduction, sendCustomerUpdate, setStatus, setTracking, toggleUrgent } from '../../actions';
 import { OrderAge, Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
 import { ZigZagBox } from '../../ZigZagBox';
@@ -45,6 +45,8 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
   if (!o) notFound();
   await ensureSettings();
   const card = carrierCardFor(o);
+  const currentEvent = statusEvent(o.status);
+  const customerNotified = !!currentEvent && o.notificationsSent.includes(`${currentEvent}:customer`);
   const shipRule = DEFAULT_RULES.shipping.find((m) => m.id === o.shipping.method);
   const shipPrice = `${o.shipping.price ? `₪${o.shipping.price}` : 'חינם'}`;
   const payLog = o.paymentMethod === 'manual' ? [] : await paymentLog({ orderId: o.id, limit: 30 }).catch(() => []);
@@ -304,13 +306,29 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="ship" value="1" className="accent-blue" /> סמן כנשלח
               </label>
+              {o.customer.email && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="notify" value="1" className="accent-blue" /> לשלוח ללקוח מייל עם מספר המעקב
+                </label>
+              )}
               <button className="btn-outline btn-sm w-full sm:w-auto">שמירת משלוח</button>
             </form>
           </section>
 
           <section className="card p-4 sm:p-5">
             <h2 className="font-bold">סטטוס</h2>
-            <StatusPicker key={o.status} id={o.id} status={o.status} primary={primary} method={o.shipping.method} />
+            <StatusPicker key={o.status} id={o.id} status={o.status} primary={primary} method={o.shipping.method} hasEmail={!!o.customer.email} />
+            {currentEvent && o.customer.email &&
+              (customerNotified ? (
+                <p className="mt-3 text-center text-xs text-ok">✓ הלקוח קיבל מייל על השלב הזה</p>
+              ) : (
+                <form action={sendCustomerUpdate.bind(null, o.id)} className="mt-3">
+                  <button className="btn-outline btn-sm w-full">
+                    <Icon name="mail" size={15} /> שליחת מייל ללקוח: {statusLabel(o.status, o.shipping.method)}
+                  </button>
+                  <p className="mt-1 text-center text-xs text-muted">הלקוח עוד לא קיבל מייל על השלב הזה</p>
+                </form>
+              ))}
             {o.status === 'PRODUCTION_FILE_ERROR' && (
               <form action={retryProduction.bind(null, o.id)} className="mt-3">
                 <button className="btn-primary btn-sm w-full">נסה שוב ליצור קבצים</button>
@@ -393,7 +411,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
           </a>
           {primary ? (
             <div className="min-w-0 flex-1">
-              <NextStatusButton key={o.status} id={o.id} status={o.status} primary={primary} method={o.shipping.method} />
+              <NextStatusButton key={o.status} id={o.id} status={o.status} primary={primary} method={o.shipping.method} hasEmail={!!o.customer.email} />
             </div>
           ) : o.paymentStatus !== 'paid' && !closed ? (
             <a href="#pay" className="btn-dark !h-11 min-w-0 flex-1 text-sm">
