@@ -92,6 +92,10 @@ export const SCHEMA = [
   )`,
   `create index if not exists s2g_payment_log_order_idx on s2g_payment_log (order_id, at desc)`,
   `create index if not exists s2g_payment_log_at_idx on s2g_payment_log (at desc)`,
+  `create table if not exists s2g_jobs (
+    key     text primary key,
+    at      timestamptz not null default now()
+  )`,
   `create table if not exists s2g_trash (
     id          text primary key,
     data        jsonb not null,
