@@ -157,7 +157,7 @@ export interface StampScene {
 
 export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: boolean; lines: string[] }): StampScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, opts.lowPower ? 1.6 : 1.75));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, opts.lowPower ? 1.75 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = !opts.lowPower;
@@ -296,9 +296,18 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   frameGeo.rotateX(-Math.PI / 2);
   frameGeo.translate(0, -wallH / 2, 0);
   const frame = new THREE.Group();
-  frame.add(new THREE.Mesh(frameGeo, shell));
+  // Clear housing like the C20's: the springs and the mechanism show through.
+  const clear = opts.lowPower
+    ? new THREE.MeshPhysicalMaterial({ color: 0xeef3ff, roughness: 0.08, metalness: 0, transparent: true, opacity: 0.32, clearcoat: 1, clearcoatRoughness: 0.05, depthWrite: false })
+    : new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.04, metalness: 0, transmission: 0.94, thickness: 0.35, ior: 1.46, clearcoat: 1, clearcoatRoughness: 0.03, attenuationColor: new THREE.Color(0xdfe8ff), attenuationDistance: 2.5 });
+  const frameMesh = new THREE.Mesh(frameGeo, clear);
+  frame.add(frameMesh);
+  // The white label card inside the clear front, as on the C20.
+  const card = rbox(W * 0.78, 0.72, 0.02, 0.04, shell);
+  card.position.set(0, 0.22, D / 2 - 0.12);
+  frame.add(card);
   const label = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.62, 0.46), new THREE.MeshStandardMaterial({ map: labelTexture(), transparent: true, roughness: 0.4 }));
-  label.position.set(0, 0.25, D / 2 + 0.035);
+  label.position.set(0, 0.25, D / 2 - 0.105);
   frame.add(label);
   // Accent band following the housing's rounded corners.
   const band = ringShape(W + 0.1, D + 0.1, 0.26);
@@ -309,6 +318,7 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
   stripe.position.y = -wallH / 2 + 0.1;
   frame.add(stripe);
   add('frame', frame, 1.95, 4.9, 0);
+  frameMesh.castShadow = false; // a clear shell barely shades
 
   // Springs
   const springs = new THREE.Group();
