@@ -516,7 +516,7 @@ export function createStampScene(canvas: HTMLCanvasElement, opts: { lowPower: bo
     // Desktop: pull back while exploded / over the paper so nothing is cropped.
     const desktop = framing.shiftY === 0 && framing.zoom === 1;
     // Large at rest; back to the wider framing while exploded / over the paper.
-    const big = window.innerWidth >= 1024 ? 1.45 : 1; // desktop only – phones keep their framing
+    const big = window.innerWidth >= 1024 ? 1.45 : 1.38; // large at rest on every screen
     const zoom = desktop ? big - (big - 0.74) * explode - (big - 0.85) * cam : framing.zoom;
     if (framing.shiftY || zoom !== 1) {
       camera.zoom = zoom;
