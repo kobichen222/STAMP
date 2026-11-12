@@ -12,6 +12,7 @@ import { BOOT_SCRIPT } from '@/components/a11y/settings';
 import { SITE } from '@/lib/config';
 import { SettingsBoot } from '@/components/site/SettingsBoot';
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
+import { CookieNotice } from '@/components/site/CookieNotice';
 import { ensureSettings } from '@/server/settings';
 import './globals.css';
 import './a11y.css';
@@ -70,6 +71,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </Suspense>
         <Suspense>
           <GoogleAnalytics />
+          <CookieNotice />
         </Suspense>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organization) }} />
       </body>

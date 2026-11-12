@@ -341,6 +341,13 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
         <button className="btn-primary btn-lg mt-5 w-full" disabled={state === 'sending' || !agree}>
           {state === 'sending' ? 'שולח…' : manual ? 'אישור הזמנה' : 'המשך לתשלום'}
         </button>
+        <p className="mt-2 text-center text-xs text-muted">
+          הפרטים משמשים לביצוע ההזמנה ולמשלוח, לפי{' '}
+          <Link href="/privacy/" target="_blank" className="underline hover:text-ink">
+            מדיניות הפרטיות
+          </Link>
+          .
+        </p>
         {state === 'error' && (
           <p role="alert" className="mt-3 text-sm text-bad">
             {error}

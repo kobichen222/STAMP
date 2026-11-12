@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/Icon';
 import { SITE } from '@/lib/config';
 import { MAIN_NAV, STAMP_MENU } from './nav';
 import { NewsletterForm } from './NewsletterForm';
+import { CookieSettingsButton } from './CookieNotice';
 
 export function Footer() {
   const pathname = usePathname();
@@ -65,7 +66,15 @@ export function Footer() {
       </div>
       <div className="border-t border-line">
         <div className="container-x flex flex-col items-center gap-3 pt-5 pb-24 text-xs sm:pb-5 text-muted sm:flex-row sm:justify-between">
-          <span className="text-center sm:text-start">© {new Date().getFullYear()} Stamp2Go · חותמות תוך 2 דקות · הרא״ה 3, רמת גן · כל המחירים כוללים מע״מ</span>
+          <span className="text-center sm:text-start">
+            © {new Date().getFullYear()} Stamp2Go · חותמות תוך 2 דקות · הרא״ה 3, רמת גן · כל המחירים כוללים מע״מ
+            <span className="mt-1 block">
+              <Link href="/privacy/" className="underline hover:text-ink">
+                מדיניות פרטיות
+              </Link>{' '}
+              · <CookieSettingsButton className="underline hover:text-ink" />
+            </span>
+          </span>
           <a
             href="https://www.media-deal.co.il/"
             target="_blank"

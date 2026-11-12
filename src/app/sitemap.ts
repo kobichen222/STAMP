@@ -11,7 +11,7 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await ensureSettings();
-  const pages = ['/', '/stamps/', '/designer/', '/ai-design/', '/templates/', '/examples/', '/how-it-works/', '/faq/', '/about/', '/contact/'];
+  const pages = ['/', '/stamps/', '/designer/', '/ai-design/', '/templates/', '/examples/', '/how-it-works/', '/faq/', '/about/', '/contact/', '/privacy/'];
   return [
     ...pages.map((p) => ({ url: url(p), priority: p === '/' ? 1 : 0.8 })),
     ...CATEGORIES.map((c) => ({ url: url(`/stamps/${c.slug}/`), priority: 0.8 })),
