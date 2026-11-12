@@ -4,14 +4,15 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { composeForProduction } from '@/designer/autofix';
-import { LOOK_IDS, LOOKS } from '@/designer/compose';
+import { LOOK_IDS, LOOKS, uid } from '@/designer/compose';
+import { DEFAULT_PROCESS, loadLogoFile, LogoError, processLogo, vectorize } from '@/designer/logo';
 import type { DesignerProduct } from '@/designer/editor/Editor';
 import { formatSize } from '@/designer/models';
 import { profileForModel } from '@/designer/profiles';
 import { renderDesign } from '@/designer/render';
 import { StampSvg } from '@/designer/StampSvg';
 import type { Suggestion } from '@/designer/suggest';
-import { INK_COLORS, type Design, type InkColor } from '@/designer/types';
+import { INK_COLORS, type Design, type ImageElement, type InkColor } from '@/designer/types';
 import { useFaces } from '@/designer/useFaces';
 import { isProductionReady, validateDesign } from '@/designer/validate';
 import { setActiveDraft } from '@/lib/active-draft';
@@ -37,8 +38,38 @@ const linesOf = (t: string) =>
     .map((l) => l.trim())
     .filter(Boolean);
 
-function compose(p: DesignerProduct, s: Suggestion, resolve: Parameters<typeof renderDesign>[1]): Design {
-  return composeForProduction(p.model, s.content, s.style, resolve, profileForModel(p.model), { strict: true }).design;
+function compose(p: DesignerProduct, s: Suggestion, logo: ImageElement | null, resolve: Parameters<typeof renderDesign>[1]): Design {
+  return composeForProduction(p.model, logo ? { ...s.content, logo } : s.content, s.style, resolve, profileForModel(p.model), { strict: true }).design;
+}
+
+/** The uploaded logo, ready for the stamp (black on transparent, traced to vector) + a small copy for the AI designer to look at. */
+async function prepareLogo(file: File): Promise<{ el: ImageElement; preview: string; thumb: string }> {
+  const loaded = await loadLogoFile(file);
+  const processed = processLogo(loaded.bitmap, DEFAULT_PROCESS);
+  const vector = loaded.vector ?? (await vectorize(processed.canvas, 'medium').catch(() => null));
+  const aspect = vector ? vector.aspect : processed.height / processed.width;
+  const el: ImageElement = {
+    id: uid('img'),
+    type: 'image',
+    x: 0,
+    y: 0,
+    rotation: 0,
+    width: 10,
+    height: Math.round(10 * aspect * 100) / 100,
+    src: processed.dataUrl,
+    vector: vector?.d ?? null,
+    source: { name: loaded.name, mime: loaded.mime, pxWidth: loaded.pxWidth, pxHeight: loaded.pxHeight, isVector: loaded.isVector },
+  };
+  // ≤ 512 px, black on white – what the designer model sees.
+  const k = Math.min(1, 512 / Math.max(processed.width, processed.height));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(processed.width * k));
+  c.height = Math.max(1, Math.round(processed.height * k));
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(processed.canvas, 0, 0, c.width, c.height);
+  return { el, preview: c.toDataURL('image/png'), thumb: processed.dataUrl };
 }
 
 export function AiWizard({ products }: { products: DesignerProduct[] }) {
@@ -52,6 +83,24 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [pick, setPick] = useState(0);
   const [ink, setInk] = useState<InkColor>('black');
+  const [brief, setBrief] = useState('');
+  const [logo, setLogo] = useState<{ el: ImageElement; preview: string; thumb: string; name: string } | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState('');
+  const [logoNote, setLogoNote] = useState('');
+  const [fromAi, setFromAi] = useState(false);
+  const pickLogo = async (file: File | undefined) => {
+    if (!file) return;
+    setLogoBusy(true);
+    setLogoError('');
+    try {
+      setLogo({ ...(await prepareLogo(file)), name: file.name });
+    } catch (e) {
+      setLogoError(e instanceof LogoError ? e.message : 'לא הצלחנו לקרוא את הקובץ. נסו PNG, JPG או SVG.');
+    } finally {
+      setLogoBusy(false);
+    }
+  };
 
   const lines = linesOf(text);
   const card = useRef<HTMLDivElement>(null);
@@ -85,14 +134,14 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
   const composed = useMemo(() => {
     if (!product || !suggestions || !ready) return [];
     return suggestions.map((s) => {
-      const d = compose(product, s, resolve);
+      const d = compose(product, s, logo?.el ?? null, resolve);
       const r = renderDesign(d, resolve);
       const issues = validateDesign(d, r, profileForModel(product.model));
       // Ready = no production errors and nothing running into anything else.
       return { d, r, ok: isProductionReady(issues) && !issues.some((i) => i.code === 'overlap') };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product, suggestions, ready, version]);
+  }, [product, suggestions, ready, version, logo]);
   useEffect(() => {
     if (composed.length && designs.length !== composed.length) setDesigns(composed.map((c) => c.d));
   }, [composed, designs.length]);
@@ -106,15 +155,27 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
       const res = await fetch('/api/ai-design/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: text, shape: p.model.shape, width: p.model.width, height: p.model.height }),
+        body: JSON.stringify({
+          prompt: text,
+          brief,
+          shape: p.model.shape,
+          width: p.model.width,
+          height: p.model.height,
+          maxLines: p.model.maxLines,
+          dateBand: p.model.dateBand,
+          logo: logo?.preview,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      // The 3 base styles, then 10 popular looks with exactly the same lines.
+      // The designer's own designs first, then the popular looks (those it did not already use) with exactly the same lines.
       const base: Suggestion[] = data.suggestions ?? [];
       const seed = base[0];
-      const looks: Suggestion[] = seed ? LOOK_IDS.map((id) => ({ style: LOOKS[id].style, title: LOOKS[id].label, content: { ...seed.content, look: id } })) : [];
+      const used = new Set(base.map((s) => s.content.look).filter(Boolean));
+      const looks: Suggestion[] = seed ? LOOK_IDS.filter((id) => !used.has(id)).map((id) => ({ style: LOOKS[id].style, title: LOOKS[id].label, content: { ...seed.content, look: id } })) : [];
       setSuggestions([...base, ...looks]);
+      setFromAi(data.source === 'ai');
+      setLogoNote(typeof data.logoNote === 'string' ? data.logoNote : '');
       setPick(0);
       setStep(2);
     } catch (e) {
@@ -203,6 +264,33 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
                   </button>
                 ))}
               </div>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <span className="label">לוגו (לא חובה)</span>
+                  {logo ? (
+                    <div className="flex items-center gap-3 rounded-xl border border-line p-2.5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={logo.thumb} alt="הלוגו שהועלה" className="h-12 w-16 shrink-0 rounded-lg bg-white object-contain" />
+                      <span className="min-w-0 flex-1 truncate text-sm">{logo.name}</span>
+                      <button type="button" className="btn-ghost btn-sm shrink-0 text-bad" onClick={() => setLogo(null)}>
+                        הסרה
+                      </button>
+                    </div>
+                  ) : (
+                    <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-blue/35 px-3 py-3.5 text-sm font-semibold text-blue transition hover:border-blue hover:bg-blue-50/50 ${logoBusy ? 'pointer-events-none opacity-60' : ''}`}>
+                      <Icon name="upload" size={17} /> {logoBusy ? 'מכין את הלוגו…' : 'העלאת לוגו'}
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="sr-only" onChange={(e) => void pickLogo(e.target.files?.[0])} />
+                    </label>
+                  )}
+                  {logoError && <p className="mt-1.5 text-xs text-bad">{logoError}</p>}
+                  <p className="mt-1.5 text-xs text-muted">נתאים את הלוגו לחותמת: גודל, מיקום וסידור הטקסט סביבו.</p>
+                </div>
+                <label className="block">
+                  <span className="label">הנחיות לעיצוב (לא חובה)</span>
+                  <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={3} maxLength={300} className="input" placeholder="למשל: מסגרת כפולה, מראה יוקרתי, השם גדול ומודגש" />
+                  <span className="mt-1.5 block text-xs text-muted">ההנחיות משפיעות על העיצוב בלבד – הן לא ייכתבו על החותמת.</span>
+                </label>
+              </div>
               <button type="button" className="btn-primary mt-6 !h-13 w-full !text-base font-bold" disabled={lines.length === 0} onClick={() => setStep(1)}>
                 המשך לבחירת מוצר <Icon name="arrowLeft" size={18} />
               </button>
@@ -273,7 +361,9 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
               <h2 className="text-xl font-bold">בחרו עיצוב</h2>
               <p className="mt-1 text-sm text-muted">
                 {suggestions?.length ?? 0} עיצובים על {product.title} ({formatSize(product.model)}) – כל השורות שלכם בכל אחד מהם.
+                {fromAi && ' העיצובים המסומנים ✦ עוצבו במיוחד בשבילכם.'}
               </p>
+              {logoNote && logo && <p className="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-sm text-ink-2">על הלוגו: {logoNote}</p>}
               <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
                 {suggestions?.map((s, i) => (
                   <button
@@ -286,7 +376,10 @@ export function AiWizard({ products }: { products: DesignerProduct[] }) {
                       {composed[i] ? <StampSvg render={composed[i].r} ink={ink} className="max-h-20 w-full sm:max-h-28" pad={0.8} /> : <span className="h-full w-full animate-pulse rounded-lg bg-line/50" />}
                     </div>
                     <span className="mt-2 flex flex-wrap items-center justify-between gap-x-2 text-[13px] font-bold sm:text-sm">
-                      {s.content.look ? LOOKS[s.content.look].label : ({ classic: 'קלאסי', modern: 'מודרני', minimal: 'מינימלי' }[s.style] ?? s.title)}
+                      <span className="min-w-0 truncate">
+                        {s.ai && <span className="text-blue">✦ </span>}
+                        {s.ai ? s.title : s.content.look ? LOOKS[s.content.look].label : ({ classic: 'קלאסי', modern: 'מודרני', minimal: 'מינימלי' }[s.style] ?? s.title)}
+                      </span>
                       {composed[i] && <span className={`text-[11px] font-semibold ${composed[i].ok ? 'text-ok' : 'text-warn'}`}>{composed[i].ok ? '✓ מוכן לייצור' : 'צפוף – מומלץ גדול יותר'}</span>}
                     </span>
                   </button>

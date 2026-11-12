@@ -4,6 +4,8 @@ export interface Suggestion {
   style: LayoutStyle;
   title: string;
   content: LayoutContent;
+  /** Designed by the AI designer for this stamp (not one of the fixed looks). */
+  ai?: boolean;
 }
 
 // --------------------------------------------------------------------------
