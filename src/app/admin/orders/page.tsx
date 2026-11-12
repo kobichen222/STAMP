@@ -6,6 +6,10 @@ import { OrderRow } from '../components';
 
 export const metadata = { title: 'הזמנות' };
 
+/** Checkout started but the card payment never went through – kept out of "הכל", in a tab of their own. */
+const ABANDONED: OrderStatus[] = ['PAYMENT_PENDING', 'PAYMENT_FAILED'];
+const isAbandoned = (o: Order) => ABANDONED.includes(o.status) && o.paymentStatus !== 'paid';
+
 /** Quick filters, in the order staff work through them. */
 const VIEWS: { key: string; label: string; statuses?: OrderStatus[]; tone?: string }[] = [
   { key: 'all', label: 'הכל' },
@@ -13,10 +17,12 @@ const VIEWS: { key: string; label: string; statuses?: OrderStatus[]; tone?: stri
   { key: 'production', label: 'בייצור', statuses: ['IN_PRODUCTION', 'QUALITY_CHECK'] },
   { key: 'ship', label: 'למשלוח', statuses: ['READY_FOR_SHIPPING'] },
   { key: 'sent', label: 'נשלחו', statuses: ['SHIPPED', 'DELIVERED'] },
-  { key: 'pending', label: 'ממתין לתשלום', statuses: ['PAYMENT_PENDING'] },
-  { key: 'issues', label: 'בעיות', statuses: ['PAYMENT_FAILED', 'PRODUCTION_FILE_ERROR'], tone: 'text-bad' },
+  { key: 'issues', label: 'בעיות', statuses: ['PRODUCTION_FILE_ERROR'], tone: 'text-bad' },
   { key: 'closed', label: 'בוטלו', statuses: ['CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'] },
+  { key: 'abandoned', label: 'נוטשים', statuses: ABANDONED, tone: 'text-warn' },
 ];
+/** Old links (?view=pending) land on the new tab. */
+const ALIAS: Record<string, string> = { pending: 'abandoned' };
 
 const dayKey = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
 
@@ -33,10 +39,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const all = await getStore().listOrders({ q, limit: 500 });
   // Old links used ?status=A,B – keep them working.
   const legacy = status ? (status.split(',') as OrderStatus[]) : undefined;
-  const view = VIEWS.find((v) => v.key === viewParam) ?? VIEWS[0];
+  const view = VIEWS.find((v) => v.key === (ALIAS[viewParam ?? ''] ?? viewParam)) ?? VIEWS[0];
   const wanted = legacy ?? view.statuses;
-  const orders = wanted ? all.filter((o) => wanted.includes(o.status)) : all;
-  const count = (v: (typeof VIEWS)[number]) => (v.statuses ? all.filter((o) => v.statuses!.includes(o.status)).length : all.length);
+  // "הכל" = real orders only; a search still finds an abandoned one.
+  const real = q ? all : all.filter((o) => !isAbandoned(o));
+  const orders = wanted ? all.filter((o) => wanted.includes(o.status)) : real;
+  const count = (v: (typeof VIEWS)[number]) => (v.statuses ? all.filter((o) => v.statuses!.includes(o.status)).length : real.length);
   const urgent = orders.filter((o) => o.urgent).length;
 
   const groups = new Map<string, Order[]>();

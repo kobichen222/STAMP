@@ -42,6 +42,13 @@ export function OrderAge({ o, className = '', stacked = false }: { o: Pick<Order
   );
 }
 
+/** "שולם" / "לא שולם" next to the amount. */
+export function PaidBadge({ o }: { o: Pick<Order, 'paymentStatus' | 'status'> }) {
+  if (['CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(o.status)) return null;
+  const paid = o.paymentStatus === 'paid';
+  return <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap ${paid ? 'bg-ok/10 text-ok' : 'bg-warn/15 text-warn'}`}>{paid ? '✓ שולם' : 'לא שולם'}</span>;
+}
+
 export function OrderRow({ o }: { o: Order }) {
   const items = o.items.map((i) => `${i.productName} ×${i.quantity} ₪${i.total}`).join(', ');
   return (
@@ -71,7 +78,9 @@ export function OrderRow({ o }: { o: Order }) {
       </p>
       <div className="flex shrink-0 flex-col items-end gap-1 md:contents">
         <StatusBadge status={o.status} method={o.shipping.method} />
-        <p className="text-sm font-bold tabular-nums md:text-base">₪{o.total}</p>
+        <p className="flex items-center gap-1.5 text-sm font-bold tabular-nums md:text-base">
+          <PaidBadge o={o} />₪{o.total}
+        </p>
       </div>
     </Link>
   );
