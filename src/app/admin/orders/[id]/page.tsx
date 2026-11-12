@@ -8,7 +8,7 @@ import { trackingLink } from '@/server/notifications';
 import { loadOrder, statusEvent } from '@/server/orders/service';
 import { statusLabel, STATUS_LABEL, TIMELINE, TRANSITIONS, type OrderStatus } from '@/server/orders/types';
 import { addNote, markPaid, resendEmails, retryProduction, sendCustomerUpdate, setStatus, setTracking, toggleUrgent } from '../../actions';
-import { OrderAge, Preview, StatusBadge } from '../../components';
+import { CourierBadge, OrderAge, PaidBadge, Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
 import { ZigZagBox } from '../../ZigZagBox';
 import { DeleteOrder } from './DeleteOrder';
@@ -66,6 +66,8 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
             {o.id}
           </h1>
           <StatusBadge status={o.status} method={o.shipping.method} />
+          <PaidBadge o={o} />
+          <CourierBadge o={o} />
           {o.urgent && <span className="rounded-full bg-bad px-2 py-0.5 text-xs font-bold text-white">דחוף</span>}
           <Link href={`/admin/orders/${o.id}/edit/`} className="btn-outline btn-sm ms-auto">
             <Icon name="edit" size={15} /> עריכת הזמנה

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { statusLabel, STATUS_LABEL, type Order, type OrderStatus } from '@/server/orders/types';
 import { ageText, ageTone, orderTime } from '@/lib/age';
+import { Icon } from '@/components/ui/Icon';
 
 const TONE: Partial<Record<OrderStatus, string>> = {
   PRODUCTION_FILE_ERROR: 'bg-bad/10 text-bad',
@@ -46,42 +47,58 @@ export function OrderAge({ o, className = '', stacked = false }: { o: Pick<Order
 export function PaidBadge({ o }: { o: Pick<Order, 'paymentStatus' | 'status'> }) {
   if (['CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(o.status)) return null;
   const paid = o.paymentStatus === 'paid';
-  return <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap ${paid ? 'bg-ok/10 text-ok' : 'bg-warn/15 text-warn'}`}>{paid ? '✓ שולם' : 'לא שולם'}</span>;
+  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${paid ? 'bg-ok/10 text-ok' : 'bg-warn/15 text-warn'}`}>{paid ? '✓ שולם' : 'לא שולם'}</span>;
+}
+
+/** "הוזמן שליח" – a shipment was created with the courier (there is a tracking number). */
+export function CourierBadge({ o }: { o: Pick<Order, 'shipping'> }) {
+  if (o.shipping.method === 'pickup' || !o.shipping.trackingNumber) return null;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold whitespace-nowrap text-blue" title={`מספר משלוח ${o.shipping.trackingNumber}`}>
+      <Icon name="truck" size={11} /> הוזמן שליח
+    </span>
+  );
 }
 
 export function OrderRow({ o }: { o: Order }) {
   const items = o.items.map((i) => `${i.productName} ×${i.quantity} ₪${i.total}`).join(', ');
+  const price = <span className="shrink-0 text-sm font-bold tabular-nums xl:text-base">₪{o.total}</span>;
   return (
+    // Phones: picture + details, the amount beside the order number, and one wrapping row of tags underneath.
+    // From xl: a table-like row – picture | order | items | time | tags | amount.
     <Link
       href={`/admin/orders/${o.id}/`}
-      className="flex items-center gap-3 border-b border-line px-3 py-3 last:border-0 hover:bg-surface sm:px-4 md:grid md:grid-cols-[auto_1.2fr_1fr_1fr_auto_auto] md:gap-4"
+      className="block border-b border-line px-3 py-3 last:border-0 hover:bg-surface sm:px-4 xl:grid xl:grid-cols-[auto_minmax(0,1.1fr)_minmax(0,1fr)_auto_minmax(0,13rem)_auto] xl:items-center xl:gap-4"
     >
-      <Preview order={o} className="h-12 w-16 sm:h-16 sm:w-24" />
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 text-sm font-bold sm:text-base">
-          <span className="truncate" dir="ltr">
-            {o.id}
-          </span>
-          {o.urgent && <span className="shrink-0 rounded-full bg-bad px-1.5 text-[10px] font-bold text-white">דחוף</span>}
-        </p>
-        <p className="truncate text-sm text-ink-2">{o.customer.name}</p>
-        <p className="truncate text-xs text-muted md:hidden">
-          {items} · {o.shipping.label}
-        </p>
-        <p className="text-xs text-muted md:hidden">
-          <OrderAge o={o} />
+      <div className="flex items-start gap-3 xl:contents">
+        <Preview order={o} className="h-12 w-16 sm:h-16 sm:w-24" />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-sm font-bold sm:text-base" dir="ltr">
+              {o.id}
+            </span>
+            <span className="xl:hidden">{price}</span>
+          </p>
+          <p className="truncate text-sm text-ink-2">{o.customer.company || o.customer.name}</p>
+          <p className="truncate text-xs text-muted xl:hidden">
+            {items} · {o.shipping.label}
+          </p>
+          <p className="text-xs text-muted xl:hidden">
+            <OrderAge o={o} className="!whitespace-normal" />
+          </p>
+        </div>
+        <p className="hidden min-w-0 truncate text-sm xl:block">{items}</p>
+        <p className="hidden text-sm text-muted xl:block">
+          <OrderAge o={o} stacked />
         </p>
       </div>
-      <p className="hidden truncate text-sm md:block">{items}</p>
-      <p className="hidden text-sm text-muted md:block">
-        <OrderAge o={o} stacked />
-      </p>
-      <div className="flex shrink-0 flex-col items-end gap-1 md:contents">
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 xl:mt-0 xl:justify-end">
         <StatusBadge status={o.status} method={o.shipping.method} />
-        <p className="flex items-center gap-1.5 text-sm font-bold tabular-nums md:text-base">
-          <PaidBadge o={o} />₪{o.total}
-        </p>
+        <PaidBadge o={o} />
+        <CourierBadge o={o} />
+        {o.urgent && <span className="rounded-full bg-bad px-2 py-0.5 text-[11px] font-bold whitespace-nowrap text-white">דחוף</span>}
       </div>
+      <span className="hidden xl:block">{price}</span>
     </Link>
   );
 }

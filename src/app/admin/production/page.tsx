@@ -1,6 +1,6 @@
 import { INK_COLORS } from '@/designer/types';
 import { getStore } from '@/server/store';
-import { OrderAge, Preview } from '../components';
+import { CourierBadge, OrderAge, PaidBadge, Preview } from '../components';
 import { ExportMenu } from '../ExportMenu';
 import { ProductionControls, WorkerName } from './ProductionControls';
 
@@ -56,7 +56,11 @@ export default async function ProductionQueue({ searchParams }: { searchParams: 
                       <p className="text-xl font-extrabold" dir="ltr">
                         {o.id}
                       </p>
-                      {o.urgent && <span className="rounded-full bg-bad px-2 py-0.5 text-xs font-bold text-white">דחוף</span>}
+                      <span className="flex flex-wrap items-center justify-end gap-1.5">
+                        <PaidBadge o={o} />
+                        <CourierBadge o={o} />
+                        {o.urgent && <span className="rounded-full bg-bad px-2 py-0.5 text-xs font-bold text-white">דחוף</span>}
+                      </span>
                     </div>
                     {o.items.map((it, i) => (
                       <div key={it.id} className="mt-3 flex flex-col gap-3 sm:flex-row sm:gap-4">
