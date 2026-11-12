@@ -26,6 +26,8 @@ export interface AdminCoupon extends Coupon {
 export interface ProductOverride {
   price?: number | null;
   hidden?: boolean;
+  /** A replacement product photo uploaded from the admin (/api/product-image/…). */
+  image?: string;
 }
 
 export interface SiteSettings {

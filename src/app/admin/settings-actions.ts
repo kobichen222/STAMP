@@ -47,7 +47,7 @@ const couponsSchema = z
   )
   .max(200);
 
-const productsSchema = z.record(z.string(), z.object({ price: money.nullable().optional(), hidden: z.boolean().optional() }));
+const productsSchema = z.record(z.string(), z.object({ price: money.nullable().optional(), hidden: z.boolean().optional(), image: z.string().regex(/^\/api\/product-image\/p\d+-[a-z0-9]+\.(webp|png|jpg)$/).optional() }));
 
 const siteSchema = z.object({
   phone: z.string().trim().min(6).max(30),

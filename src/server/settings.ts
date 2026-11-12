@@ -59,6 +59,10 @@ export async function saveSettings<K extends SettingsKey>(key: K, value: AdminSe
 }
 
 const BASE_PRICE = new Map(site.products.map((p) => [p.id, p.price]));
+const BASE_IMAGE = new Map(site.products.map((p) => [p.id, p.image]));
+
+/** The catalogue photo before any admin replacement. */
+export const baseImage = (id: number) => BASE_IMAGE.get(id)?.src ?? null;
 
 /** The catalogue price before any admin override. */
 export const basePrice = (id: number) => BASE_PRICE.get(id) ?? null;
@@ -74,6 +78,8 @@ export async function ensureSettings(fresh = false): Promise<AdminSettings> {
     const base = BASE_PRICE.get(p.id) ?? null;
     p.price = o && o.price !== undefined ? o.price : base;
     p.hidden = !!o?.hidden;
+    const img = BASE_IMAGE.get(p.id) ?? null;
+    p.image = o?.image ? { src: o.image, alt: img?.alt || p.title } : img;
   }
   return s;
 }
