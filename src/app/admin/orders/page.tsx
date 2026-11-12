@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { getStore } from '@/server/store';
 import type { Order, OrderStatus } from '@/server/orders/types';
 import { Icon } from '@/components/ui/Icon';
+import { nis } from '@/lib/numbers';
+import { PageHead, SectionTitle, Stats, Tabs } from '../blocks';
 import { OrderRow } from '../components';
 
 export const metadata = { title: 'הזמנות' };
@@ -46,6 +48,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const orders = wanted ? all.filter((o) => wanted.includes(o.status)) : real;
   const count = (v: (typeof VIEWS)[number]) => (v.statuses ? all.filter((o) => v.statuses!.includes(o.status)).length : real.length);
   const urgent = orders.filter((o) => o.urgent).length;
+  const todays = real.filter((o) => dayKey(o.createdAt) === dayKey(new Date().toISOString()));
 
   const groups = new Map<string, Order[]>();
   for (const o of orders) {
@@ -55,12 +58,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const href = (key: string) => `/admin/orders/?${new URLSearchParams({ ...(q ? { q } : {}), ...(key !== 'all' ? { view: key } : {}) })}`;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-3 sm:space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold sm:text-2xl">
-          הזמנות <span className="text-base font-medium text-muted">({orders.length})</span>
-        </h1>
-        <div className="flex gap-2">
+    <div className="mx-auto max-w-6xl space-y-4">
+      <PageHead title="הזמנות" sub={`${orders.length} בתצוגה · ${nis(orders.filter((o) => o.status !== 'CANCELLED').reduce((s, o) => s + o.total, 0))}`}>
           <Link href="/designer/?new=1" target="_blank" className="btn-primary btn-sm max-sm:!px-3" aria-label="הזמנה טלפונית">
             <Icon name="plus" size={16} /> <span className="max-sm:hidden">הזמנה טלפונית</span>
           </Link>
@@ -70,8 +69,18 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           <a href="/api/admin/orders.csv" className="btn-outline btn-sm max-sm:!px-3" aria-label="ייצוא CSV">
             <Icon name="download" size={16} /> <span className="max-sm:hidden">ייצוא CSV</span>
           </a>
-        </div>
-      </div>
+      </PageHead>
+
+      {!q && (
+        <Stats
+          items={[
+            { label: 'נכנסו היום', value: todays.length, sub: nis(todays.reduce((s, o) => s + o.total, 0)) },
+            { label: 'לטיפול', value: count(VIEWS[1]), sub: 'בדיקה, אישור, מחכות לייצור', href: href('todo'), on: view.key === 'todo', tone: count(VIEWS[1]) ? 'blue' : undefined },
+            { label: 'בייצור', value: count(VIEWS[2]), sub: 'בעבודה עכשיו', href: href('production'), on: view.key === 'production' },
+            { label: 'למשלוח / לאיסוף', value: count(VIEWS[3]), sub: 'מוכנות לצאת', href: href('ship'), on: view.key === 'ship', tone: count(VIEWS[3]) ? 'ok' : undefined },
+          ]}
+        />
+      )}
 
       <form className="flex gap-2">
         {!legacy && view.key !== 'all' && <input type="hidden" name="view" value={view.key} />}
@@ -81,23 +90,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         </button>
       </form>
 
-      <nav className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0" aria-label="סינון לפי סטטוס">
-        {VIEWS.map((v) => {
-          const n = count(v);
-          const on = !legacy && v.key === view.key;
-          return (
-            <Link
-              key={v.key}
-              href={href(v.key)}
-              aria-current={on ? 'page' : undefined}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold transition ${on ? 'border-ink bg-ink text-white' : 'border-line bg-white hover:border-ink/40'} ${!on && n === 0 ? 'opacity-50' : ''}`}
-            >
-              <span className={!on ? v.tone : ''}>{v.label}</span>
-              <span className={`rounded-full px-1.5 text-xs tabular-nums ${on ? 'bg-white/20' : 'bg-surface text-muted'}`}>{n}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      <Tabs label="סינון לפי סטטוס" items={VIEWS.map((v) => ({ href: href(v.key), label: v.label, count: count(v), on: !legacy && v.key === view.key, tone: v.tone }))} />
       {legacy && (
         <p className="text-sm text-muted">
           מסונן לפי סטטוס ·{' '}
@@ -110,12 +103,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
       {[...groups].map(([day, list]) => (
         <section key={day}>
-          <h2 className="mb-1.5 flex items-center justify-between px-1 text-xs font-bold text-muted">
-            <span>{dayLabel(day)}</span>
-            <span className="tabular-nums">
-              {list.length} · ₪{Math.round(list.filter((o) => o.status !== 'CANCELLED').reduce((s, o) => s + o.total, 0)).toLocaleString('he-IL')}
-            </span>
-          </h2>
+          <SectionTitle count={list.length} side={nis(list.filter((o) => o.status !== 'CANCELLED').reduce((t, o) => t + o.total, 0))}>
+            {dayLabel(day)}
+          </SectionTitle>
           <div className="card overflow-hidden">
             {list.map((o) => (
               <OrderRow key={o.id} o={o} />

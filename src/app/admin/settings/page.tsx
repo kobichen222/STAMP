@@ -1,6 +1,7 @@
 import { databaseUrl } from '@/server/store/neon';
 import { getSettings } from '@/server/settings';
 import { requireStaff } from '@/server/staff';
+import { PageHead } from '../blocks';
 import { SiteEditor } from './SiteEditor';
 
 export const metadata = { title: 'הגדרות אתר' };
@@ -17,10 +18,7 @@ export default async function SettingsPage() {
   ];
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">הגדרות אתר</h1>
-        <p className="mt-1 text-sm text-muted">פרטי הקשר מתעדכנים בכל האתר – בכותרת, בתחתית, בכפתורי וואטסאפ ובמיילים.</p>
-      </div>
+      <PageHead title="הגדרות אתר" sub="פרטי הקשר מתעדכנים בכל האתר – בכותרת, בתחתית, בכפתורי וואטסאפ ובמיילים." />
       <SiteEditor initial={s.site} />
       <section className="card p-5">
         <h2 className="text-lg font-bold">חיבורים</h2>

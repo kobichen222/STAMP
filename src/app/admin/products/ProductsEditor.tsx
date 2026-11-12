@@ -109,7 +109,7 @@ export function ProductsEditor({ rows, initial }: { rows: AdminProductRow[]; ini
 
   return (
     <>
-      <div className="mt-5 flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <input value={q} type="search" onChange={(e) => setQ(e.target.value)} placeholder="חיפוש מוצר…" className="input w-full sm:max-w-xs" />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={onlyHidden} onChange={(e) => setOnlyHidden(e.target.checked)} className="h-4 w-4 accent-blue" /> רק מוסתרים

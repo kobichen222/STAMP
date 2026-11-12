@@ -1,4 +1,5 @@
 import { requireStaff } from '@/server/staff';
+import { PageHead } from '../blocks';
 import { AutoPrint } from './AutoPrint';
 
 export const metadata = { title: 'תחנת הדפסה' };
@@ -8,10 +9,7 @@ export default async function PrintStationPage() {
   await requireStaff(['admin', 'production']);
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <div>
-        <h1 className="text-xl font-bold sm:text-2xl">תחנת הדפסה אוטומטית</h1>
-        <p className="mt-1 text-sm text-muted">כל הזמנה ששולמה ועברה בדיקה נשלחת לבד למכונת הלייזר, בגודל המדויק של החותמת, ועוברת ל״בייצור״.</p>
-      </div>
+      <PageHead title="תחנת הדפסה אוטומטית" sub="כל הזמנה ששולמה ועברה בדיקה נשלחת לבד למכונת הלייזר, בגודל המדויק של החותמת, ועוברת ל״בייצור״." />
       <AutoPrint />
       <section className="card border-blue/30 p-4 text-sm leading-6 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

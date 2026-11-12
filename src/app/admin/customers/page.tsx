@@ -3,6 +3,8 @@ import { getStore } from '@/server/store';
 import { requireStaff } from '@/server/staff';
 import { statusLabel, STATUS_LABEL, type Order } from '@/server/orders/types';
 
+import { PageHead, Stats } from '../blocks';
+
 export const metadata = { title: 'לקוחות' };
 export const dynamic = 'force-dynamic';
 
@@ -44,20 +46,24 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const open = c ? map.get(c) : undefined;
   const fmt = new Intl.DateTimeFormat('he-IL', { dateStyle: 'short', timeZone: 'Asia/Jerusalem' });
   const repeat = [...map.values()].filter((r) => r.orders.length > 1).length;
+  const revenue = [...map.values()].reduce((t, r) => t + r.total, 0);
+  const best = [...map.values()].sort((a, b) => b.total - a.total)[0];
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">לקוחות</h1>
-          <p className="mt-1 text-sm text-muted">
-            {map.size} לקוחות · {repeat} חוזרים · לפי מספר טלפון
-          </p>
-        </div>
+      <PageHead title="לקוחות" sub="מקובצים לפי מספר טלפון, האחרונים קודם">
         <a href="/api/admin/customers.csv" className="btn-outline btn-sm">
           ייצוא לאקסל (CSV)
         </a>
-      </div>
+      </PageHead>
+      <Stats
+        items={[
+          { label: 'לקוחות', value: map.size.toLocaleString('he-IL'), sub: `${list.length} בתצוגה` },
+          { label: 'לקוחות חוזרים', value: repeat, sub: map.size ? `${Math.round((repeat / map.size) * 100)}% מהלקוחות` : undefined, tone: 'blue' },
+          { label: 'ממוצע ללקוח', value: `₪${Math.round(map.size ? revenue / map.size : 0).toLocaleString('he-IL')}`, sub: 'סך כל ההזמנות שלו' },
+          { label: 'הלקוח המוביל', value: best ? `₪${Math.round(best.total).toLocaleString('he-IL')}` : '—', sub: best ? best.company || best.name : undefined, href: best ? `/admin/customers/?c=${encodeURIComponent(best.key)}` : undefined },
+        ]}
+      />
       <form className="flex gap-2">
         <input name="q" type="search" defaultValue={q} placeholder="חיפוש: שם, טלפון, מייל, חברה…" className="input min-w-0 sm:max-w-md" />
         <button className="btn-dark">חיפוש</button>

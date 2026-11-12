@@ -1,6 +1,7 @@
 import { getSettings } from '@/server/settings';
 import { requireStaff } from '@/server/staff';
 import { listRewardCoupons } from '@/server/store/neon';
+import { PageHead, Stats } from '../blocks';
 import { CouponsEditor } from './CouponsEditor';
 
 export const metadata = { title: 'קופונים' };
@@ -9,12 +10,20 @@ export const dynamic = 'force-dynamic';
 export default async function CouponsPage() {
   await requireStaff(['admin']);
   const [s, rewards] = await Promise.all([getSettings(true), listRewardCoupons(200).catch(() => [])]);
+  const used = rewards.filter((c) => c.usedAt).length;
   const fmt = new Intl.DateTimeFormat('he-IL', { dateStyle: 'short', timeZone: 'Asia/Jerusalem' });
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="mx-auto max-w-6xl space-y-5">
+      <PageHead title="קופונים" sub="קודי הנחה כלליים שהלקוח מקליד בקופה, וקודים אישיים להזמנה הבאה" />
+      <Stats
+        items={[
+          { label: 'קופונים פעילים', value: s.coupons.filter((c) => c.active).length, sub: `${s.coupons.length} בסך הכול`, tone: 'blue' },
+          { label: 'קודים אישיים', value: rewards.length, sub: 'נוצרו אחרי תשלום' },
+          { label: 'מומשו', value: used, sub: rewards.length ? `${Math.round((used / rewards.length) * 100)}% מהקודים` : undefined, tone: used ? 'ok' : undefined },
+          { label: 'ממתינים למימוש', value: rewards.length - used, sub: 'לשימוש חד-פעמי' },
+        ]}
+      />
       <div>
-        <h1 className="text-xl font-bold sm:text-2xl">קופונים</h1>
-        <p className="mt-1 text-sm text-muted">קודי הנחה כלליים שהלקוח מקליד בקופה.</p>
         <CouponsEditor initial={s.coupons} />
       </div>
       <section>

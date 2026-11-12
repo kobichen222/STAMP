@@ -3,6 +3,8 @@ import { Icon } from '@/components/ui/Icon';
 import { addDays, buildWeek, COURIER_WINDOW, dayKey, inTheWorks, weekStart, type CalEvent, type EventKind } from '@/lib/ship-calendar';
 import { getStore } from '@/server/store';
 
+import { PageHead } from '../blocks';
+
 export const metadata = { title: 'יומן משלוחים ואיסופים' };
 export const dynamic = 'force-dynamic';
 
@@ -114,13 +116,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="mx-auto max-w-7xl space-y-3 sm:space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">יומן משלוחים ואיסופים</h1>
-          <p className="text-sm text-muted">
-            {dayNum(start)} – {dayNum(addDays(start, 6))} · מתעדכן לבד לפי סטטוס ההזמנות
-          </p>
-        </div>
+      <PageHead title="יומן משלוחים ואיסופים" sub={`${dayNum(start)} – ${dayNum(addDays(start, 6))} · מתעדכן לבד לפי סטטוס ההזמנות`}>
         <nav className="flex items-center gap-1.5" aria-label="מעבר בין שבועות">
           <Link href={href(addDays(start, -7))} className="btn-outline btn-sm">
             → הקודם
@@ -132,7 +128,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
             הבא ←
           </Link>
         </nav>
-      </div>
+      </PageHead>
 
       {thisWeek && (
         <div className="grid gap-3 sm:grid-cols-2">

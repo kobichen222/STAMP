@@ -1,5 +1,6 @@
 import { INK_COLORS } from '@/designer/types';
 import { getStore } from '@/server/store';
+import { PageHead, SectionTitle, Stats } from '../blocks';
 import { CourierBadge, OrderAge, PaidBadge, Preview } from '../components';
 import { ExportMenu } from '../ExportMenu';
 import { ProductionControls, WorkerName } from './ProductionControls';
@@ -20,10 +21,9 @@ export default async function ProductionQueue({ searchParams }: { searchParams: 
   ];
   return (
     <div className="space-y-4 sm:space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-xl font-bold sm:text-2xl">תור ייצור</h1>
+      <PageHead title="תור ייצור" sub={`${jobs.length} עבודות בתור · הוותיקות והדחופות קודם`}>
         <WorkerName />
-        <form className="grid w-full grid-cols-[1fr_1fr_auto] gap-2 sm:ms-auto sm:flex sm:w-auto">
+        <form className="grid w-full grid-cols-[1fr_1fr_auto] gap-2 sm:flex sm:w-auto">
           <select name="ink" defaultValue={ink ?? ''} className="input !py-1.5 text-sm sm:!w-auto">
             <option value="">כל הדיו</option>
             {Object.entries(INK_COLORS).map(([k, v]) => (
@@ -40,15 +40,21 @@ export default async function ProductionQueue({ searchParams }: { searchParams: 
           </select>
           <button className="btn-dark btn-sm">סינון</button>
         </form>
-      </div>
+      </PageHead>
+      <Stats
+        items={[
+          { label: 'מוכנות לייצור', value: jobs.filter((o) => o.status === 'READY_FOR_PRODUCTION').length, sub: 'מחכות להתחלה', tone: 'blue' },
+          { label: 'בעבודה', value: jobs.filter((o) => o.status === 'IN_PRODUCTION').length, sub: 'על המכונה עכשיו' },
+          { label: 'בעייתיות', value: jobs.filter((o) => o.status === 'PRODUCTION_FILE_ERROR').length, sub: 'קובץ ייצור לבדיקה', tone: jobs.some((o) => o.status === 'PRODUCTION_FILE_ERROR') ? 'bad' : undefined },
+          { label: 'חותמות לייצור', value: jobs.reduce((n, o) => n + o.items.reduce((m, i) => m + i.quantity, 0), 0), sub: `${jobs.filter((o) => o.urgent).length} הזמנות דחופות` },
+        ]}
+      />
       <div className="grid gap-5 xl:grid-cols-3">
         {columns.map((c) => {
           const list = jobs.filter((o) => o.status === c.key);
           return (
             <section key={c.key}>
-              <h2 className="mb-3 font-semibold">
-                {c.title} <span className="text-muted">({list.length})</span>
-              </h2>
+              <SectionTitle count={list.length}>{c.title}</SectionTitle>
               <div className="space-y-4">
                 {list.map((o) => (
                   <article key={o.id} className={`card p-4 sm:p-5 ${o.urgent ? 'ring-2 ring-bad' : ''}`}>

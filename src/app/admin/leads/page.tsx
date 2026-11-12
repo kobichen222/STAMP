@@ -1,6 +1,7 @@
 import { requireStaff } from '@/server/staff';
 import { Icon } from '@/components/ui/Icon';
 import { databaseUrl, listContacts, listSubscribers } from '@/server/store/neon';
+import { PageHead, Stats } from '../blocks';
 import { LeadToggle } from './LeadToggle';
 import { ABANDON_MINUTES, listCarts } from '@/server/abandoned';
 
@@ -17,11 +18,16 @@ export default async function LeadsPage() {
   const recovered = carts.filter((c) => c.sentAt && c.convertedOrder).length;
   const fmt = new Intl.DateTimeFormat('he-IL', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Jerusalem' });
   return (
-    <div className="mx-auto max-w-6xl space-y-4 sm:space-y-5">
-      <h1 className="text-xl font-bold sm:text-2xl">פניות מהאתר</h1>
-      <p className="text-sm text-muted">
-        {leads.filter((l) => !l.handled).length} פתוחות · {leads.length} בסך הכול
-      </p>
+    <div className="mx-auto max-w-6xl space-y-5">
+      <PageHead title="פניות מהאתר" sub="טופס יצירת קשר, עגלות נטושות ונרשמים לדיוור" />
+      <Stats
+        items={[
+          { label: 'פניות פתוחות', value: leads.filter((l) => !l.handled).length, sub: `${leads.length} בסך הכול`, tone: leads.some((l) => !l.handled) ? 'blue' : undefined },
+          { label: 'עגלות נטושות', value: carts.length, sub: `${sentCount} תזכורות נשלחו` },
+          { label: 'חזרו והזמינו', value: recovered, sub: sentCount ? `${Math.round((recovered / sentCount) * 100)}% מהתזכורות` : 'אחרי תזכורת', tone: recovered ? 'ok' : undefined },
+          { label: 'נרשמים לדיוור', value: subs.length, sub: 'מטופס ההרשמה באתר' },
+        ]}
+      />
       {!databaseUrl() && <p className="card p-4 text-sm text-muted">מסד הנתונים לא מוגדר (DATABASE_URL) – פניות נשלחות באימייל בלבד.</p>}
       <section className="card divide-y divide-line overflow-hidden">
         {leads.map((l) => (
