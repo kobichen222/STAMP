@@ -43,7 +43,7 @@ export default async function HomePage() {
     .slice(0, 6);
   return (
     <>
-      <StampHero whatsapp={SITE.whatsapp} products={leadProducts} shipping={leadShipping} />
+      <StampHero whatsapp={SITE.whatsapp} address={SITE.address} products={leadProducts} shipping={leadShipping} />
       <section className="py-12 sm:py-16">
         <div className="container-x">
           <div className="flex flex-wrap items-end justify-between gap-4">

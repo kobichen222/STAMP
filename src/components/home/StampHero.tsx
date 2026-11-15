@@ -36,7 +36,7 @@ function StaticStamp() {
   );
 }
 
-export function StampHero({ whatsapp, products, shipping }: { whatsapp: string; products: LeadProduct[]; shipping: LeadShipping[] }) {
+export function StampHero({ whatsapp, address, products, shipping }: { whatsapp: string; address: string; products: LeadProduct[]; shipping: LeadShipping[] }) {
   const sectionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
@@ -188,18 +188,37 @@ export function StampHero({ whatsapp, products, shipping }: { whatsapp: string; 
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
         <div className={`container-x relative grid w-full gap-4 pt-[6rem] pb-24 sm:pt-[4.5rem] sm:pb-16 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:gap-6 lg:pt-28 lg:pb-16 ${animated ? 'content-start' : ''}`}>
           <div ref={introRef} className="relative z-10 max-w-xl will-change-transform max-lg:mx-auto max-lg:text-center lg:max-w-2xl">
-            <p className="mb-4 inline-flex animate-fade-up flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full border border-blue/15 bg-white/85 px-3.5 py-1.5 text-[13px] font-semibold text-ink-2 shadow-soft backdrop-blur sm:mb-5 sm:px-4 sm:text-[15px]">
-              <span className="flex text-[#f5a623]" aria-hidden>
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <svg key={i} viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 sm:h-4 sm:w-4">
-                    <path d="M10 1.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.6 7.7l5.8-.8z" />
+            <div className="mb-5 flex animate-fade-up items-stretch gap-3 max-lg:justify-center sm:mb-6 sm:gap-5">
+              <div className="flex items-center gap-3 text-start">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-blue to-violet max-[480px]:hidden text-white shadow-[0_10px_22px_-10px_rgba(36,87,255,.9)] sm:h-12 sm:w-12" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                    <circle cx="12" cy="9" r="6" />
+                    <path d="M8.5 13.8 7 22l5-3 5 3-1.5-8.2M9.8 9l1.5 1.5 3-3" />
                   </svg>
-                ))}
-              </span>
-              <span>קיימים משנת 2001</span>
-              <span className="h-1 w-1 rounded-full bg-blue" aria-hidden />
-              <span>עשרות אלפי לקוחות מרוצים</span>
-            </p>
+                </span>
+                <span>
+                  <span className="block whitespace-nowrap text-[15px] leading-tight font-extrabold sm:text-[17px]">קיימים משנת 2001</span>
+                  <span className="mt-1 flex items-center gap-1 whitespace-nowrap text-[13px] leading-tight text-muted sm:text-sm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-blue" aria-hidden>
+                      <path d="M12 21s7-6.2 7-11.5a7 7 0 1 0-14 0C5 14.800 12 21 12 21z" />
+                      <circle cx="12" cy="9.5" r="2.5" />
+                    </svg>
+                    {address}
+                  </span>
+                </span>
+              </div>
+              <span className="w-px shrink-0 bg-line" aria-hidden />
+              <div className="flex flex-col justify-center text-start">
+                <span className="flex text-[#f5a623]" role="img" aria-label="חמישה כוכבים">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <svg key={i} viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 sm:h-[18px] sm:w-[18px]" aria-hidden>
+                      <path d="M10 1.6l2.6 5.3 5.8.8-4.2 4.1 1 5.800L10 14.9l-5.2 2.7 1-5.800L1.600 7.700l5.800-.8z" />
+                    </svg>
+                  ))}
+                </span>
+                <span className="mt-1 block whitespace-nowrap text-[13px] leading-tight font-semibold text-ink-2 max-[350px]:text-xs sm:text-sm">עשרות אלפי לקוחות מרוצים</span>
+              </div>
+            </div>
             <h1 className="animate-fade-up text-[1.85rem] leading-[1.15] font-extrabold max-[360px]:text-[1.65rem] sm:text-5xl lg:text-[2.6rem] lg:leading-[1.15] xl:text-[2.9rem]">
               מעצבים חותמת אונליין,
               <br />
