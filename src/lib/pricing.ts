@@ -99,6 +99,8 @@ export const DEFAULT_RULES: PricingRules = {
     { id: 'express', label: 'שליח עד 24 שעות', price: 60, eta: 'עד 24 שעות · בהזמנה עד 13:00', address: 'full', carrierAccount: '28974' },
     // Rush delivery – arranged by the studio (no ZigZag card), price and terms editable in admin → pricing.
     { id: 'rush', label: 'שליח עד 3 שעות', price: 99, eta: 'עד 3 שעות מאישור ההזמנה · א׳–ה׳ בשעות הפעילות', address: 'full' },
+    // Same-day courier inside Gush Dan – arranged by the studio (no ZigZag card), editable in admin → pricing.
+    { id: 'gushdan', label: 'שליח עד 6 שעות – גוש דן, חולון ובת ים', price: 68, eta: 'עד 6 שעות מאישור ההזמנה · גוש דן, חולון ובת ים בלבד', address: 'full' },
     { id: 'locker', label: 'איסוף מנקודת מסירה / לוקר', price: 25, eta: 'עד 3 ימי עסקים', address: 'city', carrierAccount: '28975' },
   ],
   coupons: [],

@@ -16,6 +16,8 @@ import { site } from '@/lib/content';
 import { designerProducts } from '@/lib/designer-products';
 import { formatSize } from '@/designer/models';
 import { DEFAULT_RULES } from '@/lib/pricing';
+import { GoogleReviewsSection } from '@/components/home/GoogleReviewsSection';
+import { getGoogleReviews } from '@/server/google-reviews';
 import { ensureSettings } from '@/server/settings';
 
 // Same title and description as the WordPress home page (Yoast), so rankings carry over.
@@ -30,6 +32,7 @@ const HOME_CATEGORIES = ['business', 'personal', 'doctors', 'lawyers', 'company'
 
 export default async function HomePage() {
   await ensureSettings();
+  const reviews = await getGoogleReviews();
   // The quick order form in the hero: what can be ordered and how it can be received.
   const POPULAR = ['חותמת-פרינט-30', 'חותמת-פרינט-40', 'חותמת-פרינט-20', 'חותמת-פרינט-50', 'print-r-540'];
   const rank = (slug: string) => (POPULAR.includes(slug) ? POPULAR.indexOf(slug) : POPULAR.length);
@@ -65,6 +68,7 @@ export default async function HomePage() {
       <TemplateStrip />
       <HowItWorks />
       <QuickDesign />
+      {reviews && <GoogleReviewsSection data={reviews} />}
       <WhyUs />
       <AboutSection />
 
