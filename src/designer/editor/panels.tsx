@@ -199,11 +199,26 @@ function LinesEditor() {
   );
 }
 
+/**
+ * A text box shrinks its text to fit its width, so "size" alone may change nothing on screen.
+ * Resizing therefore starts from the size that is actually drawn and scales the box with it
+ * (up to the stamp's printable width) – the same way the handles on the canvas behave.
+ */
+function sizePatch(text: TextElement, next: number, shown: number, maxW: number): Partial<TextElement> {
+  if (!text.maxWidth || text.curve) return { size: next };
+  const w = Math.min(maxW, Math.max(1, text.maxWidth * (next / Math.max(0.1, shown))));
+  return { size: next, maxWidth: Math.round(w * 100) / 100 };
+}
+
 export function TextPanel() {
   const { design, selected, actions, advanced, render, profile } = useEditor();
   const text = selected.length === 1 && selected[0].type === 'text' ? (selected[0] as TextElement) : null;
   const up = (p: Partial<TextElement>, history = true) => text && actions.patch(text.id, p, history);
   const eff = text ? render?.info[text.id]?.effectiveSize : undefined;
+  // What is drawn – the number the user sees and drags.
+  const shown = text ? Math.min(text.size, eff ?? text.size) : 0;
+  const maxW = design.width - 2 * profile.safeMargin;
+  const capped = !!text && eff != null && eff < text.size - 0.05 && (!text.maxWidth || text.maxWidth >= maxW - 0.1);
 
   return (
     <>
@@ -229,8 +244,8 @@ export function TextPanel() {
               ))}
             </select>
             <div className="mt-3">
-              <Slider label="גודל" unit="pt" min={4} max={36} step={0.5} value={text.size} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up({ size: v })} />
-              {eff != null && eff < text.size - 0.05 && <p className="mt-1 text-xs text-muted">הוקטן אוטומטית ל־{eff.toFixed(1)}pt כדי להיכנס ברוחב</p>}
+              <Slider label="גודל" unit="pt" min={3} max={36} step={0.5} value={Math.round(shown * 10) / 10} onStart={actions.begin} onEnd={actions.commit} onChange={(v) => up(sizePatch(text, v, shown, maxW))} />
+              {capped && <p className="mt-1 text-xs text-muted">זה הגודל הגדול ביותר שנכנס ברוחב החותמת ({eff!.toFixed(1)}pt). כדי להגדיל – קצרו את הטקסט או פצלו אותו לשתי שורות.</p>}
               {eff != null && eff < profile.minFontPt && <p className="mt-1 text-xs text-bad">מתחת למינימום לייצור ({profile.minFontPt}pt)</p>}
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -968,7 +983,9 @@ export function TextDock({ onClose }: { onClose: () => void }) {
   const up = (p: Partial<TextElement>, history = true) => actions.patch(text.id, p, history);
   const eff = render?.info[text.id]?.effectiveSize;
   const small = eff != null && eff < profile.minFontPt;
-  const step = (d: number) => up({ size: Math.max(4, Math.min(36, Math.round((text.size + d) * 2) / 2)) });
+  const shown = Math.min(text.size, eff ?? text.size);
+  const maxW = design.width - 2 * profile.safeMargin;
+  const step = (d: number) => up(sizePatch(text, Math.max(3, Math.min(36, Math.round((shown + d) * 2) / 2)), shown, maxW));
 
   const addLine = () => {
     const el = newText(design, NEW_TEXT_MORE, { font: text.font, size: Math.max(profile.minFontPt + 1, Math.round(text.size * 0.9)), align: text.align, x: text.x, y: text.y + 1, maxWidth: text.maxWidth });
