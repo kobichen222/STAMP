@@ -17,7 +17,7 @@ import { designerProducts } from '@/lib/designer-products';
 import { formatSize } from '@/designer/models';
 import { DEFAULT_RULES } from '@/lib/pricing';
 import { GoogleReviewsSection } from '@/components/home/GoogleReviewsSection';
-import { featuredReviews, GOOGLE_REVIEWS, GOOGLE_REVIEWS_URL } from '@/lib/google-reviews';
+import { featuredReviews, GOOGLE_REVIEWS, GOOGLE_REVIEWS_URL, ratingSpread } from '@/lib/google-reviews';
 import { ensureSettings } from '@/server/settings';
 
 // Same title and description as the WordPress home page (Yoast), so rankings carry over.
@@ -67,7 +67,7 @@ export default async function HomePage() {
       <TemplateStrip />
       <HowItWorks />
       <QuickDesign />
-      <GoogleReviewsSection rating={GOOGLE_REVIEWS.rating} count={GOOGLE_REVIEWS.count} reviews={featuredReviews()} url={GOOGLE_REVIEWS_URL} />
+      <GoogleReviewsSection rating={GOOGLE_REVIEWS.rating} count={GOOGLE_REVIEWS.count} reviews={featuredReviews()} spread={ratingSpread()} url={GOOGLE_REVIEWS_URL} />
       <WhyUs />
       <AboutSection />
 

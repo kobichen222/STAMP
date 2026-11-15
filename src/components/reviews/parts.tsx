@@ -26,7 +26,7 @@ export function Stars({ value, className = 'h-4 w-4' }: { value: number; classNa
           <span key={i} className={`relative ${className}`}>
             <Star className="absolute inset-0 h-full w-full text-line" />
             <span className="absolute inset-y-0 start-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
-              <Star className={`${className} text-[#fbbc05]`} />
+              <Star className={`${className} text-[#fbbc04]`} />
             </span>
           </span>
         );
