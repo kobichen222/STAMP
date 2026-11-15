@@ -235,12 +235,12 @@ export function StampHero({ whatsapp, address, products, shipping }: { whatsapp:
                 <span className="h-2 w-2 rounded-full bg-blue sm:h-2.5 sm:w-2.5" aria-hidden /> משלוחים לכל הארץ
               </li>
             </ul>
-            <div className="mt-8 flex animate-fade-up flex-wrap items-center max-lg:justify-center gap-x-4 gap-y-3 sm:mt-9">
+            <div className="mt-8 grid max-w-[34rem] animate-fade-up gap-3 max-lg:mx-auto sm:mt-9 sm:grid-cols-2">
               <Link
                 href="/designer/"
-                className="btn-primary cta-glow group !h-14 !rounded-xl !px-7 !text-lg font-bold max-sm:w-full max-sm:justify-center shadow-[0_14px_30px_-12px_rgba(36,87,255,.8)] sm:!h-[4.25rem] sm:!rounded-2xl sm:!px-9 sm:!text-[1.35rem]"
+                className="btn-primary cta-glow group !h-14 w-full justify-center !rounded-xl !px-7 !text-lg font-bold shadow-[0_14px_30px_-12px_rgba(36,87,255,.8)] sm:col-span-2 sm:!h-[4.25rem] sm:!rounded-2xl sm:!text-[1.35rem]"
               >
-                עצבו חותמת עכשיו
+                עצבו והזמינו חותמת אונליין
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:-translate-x-1" aria-hidden>
                   <path d="M19 12H5M11 6l-6 6 6 6" />
                 </svg>
@@ -249,29 +249,27 @@ export function StampHero({ whatsapp, address, products, shipping }: { whatsapp:
                 href={whatsapp}
                 target="_blank"
                 rel="noopener"
-                className="group inline-flex h-14 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-[#2bd86c] to-[#16b455] px-7 text-lg font-bold text-white shadow-[0_14px_30px_-12px_rgba(22,180,85,.9)] transition hover:-translate-y-0.5 hover:from-[#25d366] hover:to-[#12a54c] active:scale-[.98] max-sm:w-full sm:h-[4.25rem] sm:gap-3 sm:rounded-2xl sm:px-9 sm:text-[1.35rem]"
+                className="group inline-flex h-14 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-[#2bd86c] to-[#16b455] px-4 text-lg font-bold text-white shadow-[0_14px_30px_-12px_rgba(22,180,85,.9)] transition hover:-translate-y-0.5 hover:from-[#25d366] hover:to-[#12a54c] active:scale-[.98] sm:h-[3.75rem] sm:rounded-2xl"
               >
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0 transition group-hover:scale-110 sm:h-8 sm:w-8" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0 transition group-hover:scale-110" aria-hidden>
                   <path d={WA_PATH} />
                 </svg>
                 הזמנה בוואטסאפ
               </a>
-              <div className="flex basis-full flex-wrap items-center gap-x-5 gap-y-3 max-lg:justify-center">
                 <LeadButton
                   source="hero"
                   products={products}
                   shipping={shipping}
-                  className="group inline-flex h-12 items-center gap-2 rounded-xl border border-line bg-white px-5 text-base font-bold text-ink shadow-soft transition hover:-translate-y-0.5 hover:border-blue hover:text-blue active:scale-[.98] max-sm:w-full max-sm:justify-center sm:h-13 sm:rounded-2xl sm:px-6 sm:text-lg"
+                  className="group inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 text-lg font-bold text-ink shadow-soft transition hover:-translate-y-0.5 hover:border-blue hover:text-blue active:scale-[.98] sm:h-[3.75rem] sm:rounded-2xl"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue" aria-hidden>
                     <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1zM8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M8 12h8M8 16h5" />
                   </svg>
                   הזמנה מהירה בטופס
                 </LeadButton>
-                <Link href="/ai-design/" className="inline-flex items-center gap-1.5 font-semibold text-blue underline-offset-4 hover:underline">
+                <Link href="/ai-design/" className="inline-flex items-center gap-1.5 font-semibold text-blue underline-offset-4 hover:underline max-lg:justify-center sm:col-span-2">
                   או: עיצוב מהיר תוך דקה
                 </Link>
-              </div>
             </div>
             <div ref={storyRef} className="relative mt-10 hidden h-20 lg:block" aria-hidden={!ready}>
               {STORY.filter((s) => s.title).map((s) => (
