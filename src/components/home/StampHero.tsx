@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { motionReduced, useMotionReduced } from '@/lib/motion';
+import { WA_PATH } from '@/components/site/WhatsAppFab';
 import type { StampScene } from './stamp-scene';
 import { PART_LABELS } from './stamp-labels';
 
@@ -34,7 +35,7 @@ function StaticStamp() {
   );
 }
 
-export function StampHero() {
+export function StampHero({ whatsapp }: { whatsapp: string }) {
   const sectionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
@@ -212,7 +213,21 @@ export function StampHero() {
                   <path d="M19 12H5M11 6l-6 6 6 6" />
                 </svg>
               </Link>
-              <Link href="/ai-design/" className="inline-flex items-center gap-1.5 font-semibold text-blue underline-offset-4 hover:underline max-sm:w-full max-sm:justify-center sm:px-3">
+              <a
+                href={whatsapp}
+                target="_blank"
+                rel="noopener"
+                className="group inline-flex h-14 items-center gap-3 rounded-xl border border-[#25d366]/45 bg-white pe-6 ps-2 text-lg font-bold text-ink shadow-[0_10px_26px_-14px_rgba(30,190,91,.9)] transition hover:-translate-y-0.5 hover:border-[#25d366] hover:bg-[#f0fff5] active:scale-[.98] max-sm:w-full max-sm:justify-center sm:h-[4.25rem] sm:rounded-2xl sm:pe-8 sm:ps-2.5 sm:text-[1.35rem]"
+              >
+                <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#5cf57f] to-[#1ebe5b] text-white shadow-[0_6px_14px_-6px_rgba(30,190,91,.9)] sm:h-12 sm:w-12 sm:rounded-xl">
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 transition group-hover:scale-110 sm:h-7 sm:w-7" aria-hidden>
+                    <path d={WA_PATH} />
+                  </svg>
+                  <span className="absolute -end-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-[#25d366]" aria-hidden />
+                </span>
+                הזמנה בוואטסאפ
+              </a>
+              <Link href="/ai-design/" className="inline-flex basis-full items-center gap-1.5 font-semibold text-blue underline-offset-4 hover:underline max-lg:justify-center">
                 או: עיצוב מהיר תוך דקה
               </Link>
             </div>

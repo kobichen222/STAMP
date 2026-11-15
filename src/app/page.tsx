@@ -1,3 +1,4 @@
+import { SITE } from '@/lib/config';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { CategoryCard } from '@/components/catalog/CategoryCard';
@@ -32,7 +33,7 @@ export default async function HomePage() {
     .slice(0, 6);
   return (
     <>
-      <StampHero />
+      <StampHero whatsapp={SITE.whatsapp} />
       <section className="py-12 sm:py-16">
         <div className="container-x">
           <div className="flex flex-wrap items-end justify-between gap-4">
