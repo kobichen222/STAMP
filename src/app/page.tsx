@@ -65,9 +65,9 @@ export default async function HomePage() {
         </div>
       </section>
       <TemplateStrip />
+      <GoogleReviewsSection rating={GOOGLE_REVIEWS.rating} count={GOOGLE_REVIEWS.count} reviews={featuredReviews()} spread={ratingSpread()} url={GOOGLE_REVIEWS_URL} />
       <HowItWorks />
       <QuickDesign />
-      <GoogleReviewsSection rating={GOOGLE_REVIEWS.rating} count={GOOGLE_REVIEWS.count} reviews={featuredReviews()} spread={ratingSpread()} url={GOOGLE_REVIEWS_URL} />
       <WhyUs />
       <AboutSection />
 
