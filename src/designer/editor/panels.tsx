@@ -390,6 +390,9 @@ const QUALITY = {
   low: { label: 'איכות נמוכה', cls: 'bg-bad/10 text-bad' },
 };
 
+/** File names phones and chat apps give to screenshots and forwarded pictures. */
+const SCREENSHOT_NAME = /screen ?shot|צילום[ _-]?מסך|whatsapp image|img-\d+-wa\d+|^screen_|capture/i;
+
 export function LogoPanel({ readyFile = false }: { readyFile?: boolean }) {
   const { design, actions, selected, advanced, toast } = useEditor();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -397,6 +400,8 @@ export function LogoPanel({ readyFile = false }: { readyFile?: boolean }) {
   const [opts, setOpts] = useState<ProcessOptions>(DEFAULT_PROCESS);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
+  // A ready-made stamp sent as a picture is printed exactly as it is – the customer confirms it is clean artwork.
+  const [confirmed, setConfirmed] = useState(false);
   const [drag, setDrag] = useState(false);
   const [useVector, setUseVector] = useState(true);
   const [traced, setTraced] = useState<{ d: string; aspect: number } | null>(null);
@@ -406,6 +411,7 @@ export function LogoPanel({ readyFile = false }: { readyFile?: boolean }) {
   const onFile = async (file?: File | null) => {
     if (!file) return;
     setError('');
+    setConfirmed(false);
     setBusy('טוען קובץ…');
     setTraced(null);
     try {
@@ -479,6 +485,8 @@ export function LogoPanel({ readyFile = false }: { readyFile?: boolean }) {
     setTraced(null);
   };
 
+  const picture = readyFile && !!loaded && !loaded.isVector;
+  const looksLikeScreenshot = picture && SCREENSHOT_NAME.test(loaded!.name);
   const q = loaded ? logoQualityFromPixels(loaded.pxWidth, design.width * 0.35, loaded.isVector || !!traced) : null;
 
   return (
@@ -505,6 +513,16 @@ export function LogoPanel({ readyFile = false }: { readyFile?: boolean }) {
           </button>
           <input ref={inputRef} type="file" accept=".png,.jpg,.jpeg,.svg,.pdf,.webp,.gif,image/*,application/pdf" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
         </div>
+        {readyFile && (
+          <div className="mt-3 rounded-xl border border-warn/40 bg-warn/10 p-3 text-[13px] leading-relaxed">
+            <p className="flex items-center gap-1.5 font-bold">
+              <Icon name="alert" size={16} className="shrink-0 text-warn" />
+              לא מעלים צילום מסך של העורך
+            </p>
+            <p className="mt-1 text-ink-2">עיצבתם את החותמת כאן באתר? אין צורך להעלות אותה – סגרו את החלון ולחצו ״המשך להזמנה״, והעיצוב עובר לייצור בדיוק כפי שהוא.</p>
+            <p className="mt-1 text-ink-2">בקובץ מוכן כל מה שמופיע בתמונה מודפס על החותמת – כולל מסגרות, סימוני מידות ורקע.</p>
+          </div>
+        )}
         {busy && <p className="mt-3 animate-pulse text-center text-sm text-muted">{busy}</p>}
         {error && (
           <p className="mt-3 text-sm text-bad" role="alert">
@@ -600,7 +618,16 @@ export function LogoPanel({ readyFile = false }: { readyFile?: boolean }) {
             </Section>
           )}
           <Section>
-            <button type="button" className="btn-primary w-full" onClick={place}>
+            {picture && (
+              <div className={`mb-3 rounded-xl border p-3 text-[13px] leading-relaxed ${looksLikeScreenshot ? 'border-bad/40 bg-bad/5' : 'border-line bg-surface'}`}>
+                {looksLikeScreenshot && <p className="mb-1.5 font-bold text-bad">הקובץ נראה כמו צילום מסך או תמונה מוואטסאפ.</p>}
+                <label className="flex cursor-pointer items-start gap-2.5">
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-blue" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+                  <span>זה קובץ החותמת עצמו ולא צילום מסך של העורך, ואין בתמונה סימוני מידות, מסגרת של המסך או רקע – הכול בה יודפס על החותמת.</span>
+                </label>
+              </div>
+            )}
+            <button type="button" className="btn-primary w-full disabled:opacity-50" onClick={place} disabled={picture && !confirmed}>
               {current ? 'החלפת הלוגו' : readyFile ? 'הכנס לחותמת' : 'הוסף לחותמת'}
             </button>
           </Section>

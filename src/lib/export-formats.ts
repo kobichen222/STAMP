@@ -6,7 +6,7 @@ export type ExportFormat = 'pdf' | 'svg' | 'eps' | 'ai' | 'dxf' | 'plt' | 'emf' 
 
 export const EXPORT_FORMATS: { id: ExportFormat; label: string; ext: string; mime: string; note: string; vectorOnly?: boolean }[] = [
   { id: 'pdf', label: 'PDF', ext: 'pdf', mime: 'application/pdf', note: 'וקטורי · CorelDRAW / Illustrator / כל תוכנה' },
-  { id: 'ai', label: 'AI – Adobe Illustrator', ext: 'ai', mime: 'application/postscript', note: 'וקטורי · Import ישיר בכל גרסת CorelDRAW', vectorOnly: true },
+  { id: 'ai', label: 'AI – Adobe Illustrator', ext: 'ai', mime: 'application/postscript', note: 'וקטורי · לעריכה ב-CorelDRAW · בלי תמונות שהלקוח העלה', vectorOnly: true },
   { id: 'eps', label: 'EPS', ext: 'eps', mime: 'application/postscript', note: 'וקטורי · גרסאות CorelDRAW ישנות' },
   { id: 'svg', label: 'SVG', ext: 'svg', mime: 'image/svg+xml', note: 'וקטורי · CorelDRAW X4 ומעלה, Inkscape' },
   { id: 'emf', label: 'EMF – Enhanced Metafile', ext: 'emf', mime: 'image/emf', note: 'וקטורי · Windows / CorelDRAW', vectorOnly: true },

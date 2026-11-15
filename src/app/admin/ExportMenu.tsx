@@ -34,7 +34,8 @@ export function ExportMenu({ orderId, index, mirror, hasRasterLogo, compact = fa
 
   const href = (f: string) => `/api/admin/export/?order=${encodeURIComponent(orderId)}&item=${index}&format=${f}&mirror=${mir ? 1 : 0}`;
   const current = EXPORT_FORMATS.find((f) => f.id === format);
-  const lossy = hasRasterLogo && (format === 'zip' || current?.vectorOnly);
+  const lossy = hasRasterLogo && format !== 'ai' && (format === 'zip' || current?.vectorOnly);
+  const noPicture = hasRasterLogo && format === 'ai';
 
   return (
     <div className={`rounded-xl border border-line bg-white ${compact ? 'p-2' : 'p-3'}`}>
@@ -59,6 +60,7 @@ export function ExportMenu({ orderId, index, mirror, hasRasterLogo, compact = fa
         </a>
       </div>
       {!compact && <p className="mt-1.5 text-xs text-muted">{format === 'zip' ? 'כל הפורמטים בקובץ אחד + הוראות ייבוא ל-CorelDRAW' : current?.note}</p>}
+      {noPicture && <p className="mt-1 text-xs text-warn">יש בעיצוב תמונה שהלקוח העלה – היא לא נכנסת לקובץ ה-AI (רק טקסט, מסגרות ולוגו וקטורי). ב-PDF היא מופיעה.</p>}
       {lossy && <p className="mt-1 text-xs text-warn">יש בעיצוב לוגו כתמונה (לא וקטורי) – הוא נכלל רק ב-PDF / SVG.</p>}
     </div>
   );

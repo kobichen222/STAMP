@@ -98,15 +98,19 @@ export async function exportDesign(
   const { EXPORT_FORMATS, exportRender, isExportFormat, README, zip } = await import('./formats');
   const { design } = await withTracedLogos(original);
   const render = renderDesign(design, await resolverFor(design));
+  // The CorelDRAW file (AI) is the artwork to edit: text, frames and vector logos only. A picture the
+  // customer uploaded is not traced into it – the operator rebuilds it in Corel from the picture itself.
+  const editable = renderDesign(original, await resolverFor(original));
+  const renderFor = (f: string) => (f === 'ai' ? editable : render);
   const pm = { orderId: meta.orderId, customer: meta.customer, productName: meta.productName, width: design.width, height: design.height, ink: meta.ink, quantity: meta.quantity, createdAt: new Date().toISOString() };
   const base = `${productionBaseName(pm)}_${meta.index + 1}${mirror ? '_MIRROR' : ''}`;
-  const omittedImages = render.items.filter((i) => i.kind === 'image').length;
+  const omittedImages = renderFor(format).items.filter((i) => i.kind === 'image').length;
   if (format === 'zip') {
-    const files = await Promise.all(EXPORT_FORMATS.map(async (f) => ({ name: `${base}.${f.ext}`, data: await exportRender(render, f.id, mirror, pm) })));
+    const files = await Promise.all(EXPORT_FORMATS.map(async (f) => ({ name: `${base}.${f.ext}`, data: await exportRender(renderFor(f.id), f.id, mirror, pm) })));
     files.push({ name: 'README.txt', data: README(pm) });
     return { data: zip(files), name: `${base}.zip`, mime: 'application/zip', omittedImages };
   }
   if (!isExportFormat(format)) throw new Error('unknown format');
   const f = EXPORT_FORMATS.find((x) => x.id === format)!;
-  return { data: await exportRender(render, format, mirror, pm, opts.cutLine ? design.shape : undefined), name: `${base}.${f.ext}`, mime: f.mime, omittedImages };
+  return { data: await exportRender(renderFor(format), format, mirror, pm, opts.cutLine ? design.shape : undefined), name: `${base}.${f.ext}`, mime: f.mime, omittedImages };
 }
