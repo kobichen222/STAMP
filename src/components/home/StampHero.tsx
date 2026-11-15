@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { motionReduced, useMotionReduced } from '@/lib/motion';
-import { LeadButton } from '@/components/site/LeadPopup';
+import { LeadButton, type LeadProduct, type LeadShipping } from '@/components/site/LeadPopup';
 import { WA_PATH } from '@/components/site/WhatsAppFab';
 import type { StampScene } from './stamp-scene';
 import { PART_LABELS } from './stamp-labels';
@@ -36,7 +36,7 @@ function StaticStamp() {
   );
 }
 
-export function StampHero({ whatsapp }: { whatsapp: string }) {
+export function StampHero({ whatsapp, products, shipping }: { whatsapp: string; products: LeadProduct[]; shipping: LeadShipping[] }) {
   const sectionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
@@ -188,6 +188,18 @@ export function StampHero({ whatsapp }: { whatsapp: string }) {
         <div className="pointer-events-none absolute -top-32 left-[-10%] h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-blue/10 to-violet/10 blur-3xl" />
         <div className={`container-x relative grid w-full gap-4 pt-[6rem] pb-24 sm:pt-[4.5rem] sm:pb-16 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:gap-6 lg:pt-28 lg:pb-16 ${animated ? 'content-start' : ''}`}>
           <div ref={introRef} className="relative z-10 max-w-xl will-change-transform max-lg:mx-auto max-lg:text-center lg:max-w-2xl">
+            <p className="mb-4 inline-flex animate-fade-up flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full border border-blue/15 bg-white/85 px-3.5 py-1.5 text-[13px] font-semibold text-ink-2 shadow-soft backdrop-blur sm:mb-5 sm:px-4 sm:text-[15px]">
+              <span className="flex text-[#f5a623]" aria-hidden>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <svg key={i} viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 sm:h-4 sm:w-4">
+                    <path d="M10 1.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.6 7.7l5.8-.8z" />
+                  </svg>
+                ))}
+              </span>
+              <span>קיימים משנת 2001</span>
+              <span className="h-1 w-1 rounded-full bg-blue" aria-hidden />
+              <span>עשרות אלפי לקוחות מרוצים</span>
+            </p>
             <h1 className="animate-fade-up text-[1.85rem] leading-[1.15] font-extrabold max-[360px]:text-[1.65rem] sm:text-5xl lg:text-[2.6rem] lg:leading-[1.15] xl:text-[2.9rem]">
               מעצבים חותמת אונליין,
               <br />
@@ -228,12 +240,14 @@ export function StampHero({ whatsapp }: { whatsapp: string }) {
               <div className="flex basis-full flex-wrap items-center gap-x-5 gap-y-3 max-lg:justify-center">
                 <LeadButton
                   source="hero"
+                  products={products}
+                  shipping={shipping}
                   className="group inline-flex h-12 items-center gap-2 rounded-xl border border-line bg-white px-5 text-base font-bold text-ink shadow-soft transition hover:-translate-y-0.5 hover:border-blue hover:text-blue active:scale-[.98] max-sm:w-full max-sm:justify-center sm:h-13 sm:rounded-2xl sm:px-6 sm:text-lg"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue" aria-hidden>
-                    <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />
+                    <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1zM8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M8 12h8M8 16h5" />
                   </svg>
-                  השאירו פרטים ונחזור אליכם
+                  הזמנה מהירה בטופס
                 </LeadButton>
                 <Link href="/ai-design/" className="inline-flex items-center gap-1.5 font-semibold text-blue underline-offset-4 hover:underline">
                   או: עיצוב מהיר תוך דקה

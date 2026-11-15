@@ -13,6 +13,9 @@ import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES, categoryCard } from '@/lib/catalog';
 import { FAQ, faqJsonLd, WHY_FAQ } from '@/lib/faq';
 import { site } from '@/lib/content';
+import { designerProducts } from '@/lib/designer-products';
+import { formatSize } from '@/designer/models';
+import { DEFAULT_RULES } from '@/lib/pricing';
 import { ensureSettings } from '@/server/settings';
 
 // Same title and description as the WordPress home page (Yoast), so rankings carry over.
@@ -27,13 +30,20 @@ const HOME_CATEGORIES = ['business', 'personal', 'doctors', 'lawyers', 'company'
 
 export default async function HomePage() {
   await ensureSettings();
+  // The quick order form in the hero: what can be ordered and how it can be received.
+  const POPULAR = ['חותמת-פרינט-30', 'חותמת-פרינט-40', 'חותמת-פרינט-20', 'חותמת-פרינט-50', 'print-r-540'];
+  const rank = (slug: string) => (POPULAR.includes(slug) ? POPULAR.indexOf(slug) : POPULAR.length);
+  const leadProducts = designerProducts()
+    .map((p) => ({ slug: p.slug, title: p.title, size: formatSize(p.model), price: p.price, image: p.image, popular: POPULAR.includes(p.slug) }))
+    .sort((a, b) => rank(a.slug) - rank(b.slug));
+  const leadShipping = DEFAULT_RULES.shipping.map(({ id, label, price, eta, address }) => ({ id, label, price, eta, address }));
   const cats = HOME_CATEGORIES.map((s) => CATEGORIES.find((c) => c.slug === s)!).map(categoryCard);
   const faq = FAQ.filter((f) => f.id !== 'why')
     .flatMap((f) => f.items.slice(0, 1))
     .slice(0, 6);
   return (
     <>
-      <StampHero whatsapp={SITE.whatsapp} />
+      <StampHero whatsapp={SITE.whatsapp} products={leadProducts} shipping={leadShipping} />
       <section className="py-12 sm:py-16">
         <div className="container-x">
           <div className="flex flex-wrap items-end justify-between gap-4">
