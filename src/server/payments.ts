@@ -34,11 +34,15 @@ const manual: PaymentProvider = {
 export const tranzilaTerminal = () => process.env.TRANZILA_TERMINAL || 'htvmvnavlbam';
 
 /** Return / notify addresses on this site (also what goes in the terminal settings). */
-export const tranzilaUrls = (origin: string) => ({
-  success: `${origin}/api/payments/tranzila/return/?result=success`,
-  fail: `${origin}/api/payments/tranzila/return/?result=fail`,
-  notify: `${origin}/api/payments/tranzila/notify/`,
-});
+export const tranzilaUrls = (origin: string, order?: Pick<Order, 'id' | 'token'>) => {
+  // The order rides on the addresses too: on some refusals Tranzila answers without our custom fields.
+  const q = order ? `order_id=${encodeURIComponent(order.id)}&otk=${encodeURIComponent(order.token)}` : '';
+  return {
+    success: `${origin}/api/payments/tranzila/return/?result=success${q && `&${q}`}`,
+    fail: `${origin}/api/payments/tranzila/return/?result=fail${q && `&${q}`}`,
+    notify: `${origin}/api/payments/tranzila/notify/${q && `?${q}`}`,
+  };
+};
 
 /**
  * Line items for Tranzila's documents module (tax invoice / receipt issued with
@@ -60,7 +64,7 @@ const tranzila: PaymentProvider = {
   id: 'tranzila',
   label: 'תשלום מאובטח בכרטיס אשראי',
   async start(order, origin) {
-    const urls = tranzilaUrls(origin);
+    const urls = tranzilaUrls(origin, order);
     const params = new URLSearchParams({
       sum: order.total.toFixed(2),
       currency: '1', // ILS
