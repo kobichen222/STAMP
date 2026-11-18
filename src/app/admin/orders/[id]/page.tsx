@@ -10,6 +10,7 @@ import { statusLabel, STATUS_LABEL, TIMELINE, TRANSITIONS, type OrderStatus } fr
 import { addNote, markPaid, resendEmails, retryProduction, sendCustomerUpdate, setStatus, setTracking, toggleUrgent } from '../../actions';
 import { CourierBadge, OrderAge, PaidBadge, Preview, StatusBadge } from '../../components';
 import { ExportMenu } from '../../ExportMenu';
+import { logoKind } from '@/lib/export-formats';
 import { ZigZagBox } from '../../ZigZagBox';
 import { DeleteOrder } from './DeleteOrder';
 import { NextStatusButton, StatusPicker } from './StatusPicker';
@@ -201,7 +202,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
               </div>
               <div className="mt-3">
                 <p className="mb-1.5 text-sm font-semibold">הורדה בכל פורמט (CorelDRAW / לייזר)</p>
-                <ExportMenu orderId={o.id} index={i} mirror={it.mirror} hasRasterLogo={it.design.elements.some((e) => e.type === 'image' && !e.vector)} />
+                <ExportMenu orderId={o.id} index={i} mirror={it.mirror} hasRasterLogo={it.design.elements.some((e) => e.type === 'image' && !e.vector)} logo={logoKind(it.design)} />
               </div>
               <div className="mt-4 rounded-xl bg-surface p-3 text-sm">
                 <p className={it.preflight.ready ? 'font-semibold text-ok' : 'font-semibold text-bad'}>

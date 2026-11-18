@@ -10,7 +10,7 @@ const PREF_KEY = 's2g-export-format';
  * CorelDRAW / laser software imports (remembered on this computer) and
  * whether to mirror; files are generated on demand from the locked design.
  */
-export function ExportMenu({ orderId, index, mirror, hasRasterLogo, compact = false }: { orderId: string; index: number; mirror: boolean; hasRasterLogo?: boolean; compact?: boolean }) {
+export function ExportMenu({ orderId, index, mirror, hasRasterLogo, logo, compact = false }: { orderId: string; index: number; mirror: boolean; hasRasterLogo?: boolean; /** The design carries a customer logo: 'png' when its picture can be downloaded too. */ logo?: 'vector' | 'png'; compact?: boolean }) {
   const [format, setFormat] = useState<ExportFormat | 'zip'>('pdf');
   const [mir, setMir] = useState(mirror);
 
@@ -60,7 +60,20 @@ export function ExportMenu({ orderId, index, mirror, hasRasterLogo, compact = fa
         </a>
       </div>
       {!compact && <p className="mt-1.5 text-xs text-muted">{format === 'zip' ? 'כל הפורמטים בקובץ אחד + הוראות ייבוא ל-CorelDRAW' : current?.note}</p>}
-      {noPicture && <p className="mt-1 text-xs text-warn">יש בעיצוב תמונה שהלקוח העלה – היא לא נכנסת לקובץ ה-AI (רק טקסט, מסגרות ולוגו וקטורי). ב-PDF היא מופיעה.</p>}
+      {logo && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-line pt-2 text-sm">
+          <span className="font-semibold">הלוגו שהלקוח העלה:</span>
+          <a href={href('logo-ai')} className="btn-outline btn-sm">
+            AI לקורל
+          </a>
+          {logo === 'png' && (
+            <a href={href('logo-png')} className="btn-outline btn-sm">
+              תמונה PNG
+            </a>
+          )}
+        </div>
+      )}
+      {noPicture && <p className="mt-1 text-xs text-warn">יש בעיצוב תמונה שהלקוח העלה – היא לא נכנסת לקובץ ה-AI הראשי (רק טקסט, מסגרות ולוגו וקטורי). היא מופיעה ב-PDF, וזמינה בנפרד בכפתור ״AI לקורל״ של הלוגו.</p>}
       {lossy && <p className="mt-1 text-xs text-warn">יש בעיצוב לוגו כתמונה (לא וקטורי) – הוא נכלל רק ב-PDF / SVG.</p>}
     </div>
   );

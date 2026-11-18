@@ -9,7 +9,7 @@ import { addressNeed, ADDONS, DEFAULT_RULES, lineInputFor, quoteCart, quoteLine,
 import { notify } from '../notifications';
 import { ensureSettings } from '../settings';
 import { getPaymentProvider, manualAutoProduction } from '../payments';
-import { runProductionEngine } from '../production-engine';
+import { logoFiles, runProductionEngine } from '../production-engine';
 import { carrierCardFor, createShipment, datalogicsConfigured } from '../shipping/datalogics';
 import { getStore } from '../store';
 import { canTransition, type Order, type OrderItem, type OrderStatus, type ProductionFileRef } from './types';
@@ -319,6 +319,15 @@ export async function announce(order: Order) {
     for (const f of item.files.filter((x) => x.kind === 'production-pdf' || x.kind === 'production-svg' || x.kind === 'metadata')) {
       const file = await store.getFile(f.path);
       if (file) attachments.push({ filename: f.name, content: Buffer.from(file.data), contentType: file.contentType });
+    }
+    // The logo the customer uploaded goes with the order too (picture + CorelDRAW outlines).
+    if (item.files.length) {
+      try {
+        const base = item.files.find((x) => x.kind === 'production-pdf')?.name.replace(/\.pdf$/, '') ?? `${order.id}_${order.items.indexOf(item) + 1}`;
+        for (const l of await logoFiles(item.design, base)) attachments.push({ filename: l.name, content: Buffer.from(l.data), contentType: l.mime });
+      } catch (e) {
+        console.error('[announce] logo files', order.id, e);
+      }
     }
   }
   if (order.status === 'AWAITING_APPROVAL') order.notificationsSent.push(...(await notify(order, 'order.awaiting_approval', attachments)));

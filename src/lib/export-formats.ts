@@ -19,3 +19,10 @@ export const EXPORT_FORMATS: { id: ExportFormat; label: string; ext: string; mim
 
 export const isExportFormat = (f: string): f is ExportFormat => EXPORT_FORMATS.some((x) => x.id === f);
 
+
+/** Whether a design carries a customer logo, and whether its picture (not only outlines) is stored. */
+export function logoKind(design: { elements: { type: string; src?: string }[] }): 'vector' | 'png' | undefined {
+  const logos = design.elements.filter((e) => e.type === 'image');
+  if (!logos.length) return undefined;
+  return logos.some((e) => (e.src ?? '').startsWith('data:image/png;base64,')) ? 'png' : 'vector';
+}

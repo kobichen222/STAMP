@@ -96,6 +96,13 @@ export async function exportDesign(
   opts: { cutLine?: boolean } = {},
 ): Promise<{ data: Uint8Array | string; name: string; mime: string; omittedImages: number }> {
   const { EXPORT_FORMATS, exportRender, isExportFormat, README, zip } = await import('./formats');
+  if (format === 'logo-ai' || format === 'logo-png') {
+    const files = await logoFiles(original, `${productionBaseName({ orderId: meta.orderId, customer: meta.customer, width: original.width, height: original.height, ink: meta.ink })}_${meta.index + 1}`, mirror);
+    const hit = files.filter((f) => f.name.endsWith(format === 'logo-ai' ? '.ai' : '.png'));
+    if (!hit.length) throw new Error('unknown format');
+    if (hit.length === 1) return { data: hit[0].data, name: hit[0].name, mime: hit[0].mime, omittedImages: 0 };
+    return { data: zip(hit), name: `${hit[0].name.replace(/_\d+\.png$/, '')}.zip`, mime: 'application/zip', omittedImages: 0 };
+  }
   const { design } = await withTracedLogos(original);
   const render = renderDesign(design, await resolverFor(design));
   // The CorelDRAW file (AI) is the artwork to edit: text, frames and vector logos only. A picture the
@@ -113,4 +120,26 @@ export async function exportDesign(
   if (!isExportFormat(format)) throw new Error('unknown format');
   const f = EXPORT_FORMATS.find((x) => x.id === format)!;
   return { data: await exportRender(renderFor(format), format, mirror, pm, opts.cutLine ? design.shape : undefined), name: `${base}.${f.ext}`, mime: f.mime, omittedImages };
+}
+
+/**
+ * The logo the customer uploaded, on its own: the picture as it sits on the stamp (PNG, one per logo)
+ * and a CorelDRAW file with the logo as outlines, at its place and size on the stamp.
+ */
+export async function logoFiles(original: Design, base: string, mirror = false): Promise<{ name: string; data: Uint8Array | string; mime: string }[]> {
+  const logos = original.elements.filter((e) => e.type === 'image');
+  if (!logos.length) return [];
+  const out: { name: string; data: Uint8Array | string; mime: string }[] = [];
+  const { exportRender } = await import('./formats');
+  const { design } = await withTracedLogos(original);
+  const ids = new Set(logos.map((e) => e.id));
+  const render = renderDesign(design, await resolverFor(design));
+  const only = { ...render, items: render.items.filter((i) => i.kind === 'path' && ids.has(i.id)) };
+  if (only.items.length) out.push({ name: `${base}_LOGO${mirror ? '_MIRROR' : ''}.ai`, data: await exportRender(only, 'ai', mirror), mime: 'application/postscript' });
+  let n = 0;
+  for (const e of logos) {
+    const m = e.type === 'image' && /^data:image\/png;base64,(.+)$/.exec(e.src);
+    if (m) out.push({ name: `${base}_LOGO${logos.length > 1 ? `_${++n}` : ''}.png`, data: new Uint8Array(Buffer.from(m[1], 'base64')), mime: 'image/png' });
+  }
+  return out;
 }

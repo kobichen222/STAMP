@@ -3,6 +3,7 @@ import { getStore } from '@/server/store';
 import { PageHead, SectionTitle, Stats } from '../blocks';
 import { CourierBadge, OrderAge, PaidBadge, Preview } from '../components';
 import { ExportMenu } from '../ExportMenu';
+import { logoKind } from '@/lib/export-formats';
 import { ProductionControls, WorkerName } from './ProductionControls';
 
 export const metadata = { title: 'תור ייצור' };
@@ -82,7 +83,7 @@ export default async function ProductionQueue({ searchParams }: { searchParams: 
                             <a href={`/admin/orders/${o.id}/print/?item=${i}`} className="btn-primary btn-sm mb-1.5 w-full">
                               שלח להדפסה
                             </a>
-                            <ExportMenu orderId={o.id} index={i} mirror={it.mirror} compact hasRasterLogo={it.design.elements.some((e) => e.type === 'image' && !e.vector)} />
+                            <ExportMenu orderId={o.id} index={i} mirror={it.mirror} compact hasRasterLogo={it.design.elements.some((e) => e.type === 'image' && !e.vector)} logo={logoKind(it.design)} />
                           </dd>
                         </dl>
                       </div>
