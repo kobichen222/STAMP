@@ -127,8 +127,10 @@ export async function db(): Promise<NeonQueryFunction<false, false>> {
   if (!url) throw new Error('DATABASE_URL is not configured');
   const sql = neon(url);
   // One round trip for the whole schema (the database is far from some regions – one call, not 25).
+  // The advisory lock makes instances that start together take turns: two schema runs side by side
+  // both hold a table's shared lock (create index) and then wait on each other for its exclusive lock (alter table).
   ready ??= sql
-    .transaction(SCHEMA.map((stmt) => sql.query(stmt)))
+    .transaction([sql.query('select pg_advisory_xact_lock(726201101)'), ...SCHEMA.map((stmt) => sql.query(stmt))])
     .then(() => undefined)
     .catch((e) => {
     ready = null;
