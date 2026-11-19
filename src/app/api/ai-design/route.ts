@@ -11,9 +11,9 @@ export const maxDuration = 60;
 /**
  * The stamp designer – the only thing the Claude key is used for. It lays out the customer's text for
  * the exact stamp size, follows free-text design instructions, and fits an uploaded logo.
- * The key is read from ANTHROPIC_API_KEY, or from the project's `sk` variable.
+ * The key is read from ANTHROPIC_API_KEY, or from the project's `Claudekobi` variable (the older `sk` is the last resort).
  */
-const apiKey = () => (process.env.ANTHROPIC_API_KEY || process.env.sk || process.env.SK || '').trim();
+const apiKey = () => (process.env.ANTHROPIC_API_KEY || process.env.Claudekobi || process.env.sk || process.env.SK || '').trim();
 
 const BASE_STYLES = ['classic', 'modern', 'minimal'] as const;
 const LOOK_CHOICES = [...BASE_STYLES, ...LOOK_IDS] as [string, ...string[]];
@@ -184,7 +184,7 @@ export async function POST(req: Request) {
       suggestions: [...(exact ? [exact] : []), ...designs],
     });
   } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError) console.error('[ai-design] the Claude key was rejected (check the sk variable)');
+    if (e instanceof Anthropic.AuthenticationError) console.error('[ai-design] the Claude key was rejected (check the Claudekobi / sk variable)');
     else if (e instanceof Anthropic.RateLimitError) console.warn('[ai-design] rate limited');
     else if (e instanceof Anthropic.APIError) console.error(`[ai-design] API error ${e.status}`, e.message);
     else console.error('[ai-design]', e);
