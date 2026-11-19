@@ -264,7 +264,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               <Health label={`שליחת מיילים${process.env.SMTP_HOST ? ' (SMTP)' : process.env.RESEND_API_KEY ? ' (Resend)' : ''}`} ok={!!(process.env.SMTP_HOST || process.env.RESEND_API_KEY)} warn="לא מוגדר" />
               <Health label="סליקה (טרנזילה)" ok={(process.env.PAYMENT_PROVIDER ?? 'tranzila') === 'tranzila' && !(payHealth && payHealth.stuck.length >= 2)} warn={payHealth && payHealth.stuck.length >= 2 ? `${payHealth.stuck.length} בלי תשובה` : 'ידני'} />
               <Health label="משלוחים (זיג זג)" ok={!!(process.env.TOKEN_SWAGGER || process.env.DATALOGICS_TOKEN)} warn="שידור ידני" />
-              <Health label="עוזר עיצוב" ok={!!(process.env.ANTHROPIC_API_KEY || process.env.sk || process.env.SK)} warn="מצב מקומי" />
+              <Health label="התראות וואטסאפ (Green API)" ok={!!(process.env.GREEN_API_INSTANCE && process.env.GREEN_API_TOKEN)} warn="לא מוגדר" />
+              <Health label="עוזר עיצוב" ok={!!(process.env.GEMINI_API_KEY || process.env.gemini || process.env.ANTHROPIC_API_KEY || process.env.Claudekobi || process.env.sk || process.env.SK)} warn="מצב מקומי" />
             </ul>
           </section>
         </div>

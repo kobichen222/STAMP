@@ -2,7 +2,9 @@ import { databaseUrl } from '@/server/store/neon';
 import { getSettings } from '@/server/settings';
 import { requireStaff } from '@/server/staff';
 import { PageHead } from '../blocks';
+import { whatsappCustomerOn, whatsappState } from '@/server/whatsapp';
 import { SiteEditor } from './SiteEditor';
+import { WhatsAppCard } from './WhatsAppCard';
 
 export const metadata = { title: 'הגדרות אתר' };
 export const dynamic = 'force-dynamic';
@@ -10,6 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function SettingsPage() {
   await requireStaff(['admin']);
   const s = await getSettings(true);
+  const wa = await whatsappState();
   const checks: [string, boolean, string][] = [
     ['מסד נתונים (Neon)', !!databaseUrl(), 'DATABASE_URL לא מוגדר – השינויים לא יישמרו לצמיתות'],
     ['שליחת מיילים (Resend)', !!process.env.RESEND_API_KEY, 'RESEND_API_KEY לא מוגדר – מיילים לא נשלחים'],
@@ -32,6 +35,7 @@ export default async function SettingsPage() {
         </ul>
         <p className="mt-3 text-xs text-muted">משתני סביבה מוגדרים ב־Vercel → Settings → Environment Variables (ואחר כך Redeploy).</p>
       </section>
+      <WhatsAppCard initial={{ ...wa, customer: whatsappCustomerOn() }} />
     </div>
   );
 }

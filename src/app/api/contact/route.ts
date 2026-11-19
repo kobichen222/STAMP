@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { MailNotConfiguredError } from '@/lib/mail';
 import { contactEmails } from '@/server/emails';
 import { saveContact } from '@/server/store/neon';
+import { whatsappStaff } from '@/server/whatsapp';
 
 export async function POST(req: Request) {
   let body: Record<string, string>;
@@ -34,6 +35,8 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error(e);
   }
+  // The studio also gets the lead on WhatsApp (when an instance is configured).
+  await whatsappStaff(`📩 *פנייה חדשה מהאתר*\n${name} · ${phone}${email ? `\n${email}` : ''}${message ? `\n\n${message.slice(0, 1200)}` : ''}`).catch(() => 0);
   if (mailError && !saved) {
     const status = mailError instanceof MailNotConfiguredError ? 503 : 502;
     return NextResponse.json({ error: 'השליחה נכשלה, נא להתקשר 03-6733-770' }, { status });

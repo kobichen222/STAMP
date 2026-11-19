@@ -4,6 +4,7 @@ import { emailDetails, emailLayout, emailP } from '@/lib/email-template';
 import { sendMail } from '@/lib/mail';
 import type { Order } from './orders/types';
 import { databaseUrl, db } from './store/neon';
+import { whatsappStaff } from './whatsapp';
 
 /**
  * Card-payment log: every Tranzila answer (notify = server to server, return =
@@ -103,6 +104,7 @@ export async function alertPaymentFailed(o: Order, code: string | undefined, whe
       cta: { label: 'פתיחת ההזמנה בניהול', url: `${SITE.url}/admin/orders/${o.id}/` },
     }),
   }).catch((e) => console.error('[payment-log] alert mail', e));
+  await whatsappStaff(`⚠ *תשלום נכשל* – ${o.id} · ₪${o.total}\n${o.customer.name} · ${o.customer.phone}\nסיבה: ${codeText(code)}${code ? ` (קוד ${code})` : ''}\n${SITE.url}/admin/orders/${o.id}/`);
 }
 
 /** Health of card payments over the last day (for the dashboard and the payments page). */

@@ -3,6 +3,7 @@ import { SITE } from '@/lib/config';
 import { escapeHtml, MailNotConfiguredError, sendMail } from '@/lib/mail';
 import { emailDetails, emailHighlight, emailLayout, emailP, emailSteps, type EmailParts } from '@/lib/email-template';
 import type { Order } from './orders/types';
+import { whatsappCustomer, whatsappStaff } from './whatsapp';
 
 /**
  * Notifications engine (spec §177–179): every event is sent at most once per
@@ -153,6 +154,41 @@ function build(event: NotifyEvent, o: Order): Built {
   }
 }
 
+/**
+ * The same events as short WhatsApp texts (plain text, *bold* is WhatsApp's own). Only the events
+ * worth a message on the phone: the customer's order steps, and what the studio must see right away.
+ */
+export function whatsappText(event: NotifyEvent, o: Order): { customer?: string; staff?: string } {
+  const name = o.customer.name.trim().split(/\s+/)[0] || o.customer.name;
+  const link = trackingLink(o);
+  const items = o.items.map((i) => `• ${i.productName} ${i.size}${i.quantity > 1 ? ` × ${i.quantity}` : ''}`).join('\n');
+  const sign = `\n\n${SITE.name}`;
+  switch (event) {
+    case 'order.created':
+      return {
+        customer: `שלום ${name}, תודה! ההזמנה *${o.id}* התקבלה ✅\n${items}\nסה״כ: ${money(o.total)}\n${shippingText(o)}\n\nמעקב אחר ההזמנה:\n${link}${sign}`,
+        staff: `🛒 *הזמנה חדשה* ${o.id} · ${money(o.total)}\n${o.customer.name} · ${o.customer.phone}\n${items}\n${shippingText(o)}\n${SITE.url}/admin/orders/${o.id}/`,
+      };
+    case 'order.awaiting_approval':
+      return { customer: `שלום ${name}, ההגהה להזמנה *${o.id}* מוכנה ומחכה לאישור שלך:\n${link}${sign}` };
+    case 'order.ready_for_pickup':
+      return {
+        customer:
+          o.shipping.method === 'pickup'
+            ? `שלום ${name}, ההזמנה *${o.id}* מוכנה לאיסוף ✅\n${SITE.address}, ${SITE.hours}\nניווט: ${SITE.waze}${sign}`
+            : `שלום ${name}, ההזמנה *${o.id}* מוכנה ונמסרת לשליח. נעדכן כשהיא יוצאת.${sign}`,
+      };
+    case 'order.shipped':
+      return {
+        customer: `שלום ${name}, ההזמנה *${o.id}* בדרך אליך 🚚${o.shipping.trackingNumber ? `\nמספר מעקב: ${o.shipping.trackingNumber}` : ''}\n${o.shipping.trackingUrl || link}${sign}`,
+      };
+    case 'order.production_error':
+      return { staff: `⚠ *שגיאה בקובץ ייצור* – ${o.id} (${o.customer.name})\nפתחו את ההזמנה ולחצו "ייצור מחדש":\n${SITE.url}/admin/orders/${o.id}/` };
+    default:
+      return {};
+  }
+}
+
 export function trackingLink(o: Pick<Order, 'id' | 'token'>) {
   return `${SITE.url}/order/${o.id}/?t=${o.token}`;
 }
@@ -186,7 +222,16 @@ export async function notify(
       );
     }
   }
-  // WhatsApp (optional): plug a provider (e.g. Twilio / WhatsApp Cloud API) here, same dedupe ids with ":whatsapp".
+  // WhatsApp (Green API): the same once-only rule, with its own ids. Does nothing until an instance is configured.
+  const wa = whatsappText(event, order);
+  if (wa.customer && opts.customer !== false) {
+    const id = `${event}:customer:wa`;
+    if (!order.notificationsSent.includes(id)) jobs.push(whatsappCustomer(order.customer.phone, wa.customer).then((ok) => void (ok && sent.push(id))));
+  }
+  if (wa.staff && opts.staff !== false) {
+    const id = `${event}:staff:wa`;
+    if (!order.notificationsSent.includes(id)) jobs.push(whatsappStaff(wa.staff).then((n) => void (n && sent.push(id))));
+  }
   const results = await Promise.allSettled(jobs);
   for (const r of results) {
     if (r.status !== 'rejected') continue;
