@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { ApiError as GeminiError, GoogleGenAI } from '@google/genai';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -9,11 +10,14 @@ import { rateLimit } from '@/server/rate-limit';
 export const maxDuration = 60;
 
 /**
- * The stamp designer – the only thing the Claude key is used for. It lays out the customer's text for
+ * The stamp designer – the only thing the AI keys are used for. It lays out the customer's text for
  * the exact stamp size, follows free-text design instructions, and fits an uploaded logo.
- * The key is read from ANTHROPIC_API_KEY, or from the project's `Claudekobi` variable (the older `sk` is the last resort).
+ * Gemini is the main designer (key: GEMINI_API_KEY or the project's `gemini` variable); Claude is the
+ * backup (ANTHROPIC_API_KEY, `Claudekobi`, or the older `sk`). With neither, the rule-based layout answers.
  */
-const apiKey = () => (process.env.ANTHROPIC_API_KEY || process.env.Claudekobi || process.env.sk || process.env.SK || '').trim();
+const geminiKey = () => (process.env.GEMINI_API_KEY || process.env.gemini || process.env.GEMINI || '').trim();
+const geminiModel = () => (process.env.GEMINI_MODEL || 'gemini-3.8-flash').trim();
+const claudeKey = () => (process.env.ANTHROPIC_API_KEY || process.env.Claudekobi || process.env.sk || process.env.SK || '').trim();
 
 const BASE_STYLES = ['classic', 'modern', 'minimal'] as const;
 const LOOK_CHOICES = [...BASE_STYLES, ...LOOK_IDS] as [string, ...string[]];
@@ -34,6 +38,9 @@ const Output = z.object({
   logoNote: z.string().nullable().describe('רק כשיש לוגו: משפט אחד ללקוח על התאמת הלוגו לחותמת'),
 });
 type Out = z.infer<typeof Output>;
+/** The same output contract as plain JSON Schema, for Gemini. */
+const { $schema: _dialect, ...GEMINI_SCHEMA } = z.toJSONSchema(Output) as Record<string, unknown>;
+void _dialect;
 
 const LOOK_LIST = [
   'classic – פונט סריף קלאסי, מסגרת דקה',
@@ -110,8 +117,9 @@ export async function POST(req: Request) {
   const local = () => NextResponse.json({ source: 'local', required, suggestions: suggestLocally(prompt) });
 
   // Without a key the wizard still works with the rule-based layout.
-  const key = apiKey();
-  if (!key) return local();
+  const gKey = geminiKey();
+  const cKey = claudeKey();
+  if (!gKey && !cKey) return local();
 
   // The logo, if any: a PNG data URL, small enough to look at (the client sends ≤ 512 px).
   const m = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(body?.logo ?? ''));
@@ -137,24 +145,41 @@ export async function POST(req: Request) {
   const checklist = required.length ? `\n\nפרטים שחייבים להופיע בדיוק כפי שנכתבו, בכל עיצוב:\n${required.map((r) => `- ${requiredLine(r)}`).join('\n')}` : '';
   const briefNote = brief ? `\n\nהנחיות עיצוב מהלקוח (לא טקסט לחותמת):\n${brief}` : '';
 
-  try {
-    const client = new Anthropic({ apiKey: key, timeout: 40_000, maxRetries: 1 });
-    const ask = async (extra = '', effort: 'low' | 'medium' = 'medium'): Promise<Out | null> => {
-      const text = `${facts}\n\nתוכן החותמת מהלקוח:\n${prompt}${linesNote}${checklist}${briefNote}${extra}`;
-      const response = await client.messages.parse({
-        model: 'claude-opus-5-5',
-        max_tokens: 16000,
-        output_config: { effort, format: zodOutputFormat(Output) },
-        system: SYSTEM,
-        messages: [
-          {
-            role: 'user',
-            content: logo ? [{ type: 'image', source: { type: 'base64', media_type: logo.media, data: logo.data } }, { type: 'text', text }] : text,
-          },
-        ],
-      });
-      return response.stop_reason === 'refusal' ? null : response.parsed_output;
-    };
+  type Ask = (extra?: string, effort?: 'low' | 'medium') => Promise<Out | null>;
+  const textFor = (extra = '') => `${facts}\n\nתוכן החותמת מהלקוח:\n${prompt}${linesNote}${checklist}${briefNote}${extra}`;
+
+  const askGemini: Ask = async (extra) => {
+    const ai = new GoogleGenAI({ apiKey: gKey });
+    const response = await ai.models.generateContent({
+      model: geminiModel(),
+      contents: [{ role: 'user', parts: [...(logo ? [{ inlineData: { mimeType: logo.media, data: logo.data } }] : []), { text: textFor(extra) }] }],
+      config: { systemInstruction: SYSTEM, responseMimeType: 'application/json', responseJsonSchema: GEMINI_SCHEMA, httpOptions: { timeout: 40_000 } },
+    });
+    const raw = response.text;
+    if (!raw) return null;
+    const parsed = Output.safeParse(JSON.parse(raw));
+    if (!parsed.success) throw new Error(`unexpected answer shape: ${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message}`);
+    return parsed.data;
+  };
+
+  const askClaude: Ask = async (extra, effort = 'medium') => {
+    const client = new Anthropic({ apiKey: cKey, timeout: 40_000, maxRetries: 1 });
+    const response = await client.messages.parse({
+      model: 'claude-opus-5-5',
+      max_tokens: 16000,
+      output_config: { effort, format: zodOutputFormat(Output) },
+      system: SYSTEM,
+      messages: [
+        {
+          role: 'user',
+          content: logo ? [{ type: 'image', source: { type: 'base64', media_type: logo.media, data: logo.data } }, { type: 'text', text: textFor(extra) }] : textFor(extra),
+        },
+      ],
+    });
+    return response.stop_reason === 'refusal' ? null : response.parsed_output;
+  };
+
+  const design = async (ask: Ask) => {
     const contentOf = (d: z.infer<typeof DesignOut>) => toSuggestion(d, !!logo).content;
     const missingIn = (out: Out) => {
       const miss = new Map<string, RequiredItem>();
@@ -163,7 +188,7 @@ export async function POST(req: Request) {
     };
 
     let out = await ask();
-    if (!out) return local();
+    if (!out) return null;
     if (!out.relevant || !out.designs.length) return NextResponse.json({ error: 'אפשר לבקש כאן רק עיצוב של חותמת. כתבו מה צריך להופיע על החותמת.' }, { status: 400 });
     // One corrective round if anything the customer wrote was left out or altered.
     const missing = missingIn(out);
@@ -183,11 +208,22 @@ export async function POST(req: Request) {
       // The customer's own lines, untouched, always come first when they typed lines.
       suggestions: [...(exact ? [exact] : []), ...designs],
     });
-  } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError) console.error('[ai-design] the Claude key was rejected (check the Claudekobi / sk variable)');
-    else if (e instanceof Anthropic.RateLimitError) console.warn('[ai-design] rate limited');
-    else if (e instanceof Anthropic.APIError) console.error(`[ai-design] API error ${e.status}`, e.message);
-    else console.error('[ai-design]', e);
-    return local();
+  };
+
+  // Gemini first; if it fails for any reason, Claude; if both fail, the rule-based layout.
+  const providers: { name: string; ask: Ask }[] = [...(gKey ? [{ name: 'gemini', ask: askGemini }] : []), ...(cKey ? [{ name: 'claude', ask: askClaude }] : [])];
+  for (const p of providers) {
+    try {
+      const res = await design(p.ask);
+      if (res) return res;
+      console.warn(`[ai-design] ${p.name} gave no answer`);
+    } catch (e) {
+      if (e instanceof GeminiError) console.error(`[ai-design] gemini API error ${e.status} (model ${geminiModel()})`, e.message.slice(0, 300));
+      else if (e instanceof Anthropic.AuthenticationError) console.error('[ai-design] the Claude key was rejected (check the Claudekobi / sk variable)');
+      else if (e instanceof Anthropic.RateLimitError) console.warn('[ai-design] claude rate limited');
+      else if (e instanceof Anthropic.APIError) console.error(`[ai-design] claude API error ${e.status}`, e.message);
+      else console.error(`[ai-design] ${p.name}`, e);
+    }
   }
+  return local();
 }
