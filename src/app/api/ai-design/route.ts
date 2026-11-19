@@ -15,9 +15,13 @@ export const maxDuration = 60;
  * Gemini is the main designer (key: GEMINI_API_KEY or the project's `gemini` variable); Claude is the
  * backup (ANTHROPIC_API_KEY, `Claudekobi`, or the older `sk`). With neither, the rule-based layout answers.
  */
-const geminiKey = () => (process.env.GEMINI_API_KEY || process.env.gemini || process.env.GEMINI || '').trim();
+/** Only the key itself: a value pasted with a note or a name after it (on the next line) still works. */
+const keyOf = (...values: (string | undefined)[]) => (values.find((v) => v?.trim()) ?? '').trim().split(/\s+/)[0] ?? '';
+const geminiKey = () => keyOf(process.env.GEMINI_API_KEY, process.env.gemini, process.env.GEMINI);
 const geminiModel = () => (process.env.GEMINI_MODEL || 'gemini-3.8-flash').trim();
-const claudeKey = () => (process.env.ANTHROPIC_API_KEY || process.env.Claudekobi || process.env.sk || process.env.SK || '').trim();
+const claudeKey = () => keyOf(process.env.ANTHROPIC_API_KEY, process.env.Claudekobi, process.env.sk, process.env.SK);
+/** Error text for the log, with anything that looks like a key removed. */
+const safe = (e: unknown) => String(e instanceof Error ? `${e.name}: ${e.message}` : e).replace(/\b(sk-[\w-]{8,}|AIza[\w-]{10,}|[\w-]{32,})/g, '[key]').slice(0, 300);
 
 const BASE_STYLES = ['classic', 'modern', 'minimal'] as const;
 const LOOK_CHOICES = [...BASE_STYLES, ...LOOK_IDS] as [string, ...string[]];
@@ -218,11 +222,11 @@ export async function POST(req: Request) {
       if (res) return res;
       console.warn(`[ai-design] ${p.name} gave no answer`);
     } catch (e) {
-      if (e instanceof GeminiError) console.error(`[ai-design] gemini API error ${e.status} (model ${geminiModel()})`, e.message.slice(0, 300));
+      if (e instanceof GeminiError) console.error(`[ai-design] gemini API error ${e.status} (model ${geminiModel()})`, safe(e));
       else if (e instanceof Anthropic.AuthenticationError) console.error('[ai-design] the Claude key was rejected (check the Claudekobi / sk variable)');
       else if (e instanceof Anthropic.RateLimitError) console.warn('[ai-design] claude rate limited');
-      else if (e instanceof Anthropic.APIError) console.error(`[ai-design] claude API error ${e.status}`, e.message);
-      else console.error(`[ai-design] ${p.name}`, e);
+      else if (e instanceof Anthropic.APIError) console.error(`[ai-design] claude API error ${e.status}`, safe(e));
+      else console.error(`[ai-design] ${p.name}`, safe(e));
     }
   }
   return local();
