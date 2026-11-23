@@ -95,19 +95,70 @@ export function decodePng(buf: Buffer): Pixels | null {
   return { width, height, data };
 }
 
-/** Ink (dark and opaque) → black, everything else → white; scaled down to `maxSide`. */
-function toBlackWhite(p: Pixels, maxSide = 1200): Pixels {
-  const s = Math.min(1, maxSide / Math.max(p.width, p.height));
-  const width = Math.max(1, Math.round(p.width * s));
-  const height = Math.max(1, Math.round(p.height * s));
+/** Ink (dark and opaque) → black, everything else → white. */
+function luminance(p: Pixels): Float32Array {
+  const out = new Float32Array(p.width * p.height);
+  for (let i = 0; i < out.length; i++) {
+    const a = p.data[i * 4 + 3] / 255;
+    out[i] = (0.299 * p.data[i * 4] + 0.587 * p.data[i * 4 + 1] + 0.114 * p.data[i * 4 + 2]) * a + 255 * (1 - a);
+  }
+  return out;
+}
+
+/**
+ * Black / white bitmap for the tracer, `TRACE_SIDE` px on its long side. A picture is first softened
+ * (3×3) and then enlarged with smooth (bilinear) interpolation, so the cut follows the shape of the
+ * letters and not the steps of the original pixels – the outline comes out smooth, not jagged.
+ */
+const TRACE_SIDE = 3200;
+function blur3(src: Float32Array, w: number, h: number): Float32Array {
+  const out = new Float32Array(src.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= h) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= w) continue;
+          const k = dx === 0 && dy === 0 ? 4 : dx === 0 || dy === 0 ? 2 : 1;
+          sum += src[yy * w + xx] * k;
+          n += k;
+        }
+      }
+      out[y * w + x] = sum / n;
+    }
+  }
+  return out;
+}
+function toBlackWhite(p: Pixels, side = TRACE_SIDE): Pixels {
+  const w0 = p.width;
+  const h0 = p.height;
+  let soft = luminance(p);
+  // Two gentle passes (≈ a 5×5 gaussian): rounds the pixel steps away, keeps strokes and corners.
+  for (let pass = 0; pass < 2; pass++) soft = blur3(soft, w0, h0);
+  const s = Math.min(4, side / Math.max(w0, h0));
+  const width = Math.max(1, Math.round(w0 * s));
+  const height = Math.max(1, Math.round(h0 * s));
   const data = new Uint8ClampedArray(width * height * 4);
   for (let y = 0; y < height; y++) {
+    const fy = Math.min(h0 - 1, Math.max(0, (y + 0.5) / s - 0.5));
+    const y0 = Math.floor(fy);
+    const y1 = Math.min(h0 - 1, y0 + 1);
+    const ty = fy - y0;
     for (let x = 0; x < width; x++) {
-      const i = (Math.min(p.height - 1, Math.floor(y / s)) * p.width + Math.min(p.width - 1, Math.floor(x / s))) * 4;
-      const a = p.data[i + 3] / 255;
-      const l = (0.299 * p.data[i] + 0.587 * p.data[i + 1] + 0.114 * p.data[i + 2]) * a + 255 * (1 - a);
-      const v = l < 128 ? 0 : 255;
-      data.set([v, v, v, 255], (y * width + x) * 4);
+      const fx = Math.min(w0 - 1, Math.max(0, (x + 0.5) / s - 0.5));
+      const x0 = Math.floor(fx);
+      const x1 = Math.min(w0 - 1, x0 + 1);
+      const tx = fx - x0;
+      const top = soft[y0 * w0 + x0] * (1 - tx) + soft[y0 * w0 + x1] * tx;
+      const bottom = soft[y1 * w0 + x0] * (1 - tx) + soft[y1 * w0 + x1] * tx;
+      const v = top * (1 - ty) + bottom * ty < 128 ? 0 : 255;
+      const o = (y * width + x) * 4;
+      data[o] = data[o + 1] = data[o + 2] = v;
+      data[o + 3] = 255;
     }
   }
   return { width, height, data };
@@ -121,9 +172,10 @@ export async function traceBitmap(png: Buffer): Promise<string | null> {
   const mod = await import('imagetracerjs');
   const tracer = ((mod as unknown as { default?: unknown }).default ?? mod) as { imagedataToSVG: (img: Pixels, opts: Record<string, unknown>) => string };
   const svg = tracer.imagedataToSVG(img, {
-    ltres: 0.5,
-    qtres: 0.5,
-    pathomit: 4,
+    // A little tolerance at the enlarged size: curves through the letter shapes, not along every pixel.
+    ltres: 1.5,
+    qtres: 1.5,
+    pathomit: 16,
     colorsampling: 0,
     numberofcolors: 2,
     pal: [

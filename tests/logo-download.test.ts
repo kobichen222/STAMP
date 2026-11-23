@@ -52,8 +52,9 @@ describe('customer logo download', () => {
     const first = /^([\d.]+) ([\d.]+) m$/m.exec(ai)!;
     expect(Number(first[1]) / (72 / 25.4)).toBeGreaterThan(6);
     expect(Number(first[1]) / (72 / 25.4)).toBeLessThan(18);
-    // The whole stamp as AI still leaves the uploaded picture out.
-    const main = String((await exportDesign(design, 'ai', false, meta)).data);
+    // With more than the picture on it, the whole stamp as AI still leaves the uploaded picture out.
+    const withShape = { ...design, elements: [...design.elements, { id: 'r', type: 'shape', kind: 'rect', x: 40, y: 11, width: 10, height: 6, rotation: 0, stroke: 0.4, filled: false }] } as unknown as Design;
+    const main = String((await exportDesign(withShape, 'ai', false, meta)).data);
     expect(main).not.toContain(first[0]);
   });
 
@@ -66,5 +67,12 @@ describe('customer logo download', () => {
   it('has nothing to give when the design has no logo', async () => {
     expect(await logoFiles({ ...design, elements: [] } as Design, 'X')).toEqual([]);
     await expect(exportDesign({ ...design, elements: [] } as Design, 'logo-ai', false, meta)).rejects.toThrow();
+  });
+});
+
+describe('ready-made stamp (only the customer picture)', () => {
+  it('its AI file carries the traced picture instead of being empty', async () => {
+    const ai = String((await exportDesign({ ...design, border: { ...design.border, style: 'none' } } as Design, 'ai', false, meta)).data);
+    expect(paths(ai)).toBeGreaterThanOrEqual(1);
   });
 });

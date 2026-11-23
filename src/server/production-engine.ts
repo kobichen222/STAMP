@@ -107,7 +107,9 @@ export async function exportDesign(
   const render = renderDesign(design, await resolverFor(design));
   // The CorelDRAW file (AI) is the artwork to edit: text, frames and vector logos only. A picture the
   // customer uploaded is not traced into it – the operator rebuilds it in Corel from the picture itself.
-  const editable = renderDesign(original, await resolverFor(original));
+  // A ready-made stamp (the design is only the customer's picture) has nothing else, so its AI is the trace.
+  const pictureOnly = original.elements.length > 0 && original.elements.every((e) => e.type === 'image');
+  const editable = pictureOnly ? render : renderDesign(original, await resolverFor(original));
   const renderFor = (f: string) => (f === 'ai' ? editable : render);
   const pm = { orderId: meta.orderId, customer: meta.customer, productName: meta.productName, width: design.width, height: design.height, ink: meta.ink, quantity: meta.quantity, createdAt: new Date().toISOString() };
   const base = `${productionBaseName(pm)}_${meta.index + 1}${mirror ? '_MIRROR' : ''}`;

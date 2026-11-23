@@ -10,7 +10,7 @@ const PREF_KEY = 's2g-export-format';
  * CorelDRAW / laser software imports (remembered on this computer) and
  * whether to mirror; files are generated on demand from the locked design.
  */
-export function ExportMenu({ orderId, index, mirror, hasRasterLogo, logo, compact = false }: { orderId: string; index: number; mirror: boolean; hasRasterLogo?: boolean; /** The design carries a customer logo: 'png' when its picture can be downloaded too. */ logo?: 'vector' | 'png'; compact?: boolean }) {
+export function ExportMenu({ orderId, index, mirror, hasRasterLogo, pictureOnly, logo, compact = false }: { orderId: string; index: number; mirror: boolean; hasRasterLogo?: boolean; /** The design is only the customer's picture (a ready-made stamp): its AI is the traced picture. */ pictureOnly?: boolean; /** The design carries a customer logo: 'png' when its picture can be downloaded too. */ logo?: 'vector' | 'png'; compact?: boolean }) {
   const [format, setFormat] = useState<ExportFormat | 'zip'>('pdf');
   const [mir, setMir] = useState(mirror);
 
@@ -35,7 +35,7 @@ export function ExportMenu({ orderId, index, mirror, hasRasterLogo, logo, compac
   const href = (f: string) => `/api/admin/export/?order=${encodeURIComponent(orderId)}&item=${index}&format=${f}&mirror=${mir ? 1 : 0}`;
   const current = EXPORT_FORMATS.find((f) => f.id === format);
   const lossy = hasRasterLogo && format !== 'ai' && (format === 'zip' || current?.vectorOnly);
-  const noPicture = hasRasterLogo && format === 'ai';
+  const noPicture = hasRasterLogo && !pictureOnly && format === 'ai';
 
   return (
     <div className={`rounded-xl border border-line bg-white ${compact ? 'p-2' : 'p-3'}`}>
