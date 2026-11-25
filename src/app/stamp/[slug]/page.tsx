@@ -21,6 +21,7 @@ export const dynamicParams = true;
 export const generateStaticParams = () => site.products.map((p) => ({ slug: p.slug }));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  await ensureSettings();
   const p = getProduct((await params).slug);
   if (!p) return {};
   const f = productFacts(p);

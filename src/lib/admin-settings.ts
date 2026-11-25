@@ -30,6 +30,35 @@ export interface ProductOverride {
   image?: string;
 }
 
+/** A product added from the admin (stored in the settings, merged into the catalogue on the server). */
+export interface CustomProduct {
+  id: number;
+  slug: string;
+  title: string;
+  price: number | null;
+  /** Price before a discount, shown crossed out (optional). */
+  regularPrice?: number | null;
+  image?: string;
+  /** Catalogue categories (site.categories ids) – decide where the product is listed. */
+  categoryIds: number[];
+  shape: 'rect' | 'round';
+  /** Stamp area in mm; width only for a round stamp. Empty = not designable online. */
+  width?: number | null;
+  height?: number | null;
+  rowsCount: string;
+  shortDescription: string;
+  /** Plain text; blank lines separate paragraphs. */
+  description: string;
+  hidden?: boolean;
+  createdAt: string;
+}
+
+/** The stamp area text the catalogue reads ("47*18", "קוטר 40"). */
+export function customStampArea(p: Pick<CustomProduct, 'shape' | 'width' | 'height'>): string | null {
+  if (!p.width) return null;
+  return p.shape === 'round' ? `קוטר ${p.width}` : `${p.width}*${p.height || p.width}`;
+}
+
 export interface SiteSettings {
   phone: string;
   email: string;
@@ -44,6 +73,7 @@ export interface AdminSettings {
   pricing: PricingSettings;
   coupons: AdminCoupon[];
   products: Record<string, ProductOverride>;
+  customProducts: CustomProduct[];
   site: SiteSettings;
 }
 
@@ -88,6 +118,7 @@ export function withDefaults(s: Partial<AdminSettings> | null | undefined): Admi
     },
     coupons: s?.coupons ?? [],
     products: s?.products ?? {},
+    customProducts: s?.customProducts ?? [],
     site: { ...BASE_SITE, ...(s?.site ?? {}) },
   };
 }

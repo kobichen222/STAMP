@@ -18,13 +18,15 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const file = form?.get('file');
   const slug = String(form?.get('slug') ?? '');
-  const product = site.products.find((p) => p.slug === slug);
-  if (!product || !(file instanceof File)) return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 });
+  const product = site.products.find((p) => p.slug === slug && !p.custom);
+  // A product added from the admin (or not saved yet) has its own picture names ("c-…").
+  const isNew = !product && form?.get('custom') === '1';
+  if ((!product && !isNew) || !(file instanceof File)) return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 });
   const ext = TYPES[file.type];
   if (!ext) return NextResponse.json({ error: 'אפשר להעלות תמונת JPG, PNG או WebP' }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ error: 'התמונה גדולה מדי (עד 3MB)' }, { status: 400 });
   // A new name per upload, so browsers and the CDN can cache each picture forever.
-  const name = `p${product.id}-${Date.now().toString(36)}.${ext}`;
+  const name = `${product ? `p${product.id}` : 'c'}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${ext}`;
   await getStore().putFile(`product-images/${name}`, new Uint8Array(await file.arrayBuffer()), file.type);
   return NextResponse.json({ url: `/api/product-image/${name}` });
 }

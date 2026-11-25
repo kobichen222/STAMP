@@ -1,7 +1,8 @@
 import 'server-only';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { applyPublicSettings, withDefaults, type AdminSettings, type SettingsKey } from '@/lib/admin-settings';
+import { applyPublicSettings, customStampArea, withDefaults, type AdminSettings, type CustomProduct, type SettingsKey } from '@/lib/admin-settings';
+import type { Product } from '@/lib/types';
 import { site } from '@/lib/content';
 import { DEFAULT_RULES } from '@/lib/pricing';
 import { databaseUrl, db } from './store/neon';
@@ -59,6 +60,41 @@ export async function saveSettings<K extends SettingsKey>(key: K, value: AdminSe
 }
 
 const BASE_PRICE = new Map(site.products.map((p) => [p.id, p.price]));
+/** Slugs of the original catalogue (a product added from the admin may not take one). */
+export const BASE_SLUGS = new Set(site.products.map((p) => p.slug));
+
+const escapeHtml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** A product added from the admin, in the catalogue's own shape. */
+export function customToProduct(c: CustomProduct): Product {
+  const paragraphs = c.description
+    .split(/\n\s*\n/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return {
+    id: c.id,
+    slug: c.slug,
+    path: `/stamp/${c.slug}/`,
+    title: c.title,
+    price: c.price,
+    regularPrice: c.regularPrice ?? null,
+    image: c.image ? { src: c.image, alt: c.title } : null,
+    gallery: [],
+    categoryIds: c.categoryIds,
+    primaryCategoryId: c.categoryIds[0] ?? null,
+    tags: [],
+    stampArea: customStampArea(c),
+    rowsCount: c.rowsCount || null,
+    headings: [],
+    shortDescription: c.shortDescription,
+    blocks: paragraphs.length ? [{ type: 'html', html: paragraphs.map((t) => `<p>${escapeHtml(t).replace(/\n/g, '<br>')}</p>`).join('') }] : [],
+    seo: {},
+    menuOrder: 0,
+    modified: c.createdAt,
+    hidden: !!c.hidden,
+    custom: true,
+  };
+}
 const BASE_IMAGE = new Map(site.products.map((p) => [p.id, p.image]));
 
 /** The catalogue photo before any admin replacement. */
@@ -73,7 +109,11 @@ export async function ensureSettings(fresh = false): Promise<AdminSettings> {
   applyPublicSettings(s);
   const now = new Date();
   DEFAULT_RULES.coupons = s.coupons.filter((c) => c.active && (!c.expiresAt || new Date(c.expiresAt) >= now)).map(({ active: _a, note: _n, ...c }) => c);
+  // Products added from the admin: replace the previous copies (in place – the catalogue is shared).
+  for (let i = site.products.length - 1; i >= 0; i--) if (site.products[i].custom) site.products.splice(i, 1);
+  for (const c of s.customProducts) if (!BASE_SLUGS.has(c.slug)) site.products.push(customToProduct(c));
   for (const p of site.products) {
+    if (p.custom) continue;
     const o = s.products[p.slug];
     const base = BASE_PRICE.get(p.id) ?? null;
     p.price = o && o.price !== undefined ? o.price : base;

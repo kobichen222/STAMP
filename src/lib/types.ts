@@ -60,6 +60,8 @@ export interface Product {
   modified: string;
   /** Hidden by the admin (not listed / not orderable). */
   hidden?: boolean;
+  /** Added from the admin (not part of the original catalogue). */
+  custom?: boolean;
 }
 
 export interface Category {

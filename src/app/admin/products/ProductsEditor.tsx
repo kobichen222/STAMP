@@ -16,7 +16,7 @@ export interface AdminProductRow {
 }
 
 /** Shrinks a photo in the browser (keeps transparency) so uploads stay small and fast. */
-async function shrink(file: File): Promise<Blob> {
+export async function shrink(file: File): Promise<Blob> {
   const bmp = await createImageBitmap(file);
   const k = Math.min(1, 1400 / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas');

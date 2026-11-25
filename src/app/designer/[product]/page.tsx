@@ -13,6 +13,7 @@ export const dynamicParams = true;
 export const generateStaticParams = () => designerProducts().map((p) => ({ product: p.slug }));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  await ensureSettings();
   const slug = normalizeSlug((await params).product);
   const product = designerProducts().find((x) => x.slug === slug);
   return {
