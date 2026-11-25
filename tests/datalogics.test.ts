@@ -86,6 +86,22 @@ describe('DataLogics shipping', () => {
     expect(fetchMock.mock.calls.length / siteUrls().length).toBe(4);
   });
 
+  it('on the bare generic refusal, says it plainly – not "no account" – and points at a missing house number', async () => {
+    vi.stubEnv('DATALOGICS_TOKEN', 'tok');
+    // Live pattern: every attempt with settings → generic error; only the no-settings attempt → "no account".
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: RequestInit) => {
+      const b = JSON.parse(String(init.body));
+      return new Response(JSON.stringify(b.settings ? { success: 0, msg: 'התרחשה שגיאה' } : { success: 0, msg: 'אין חשבון על אתר זה (5)' }));
+    }));
+    const village = { ...order, shipping: { ...order.shipping, address: { street: 'עין ראפה אלוואד', city: 'עין ראפה' } } } as unknown as Order;
+    const e = (await createShipment(village).catch((x: Error) => x)) as Error;
+    expect(e).toBeInstanceOf(ShippingApiError);
+    expect(e.message).toContain('אין מספר בית');
+    expect(e.message).not.toContain('לא מוצאים את החשבון');
+    const e2 = (await createShipment(order).catch((x: Error) => x)) as Error;
+    expect(e2.message).toContain('בדקו בהזמנה את הכתובת');
+  });
+
   it('tries the other forms of the site address when the account is not found', async () => {
     vi.stubEnv('DATALOGICS_TOKEN', 'tok');
     const urls: string[] = [];

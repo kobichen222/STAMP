@@ -246,12 +246,25 @@ export async function createShipment(o: Order): Promise<ShipmentResult> {
       if (r.msg && r.msg !== 'התרחשה שגיאה') throw new ShippingApiError(r.msg);
     }
   }
+  // The "no account" answer only comes back when we send no settings at all; when every attempt that did
+  // reach the account got the bare generic error, that error is the real answer – say so, with what to check.
+  if (last.msg === 'התרחשה שגיאה' || (!noAccount && !last.msg && !last.error)) throw new ShippingApiError(genericHint(o));
   const r = noAccount ?? last;
   throw new ShippingApiError(
     noAccount
       ? `DataLogics לא מוצאים את החשבון לפי כתובת האתר (${SITE.url}). צריך לבקש מהם לרשום את הכתובת הזו לחשבון: ${r.msg}`
       : r.msg || r.error || `המשלוח לא נוצר: ${JSON.stringify(r).slice(0, 200)}`,
   );
+}
+
+/** What to tell the studio when ZigZag / DataLogics refuse with no reason. */
+export function genericHint(o: Order): string {
+  const base = 'זיג זג / DataLogics דחו את המשלוח בלי לפרט סיבה ("התרחשה שגיאה").';
+  const addr = o.shipping.address;
+  if (o.shipping.method !== 'locker' && addr?.street && !splitStreet(addr.street).house) {
+    return `${base} בכתובת "${addr.street}, ${addr.city ?? ''}" אין מספר בית – זו כנראה הסיבה. ערכו את הכתובת בהזמנה (כפתור עריכה), הוסיפו מספר בית ושדרו שוב.`;
+  }
+  return `${base} בדקו בהזמנה את הכתובת (רחוב, מספר בית ועיר) ואת הטלפון. אם הם תקינים – אפשר לשדר מהפאנל של DataLogics ולבקש מהם את הסיבה.`;
 }
 
 export async function cancelShipment(o: Order): Promise<void> {
