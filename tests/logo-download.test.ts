@@ -1,7 +1,7 @@
 /**
  * The logo a customer uploaded is downloadable on its own from the order:
  * as the picture (PNG) and as CorelDRAW outlines (AI), at its place on the stamp.
- * The main AI file keeps leaving the uploaded picture out.
+ * The main AI file carries the uploaded picture too, as an outline, next to the rest of the stamp.
  */
 import zlib from 'node:zlib';
 import { describe, expect, it } from 'vitest';
@@ -52,10 +52,11 @@ describe('customer logo download', () => {
     const first = /^([\d.]+) ([\d.]+) m$/m.exec(ai)!;
     expect(Number(first[1]) / (72 / 25.4)).toBeGreaterThan(6);
     expect(Number(first[1]) / (72 / 25.4)).toBeLessThan(18);
-    // With more than the picture on it, the whole stamp as AI still leaves the uploaded picture out.
+    // With more on the stamp than the picture, the whole-stamp AI has the picture's outline and the rest.
     const withShape = { ...design, elements: [...design.elements, { id: 'r', type: 'shape', kind: 'rect', x: 40, y: 11, width: 10, height: 6, rotation: 0, stroke: 0.4, filled: false }] } as unknown as Design;
     const main = String((await exportDesign(withShape, 'ai', false, meta)).data);
-    expect(main).not.toContain(first[0]);
+    expect(main).toContain(first[0]);
+    expect(paths(main)).toBeGreaterThan(paths(ai));
   });
 
   it('gives the picture exactly as stored', async () => {

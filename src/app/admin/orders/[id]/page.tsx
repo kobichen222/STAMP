@@ -202,7 +202,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
               </div>
               <div className="mt-3">
                 <p className="mb-1.5 text-sm font-semibold">הורדה בכל פורמט (CorelDRAW / לייזר)</p>
-                <ExportMenu orderId={o.id} index={i} mirror={it.mirror} hasRasterLogo={it.design.elements.some((e) => e.type === 'image' && !e.vector)} logo={logoKind(it.design)} pictureOnly={it.design.elements.length > 0 && it.design.elements.every((e) => e.type === 'image')} />
+                <ExportMenu orderId={o.id} index={i} mirror={it.mirror} hasRasterLogo={it.design.elements.some((e) => e.type === 'image' && !e.vector)} logo={logoKind(it.design)} />
               </div>
               <div className="mt-4 rounded-xl bg-surface p-3 text-sm">
                 <p className={it.preflight.ready ? 'font-semibold text-ok' : 'font-semibold text-bad'}>

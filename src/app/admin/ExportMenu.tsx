@@ -10,7 +10,7 @@ const PREF_KEY = 's2g-export-format';
  * CorelDRAW / laser software imports (remembered on this computer) and
  * whether to mirror; files are generated on demand from the locked design.
  */
-export function ExportMenu({ orderId, index, mirror, hasRasterLogo, pictureOnly, logo, compact = false }: { orderId: string; index: number; mirror: boolean; hasRasterLogo?: boolean; /** The design is only the customer's picture (a ready-made stamp): its AI is the traced picture. */ pictureOnly?: boolean; /** The design carries a customer logo: 'png' when its picture can be downloaded too. */ logo?: 'vector' | 'png'; compact?: boolean }) {
+export function ExportMenu({ orderId, index, mirror, hasRasterLogo, logo, compact = false }: { orderId: string; index: number; mirror: boolean; hasRasterLogo?: boolean; /** The design carries a customer logo: 'png' when its picture can be downloaded too. */ logo?: 'vector' | 'png'; compact?: boolean }) {
   const [format, setFormat] = useState<ExportFormat | 'zip'>('pdf');
   const [mir, setMir] = useState(mirror);
 
@@ -34,8 +34,6 @@ export function ExportMenu({ orderId, index, mirror, hasRasterLogo, pictureOnly,
 
   const href = (f: string) => `/api/admin/export/?order=${encodeURIComponent(orderId)}&item=${index}&format=${f}&mirror=${mir ? 1 : 0}`;
   const current = EXPORT_FORMATS.find((f) => f.id === format);
-  const lossy = hasRasterLogo && format !== 'ai' && (format === 'zip' || current?.vectorOnly);
-  const noPicture = hasRasterLogo && !pictureOnly && format === 'ai';
 
   return (
     <div className={`rounded-xl border border-line bg-white ${compact ? 'p-2' : 'p-3'}`}>
@@ -73,8 +71,7 @@ export function ExportMenu({ orderId, index, mirror, hasRasterLogo, pictureOnly,
           )}
         </div>
       )}
-      {noPicture && <p className="mt-1 text-xs text-warn">יש בעיצוב תמונה שהלקוח העלה – היא לא נכנסת לקובץ ה-AI הראשי (רק טקסט, מסגרות ולוגו וקטורי). היא מופיעה ב-PDF, וזמינה בנפרד בכפתור ״AI לקורל״ של הלוגו.</p>}
-      {lossy && <p className="mt-1 text-xs text-warn">יש בעיצוב לוגו כתמונה (לא וקטורי) – הוא נכלל רק ב-PDF / SVG.</p>}
+      {hasRasterLogo && !compact && <p className="mt-1 text-xs text-muted">תמונה שהלקוח העלה נכנסת לכל הפורמטים כקווי מתאר.</p>}
     </div>
   );
 }
