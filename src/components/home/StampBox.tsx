@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { stampTurn, warmStamps } from '@/stamp-bot/api';
+import type { Msg } from '@/stamp-bot/form';
 
 const PLACEHOLDER = 'לדוגמה: ישראל ישראלי, עורך דין, מ.ר. 12345, הרצל 1 תל אביב, 050-1234567';
+
+// The box is rendered twice on the page; the model processes need booting only once per page.
+let warmed = false;
 
 /**
  * The home page's single action, styled like a chat input: one growing line and a round send arrow.
@@ -11,6 +16,13 @@ const PLACEHOLDER = 'לדוגמה: ישראל ישראלי, עורך דין, מ.
  */
 export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; focusOnLoad?: boolean }) {
   const [text, setText] = useState('');
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [reply, setReply] = useState('');
+  const [stamp, setStamp] = useState<{ svg: string; form: string } | null>(null);
+  // A ref as well as state: two quick Enters can land before the re-render that disables the button.
+  const running = useRef(false);
   const area = useRef<HTMLTextAreaElement>(null);
   const textId = `${idPrefix}-text`;
 
@@ -45,12 +57,40 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
     area.current?.focus({ preventScroll: true });
   }, [focusOnLoad]);
 
+  async function send() {
+    const t = text.trim();
+    if (!t || running.current) return;
+    running.current = true;
+    // Every customer message carries the form as it is on screen now, so the model continues from it.
+    // On an error the customer message stays in the list, as in the reference client.
+    const next: Msg[] = [...msgs, { role: 'user', text: t, form: stamp?.form }];
+    setMsgs(next);
+    setText('');
+    setErr('');
+    setBusy(true);
+    try {
+      const res = await stampTurn(next);
+      if (res.err) setErr(res.msg);
+      else {
+        setMsgs([...next, { role: 'ai', text: res.text, form: res.shown?.form }]);
+        setReply(res.text);
+        if (res.shown) setStamp({ svg: res.shown.svg, form: res.shown.form });
+      }
+    } catch {
+      setErr('הבוט לא זמין כרגע');
+    }
+    running.current = false;
+    setBusy(false);
+  }
+
+  const showing = busy || err || reply || stamp;
+
   return (
     <form
       data-stamp-box
       onSubmit={(e) => {
-        // Not wired yet by the owner's decision: the stamp chat will be connected here in a later stage.
         e.preventDefault();
+        void send();
       }}
     >
       <label htmlFor={textId} className="sr-only">
@@ -62,7 +102,13 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
           id={textId}
           rows={1}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            if (!warmed) {
+              warmed = true;
+              warmStamps().catch(() => {});
+            }
+            setText(e.target.value);
+          }}
           onKeyDown={(e) => {
             // Enter sends, Shift+Enter starts a new line.
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -75,11 +121,36 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
         />
         <button
           type="submit"
+          disabled={busy}
           aria-label="הכינו לי חותמת"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue text-white transition hover:bg-blue-600 active:scale-[0.96]"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue text-white transition hover:bg-blue-600 active:scale-[0.96] disabled:opacity-60"
         >
           <Icon name="arrowLeft" size={20} strokeWidth={2.25} />
         </button>
+      </div>
+      <div aria-live="polite">
+        {showing && (
+          <div className="mt-4 space-y-3">
+            {busy ? (
+              <p className="text-center text-sm text-muted">מכינים את החותמת…</p>
+            ) : err ? (
+              <p className="text-center text-sm font-medium text-ink">{err}</p>
+            ) : (
+              reply && <p className="text-center text-sm text-muted">{reply}</p>
+            )}
+            {stamp && (
+              <div className="flex justify-center">
+                <div className="w-full max-w-xs rounded-2xl bg-white p-4 ring-1 ring-line">
+                  <img
+                    src={'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(stamp.svg)}
+                    alt="החותמת שלכם"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </form>
   );

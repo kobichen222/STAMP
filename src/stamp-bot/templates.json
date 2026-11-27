@@ -1,0 +1,181 @@
+[
+  {
+    "id": "company",
+    "label": "חברה",
+    "hint": "a company's stamp - ONLY when the text has בע\"מ, Ltd or ח.פ. (any spelling: ח\"פ, ח'פ, חברה פרטית). The template prints ח.פ. before the number itself. A person who signs for the company, with their position, goes under the company name.",
+    "account": null,
+    "slots": [
+      { "key": "name", "label": "שם החברה", "need": true },
+      { "key": "english", "label": "שם באנגלית" },
+      { "key": "signer", "label": "שם החותם" },
+      { "key": "position", "label": "תפקיד החותם" },
+      { "key": "number", "label": "מספר ח.פ.", "type": "number", "check": true }
+    ],
+    "lines": [
+      { "parts": ["{name}"], "slot": "head" },
+      { "parts": ["{english}"], "slot": "sub" },
+      { "parts": ["{signer}"], "slot": "role" },
+      { "parts": ["{position}"], "slot": "role" },
+      { "parts": ["ח.פ. {number}"], "slot": "id" }
+    ],
+    "tail": ["address", "phones", "email", "web", "extra", "fields"],
+    "design": {},
+    "signs": { "words": ["בע\"מ", "בעמ", "Ltd", "ח.פ.", "ח\"פ", "חברה פרטית"] }
+  },
+  {
+    "id": "dealer",
+    "label": "עוסק",
+    "hint": "the stamp of a self-employed person or a business that is not a company or a non-profit: when the text has ע.מ., ע.פ., עוסק מורשה or עוסק פטור (any spelling), or a bare number with none of the words of a company (בע\"מ, Ltd, ח.פ.) or a non-profit (עמותה, ע.ר.). kind: \"ע.מ.\" or \"ע.פ.\" as the customer said it, \"\" when they did not say - never decided by the digits. A person who signs for the business, with their position, goes under the business name.",
+    "account": null,
+    "slots": [
+      { "key": "name", "label": "שם העסק", "need": true },
+      { "key": "english", "label": "שם באנגלית" },
+      { "key": "signer", "label": "שם החותם" },
+      { "key": "position", "label": "תפקיד החותם" },
+      { "key": "kind", "label": "ע.מ. או ע.פ.", "options": ["", "ע.מ.", "ע.פ."], "ask": true },
+      { "key": "number", "label": "מספר עוסק", "type": "number", "check": true }
+    ],
+    "lines": [
+      { "parts": ["{name}"], "slot": "head" },
+      { "parts": ["{english}"], "slot": "sub" },
+      { "parts": ["{signer}"], "slot": "role" },
+      { "parts": ["{position}"], "slot": "role" },
+      { "parts": ["{kind}", "{number}"], "slot": "id", "req": "number" }
+    ],
+    "tail": ["address", "phones", "email", "web", "extra", "fields"],
+    "design": {},
+    "signs": { "words": ["עוסק מורשה", "עוסק פטור", "ע.מ.", "ע.פ."], "slots": ["number"] }
+  },
+  {
+    "id": "nonprofit",
+    "label": "עמותה",
+    "hint": "a non-profit's stamp - when the text has עמותה, עמותת or ע.ר. (any spelling: ע\"ר). The template prints ע.ר. before the number itself. A person who signs for the non-profit, with their position, goes under its name.",
+    "account": null,
+    "slots": [
+      { "key": "name", "label": "שם העמותה", "need": true },
+      { "key": "english", "label": "שם באנגלית" },
+      { "key": "signer", "label": "שם החותם" },
+      { "key": "position", "label": "תפקיד החותם" },
+      { "key": "number", "label": "מספר ע.ר.", "type": "number", "check": true }
+    ],
+    "lines": [
+      { "parts": ["{name}"], "slot": "head" },
+      { "parts": ["{english}"], "slot": "sub" },
+      { "parts": ["{signer}"], "slot": "role" },
+      { "parts": ["{position}"], "slot": "role" },
+      { "parts": ["ע.ר. {number}"], "slot": "id" }
+    ],
+    "tail": ["address", "phones", "email", "web", "extra", "fields"],
+    "design": {},
+    "signs": { "words": ["עמותה", "עמותת", "ע.ר.", "ע\"ר", "עמותה רשומה"] }
+  },
+  {
+    "id": "lawyer",
+    "label": "עורך דין",
+    "hint": "the own stamp of ONE lawyer, by their personal name (עורך דין / עורכת דין / עו\"ד), also a notary who is a lawyer. A law office or firm (משרד עורכי דין, משרד עו\"ד, a name with ושות') is not this template and has none yet.",
+    "account": null,
+    "slots": [
+      { "key": "name", "label": "שם", "need": true },
+      { "key": "title", "label": "תואר", "options": ["עו\"ד", "עו\"ד ונוטריון"] },
+      { "key": "english", "label": "שם באנגלית" },
+      { "key": "license", "label": "מספר רישיון", "type": "number" }
+    ],
+    "lines": [
+      { "parts": ["{name}, {title}"], "slot": "head" },
+      { "parts": ["{english}"], "slot": "sub" },
+      { "parts": ["מ.ר. {license}"], "slot": "id" }
+    ],
+    "tail": ["address", "phones", "email", "web", "extra", "fields"],
+    "design": {},
+    "signs": { "words": ["עו\"ד", "עורך דין", "עורכת דין", "Adv", "Advocate"], "own": true }
+  },
+  {
+    "id": "doctor",
+    "label": "רופא",
+    "hint": "a physician's or dentist's own stamp (ד\"ר, רופא, רופאה, רופא שיניים), with a license number (מ.ר.) and maybe a specialist license (מ.ר.מ.).",
+    "account": null,
+    "slots": [
+      { "key": "name", "label": "שם", "need": true },
+      { "key": "specialty", "label": "התמחות" },
+      { "key": "license", "label": "מ.ר.", "type": "number" },
+      { "key": "specialist", "label": "מ.ר.מ.", "type": "number" }
+    ],
+    "lines": [
+      { "parts": ["ד\"ר {name}"], "slot": "head" },
+      { "parts": ["{specialty}"], "slot": "role" },
+      { "parts": ["מ.ר. {license}", "מ.ר.מ. {specialist}"], "slot": "id" }
+    ],
+    "tail": ["address", "phones", "email", "web", "extra", "fields"],
+    "design": {},
+    "signs": { "words": ["ד\"ר", "דר'", "דוקטור", "רופא", "רופאה", "רופאת", "Dr"], "own": true }
+  },
+  {
+    "id": "licensed",
+    "label": "בעל מקצוע",
+    "hint": "the own stamp of a person with their profession or occupation, with or without a license number: engineer, architect, accountant, psychologist, appraiser, electrician, tax advisor, designer, artist, guide, gardener... Not a lawyer or a physician (they have their own templates), and not a person signing for an organization.",
+    "account": null,
+    "slots": [
+      { "key": "name", "label": "שם", "need": true },
+      { "key": "profession", "label": "מקצוע", "need": true },
+      { "key": "license", "label": "מספר רישיון", "type": "number" }
+    ],
+    "lines": [
+      { "parts": ["{name}"], "slot": "head" },
+      { "parts": ["{profession}"], "slot": "role" },
+      { "parts": ["מ.ר. {license}"], "slot": "id" }
+    ],
+    "tail": ["address", "phones", "email", "web", "extra", "fields"],
+    "design": {}
+  },
+  {
+    "id": "employee",
+    "label": "עובד בארגון",
+    "hint": "the stamp of a person who works for an organization and signs with their position: a manager, a buyer, a safety officer, a clerk in a municipality or a company.",
+    "account": null,
+    "slots": [
+      { "key": "name", "label": "שם", "need": true },
+      { "key": "position", "label": "תפקיד", "need": true },
+      { "key": "org", "label": "שם הארגון" }
+    ],
+    "lines": [
+      { "parts": ["{name}"], "slot": "head" },
+      { "parts": ["{position}"], "slot": "role" },
+      { "parts": ["{org}"], "slot": "org" }
+    ],
+    "tail": ["address", "phones", "email", "web", "extra", "fields"],
+    "design": {}
+  },
+  {
+    "id": "vaad",
+    "label": "ועד בית",
+    "hint": "a building committee (ועד בית / ועד הבית / נציגות הבית). Its address goes to the address of the tail.",
+    "account": null,
+    "slots": [{ "key": "building", "label": "שם הבניין" }],
+    "lines": [
+      { "parts": ["ועד הבית"], "slot": "head" },
+      { "parts": ["{building}"], "slot": "sub" }
+    ],
+    "tail": ["address", "phones", "extra", "fields"],
+    "design": {},
+    "signs": { "words": ["ועד בית", "ועד הבית", "ועד הבניין", "ועד בניין", "נציגות הבית", "נציגות בית", "נציגות הבניין"], "own": true }
+  },
+  {
+    "id": "status",
+    "label": "חותמת מצב",
+    "hint": "a word that says what happened to a document: שולם, התקבל, נאמן למקור, העתק, בוטל, דחוף. Lines to fill in by hand (date, signature) are fields.",
+    "account": null,
+    "slots": [{ "key": "word", "label": "המילה", "need": true }],
+    "lines": [{ "parts": ["{word}"], "slot": "status" }],
+    "tail": ["extra", "fields"],
+    "design": { "kind": "status" },
+    "signs": {
+      "words": [
+        "שולם", "התקבל", "נתקבל", "נאמן למקור", "העתק", "העתק נאמן למקור", "העתק מתאים למקור", "מקור",
+        "בוטל", "מבוטל", "דחוף", "אושר", "מאושר", "מאושר לתשלום", "לתשלום", "נפרע", "נבדק", "בוצע", "לביצוע",
+        "הועבר", "נשלח", "סודי", "סודי ביותר", "טיוטה",
+        "PAID", "RECEIVED", "COPY", "TRUE COPY", "CERTIFIED COPY", "ORIGINAL", "APPROVED", "URGENT", "DRAFT",
+        "CONFIDENTIAL", "CANCELLED", "CANCELED", "VOID", "OBSOLETE"
+      ]
+    }
+  }
+]
