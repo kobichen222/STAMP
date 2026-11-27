@@ -5,7 +5,8 @@
 import { sourceLines } from './check'
 import { asks, cleanForm, getTemplate, lockedLook, type Form, type Kind, type SlotDef, type Template } from './form'
 import { ICONS, ICON_NAMES } from './icons'
-import { ICON_POS_LABELS, INKS, KINDS, KIND_NAMES, sizeName } from './kinds'
+import { INK_COLORS } from '@/designer/types'
+import { ICON_POS_LABELS, INK_NAMES, KINDS, KIND_NAMES, sizeName } from './kinds'
 
 export type Looks = Record<Kind, { id: string; label: string }[]>
 export type Said = { role: 'user' | 'ai'; text: string }
@@ -163,9 +164,9 @@ One JSON object and nothing else - no text before or after it, no markdown fence
 
 # The look
 Only the keys the customer asks to change - never your idea. Never a key that <look> says is fixed: then "say" that it is not possible for this kind of stamp, and change nothing.
-  "kind": "rect" | "round" | "oval" | "square" | "status"
-     rect = the everyday stamp (מלבנית); round (עגולה), oval (סגלגלה / אליפסה) = a seal; square (ריבועית); status = the stamp of one word
-  "color": ${Object.keys(INKS).join(' | ')} - the ink
+  "kind": ${KIND_NAMES.map((k) => `"${k}" (${KINDS[k].label})`).join(' | ')}
+     rect = the everyday stamp; round = a seal; square = a square stamp; status = the stamp of one word. These are the only shapes made - any other shape is in "What you cannot do"
+  "color": ${INK_NAMES.map((k) => `${k} (${INK_COLORS[k].label})`).join(' | ')} - the ink
   "font": "sans" (modern, clean) | "serif" (classic, traditional)
   "size": "auto" (the software picks the smallest the text fits in) or one of the sizes of the kind, in mm:
 ${sizes}
@@ -178,7 +179,7 @@ ${iconPos}
   "iconSize": "s" | "m" | "l"
 
 # What you cannot do
-The stamp has only the lines and the look above. There is no bold or bigger single line, no rotating one line, no line on a specific arc or place of a seal, no worn, used or tilted effect, no free positioning, no logo or picture upload, no second color.
+The stamp has only the lines and the look above. There is no shape other than the kinds above, no bold or bigger single line, no rotating one line, no line on a specific arc or place of a seal, no worn, used or tilted effect, no free positioning, no logo or picture upload, no second color.
 When the customer asks for one of those: text null, look {}, and "say" says briefly in Hebrew that it is not possible ("אי אפשר ...") and what IS possible instead (another look, a size, a font, an icon from the list). When the same message also asks for something possible (a new stamp, a change): do that part as usual - text, fields, look - leave the impossible part out, and "say" the same one short sentence.
 
 # Examples

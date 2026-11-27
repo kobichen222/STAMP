@@ -127,6 +127,10 @@ function obj(v: unknown) {
   return (v && typeof v === 'object' && !Array.isArray(v) ? v : {}) as Record<string, unknown>
 }
 
+function safePath(d: string) {
+  return /^[MLHVCSQTAZmlhvcsqtaz\d.,\s-]*$/.test(d) ? d : ''
+}
+
 // an empty form, and an unknown template, start from the first template of the list
 export function emptyForm(tmpl = TEMPLATES[0].id): Form {
   return cleanForm({ tmpl })
@@ -178,7 +182,8 @@ export function cleanForm(raw: unknown): Form {
     icon,
     iconPos: pick(d.iconPos ?? r.iconPos, def.iconPos, def.iconPos[0]),
     iconSize: pick(d.iconSize ?? r.iconSize, ['s', 'm', 'l'] as const, 'm'),
-    path: icon === 'custom' ? str(r.path, 4000) : '',
+    // written raw into <path d="..."> (draw/kit.ts): path commands and numbers only, anything else is dropped
+    path: icon === 'custom' ? safePath(str(r.path, 4000)) : '',
   }
 }
 

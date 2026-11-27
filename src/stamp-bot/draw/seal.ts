@@ -1,4 +1,4 @@
-// the seals: round and oval. placement is a fixed rule by slot, the same every time:
+// the round seal. placement is a fixed rule by slot, the same every time:
 // the head rides the top arc, the first contact (or the last number, or the sub / org) the bottom arc,
 // everything else stacks in the center with the icon. ornaments stand on the ring between the two arcs.
 // the center stack (stack, the items, the split of a long line) is shared with plain.ts
@@ -27,7 +27,7 @@ export const BORDERS: Record<Border, [number, number][]> = {
   triple: [[0, 1.8], [6.5, 5], [13, 1.8]],
 }
 const THIN = 1.6 // the line between the ring and the center
-const ARC_CAP = { round: 0.12, oval: 0.14 } // the letter height of the ring, of the smaller radius. an oval is lower, its ring gets a bigger share
+const ARC_CAP = 0.12 // the letter height of the ring, of its radius
 const TRACK = 0.06 // the air between the letters of the ring, in font sizes - letters on a curve need more than on a line
 const SPREAD = 0.2 // the most a short ring text may open up, in font sizes between two letters
 const WORD_AIR = 2.5 // a space opens this many times as much as the gap between two letters, so the words still read apart
@@ -274,7 +274,7 @@ function spread(l: Line | null, want: number, most: number): Line | null {
 function ring(form: Form, look: SealLook, top: Block | null, bot: Block | null, sides: boolean, cx: number, cy: number, a0: number, b0: number) {
   const capRatio = setLine('ה', form.font, 'bold', 1).cap
   const both = !!top && !!bot
-  let cap = Math.min(a0, b0) * (a0 === b0 ? ARC_CAP.round : ARC_CAP.oval)
+  let cap = Math.min(a0, b0) * ARC_CAP
   let f = 0
   let pad = 0
   let half = 0
@@ -346,7 +346,7 @@ function ring(form: Form, look: SealLook, top: Block | null, bot: Block | null, 
   return { svg, cap: Math.min(tl?.cap ?? Infinity, bl?.cap ?? Infinity), ai: a0 - inner, bi: b0 - inner, rows: (tl ? 1 : 0) + (bl ? 1 : 0) }
 }
 
-function seal(oval: boolean): Shape {
+function seal(): Shape {
   return {
     looks: LOOKS.map(({ id, label }) => ({ id, label })),
     lay(form: Form, blocks: Block[], size: StampSize, lookId: string): Laid | null {
@@ -368,7 +368,7 @@ function seal(oval: boolean): Shape {
         edge = inset + Math.max(MIN_STROKE, sw) / 2
       }
       const a0 = A - edge
-      const b0 = oval ? B - edge : a0
+      const b0 = a0
 
       const { top, bottom, center } = place(blocks, pos === 'center' || pos === 'bottom', form.fields.length > 0)
       let ai = a0 - 12
@@ -400,5 +400,4 @@ function seal(oval: boolean): Shape {
   }
 }
 
-export const ROUND: Shape = seal(false)
-export const OVAL: Shape = seal(true)
+export const ROUND: Shape = seal()

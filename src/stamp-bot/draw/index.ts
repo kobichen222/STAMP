@@ -5,10 +5,10 @@ import { KINDS, sizeName, type Kind, type StampSize } from '../kinds'
 import { WRITTEN, badIds, cleanForm, structure, type Block, type Form, type Shown } from '../form'
 import { MIN_CAP, sheet, type Laid, type Shape } from './kit'
 import { RECT } from './rect'
-import { ROUND, OVAL } from './seal'
+import { ROUND } from './seal'
 import { SQUARE, STATUS } from './plain'
 
-export const SHAPES: Record<Kind, Shape> = { rect: RECT, round: ROUND, oval: OVAL, square: SQUARE, status: STATUS }
+export const SHAPES: Record<Kind, Shape> = { rect: RECT, round: ROUND, square: SQUARE, status: STATUS }
 
 export type Drawn = { svg: string; size: string; look: string; warn: string; ok: boolean }
 

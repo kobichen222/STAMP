@@ -140,7 +140,7 @@ function withLook(prev: Form | null, form: Form, look: Extracted['look']): Form 
   if (def.iconPos.includes(r.iconPos as IconPos)) raw.iconPos = r.iconPos as IconPos
   if (r.iconSize === 's' || r.iconSize === 'm' || r.iconSize === 'l') raw.iconSize = r.iconSize
   const out = cleanForm(raw)
-  // a kind change carries a color still at the old kind's default over to the new kind's default (blue <-> red on status)
+  // a kind change carries a color still at the old kind's default over to the new kind's default (today every kind's default is black, so this changes nothing until one differs)
   if (prev && out.kind !== prev.kind && r.color === undefined && out.color === prev.color && prev.color === KINDS[prev.kind].ink && !lockedLook(out).includes('color')) out.color = KINDS[out.kind].ink
   return out
 }
