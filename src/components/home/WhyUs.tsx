@@ -1,6 +1,4 @@
-import Link from 'next/link';
-import { Icon } from '@/components/ui/Icon';
-
+// Only LaserArt lives here now (used by /how-it-works); the home page no longer has a why-us section.
 const LASER_STATS: [string, string][] = [
   ['20', 'שניות ייצור'],
   ['2', 'דקות עד חותמת ביד'],
@@ -8,7 +6,7 @@ const LASER_STATS: [string, string][] = [
 ];
 
 /** Animated laser engraving a stamp plate (pure SVG + CSS, no JS) – in the site palette. */
-export function LaserArt({ stats = LASER_STATS }: { stats?: [string, string][] }) {
+export function LaserArt() {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-line bg-gradient-to-b from-white to-blue-50 p-5 shadow-soft sm:p-6">
       <style>{`
@@ -60,8 +58,8 @@ export function LaserArt({ stats = LASER_STATS }: { stats?: [string, string][] }
         </g>
       </svg>
       <p className="mt-2 text-center text-sm text-muted">הגומי נחרט ישירות מהקובץ – בלי גלופה, בלי המתנה.</p>
-      <div className={`mt-4 grid gap-2 text-center ${stats.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-        {stats.map(([n, l]) => (
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+        {LASER_STATS.map(([n, l]) => (
           <div key={l} className="rounded-2xl bg-white px-2 py-3 ring-1 ring-line">
             <p className="text-2xl font-extrabold text-blue tabular-nums sm:text-3xl">{n}</p>
             <p className="mt-0.5 text-[11px] leading-4 text-muted">{l}</p>
@@ -69,35 +67,5 @@ export function LaserArt({ stats = LASER_STATS }: { stats?: [string, string][] }
         ))}
       </div>
     </div>
-  );
-}
-
-// Short lines taken from the studio's own story (about page / why-us answers).
-const WHY_LINES = ['גם חותמת אחת מוכנה מיד, בלי הזמנה מראש.', 'כל חותמת "דחופה", בלי תוספת מחיר.', 'שחיקה כמעט אפסית: החותמת מחזיקה שנים.'];
-
-/** Home page: the laser machine in Ramat Gan, its real numbers and three short lines. */
-export function WhyUs() {
-  return (
-    <section id="why" className="container-x py-12 sm:py-16">
-      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
-        <div className="max-w-2xl">
-          <p className="eyebrow">למה רק אצלנו?</p>
-          <h2 className="mt-2 text-3xl font-extrabold sm:text-4xl">מכונת הלייזר החזקה בעולם. ברמת גן.</h2>
-          <ul className="mt-5 grid gap-2.5 text-lg text-ink-2">
-            {WHY_LINES.map((t) => (
-              <li key={t} className="flex items-start gap-2.5">
-                <Icon name="check" size={20} className="mt-1 shrink-0 text-blue" />
-                {t}
-              </li>
-            ))}
-          </ul>
-          <Link href="/about/" className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-blue hover:underline">
-            עוד עלינו <Icon name="arrowLeft" size={15} />
-          </Link>
-        </div>
-        {/* The "2 minutes" stat is left out here: the home page already says it twice. */}
-        <LaserArt stats={LASER_STATS.filter(([n]) => n !== '2')} />
-      </div>
-    </section>
   );
 }
