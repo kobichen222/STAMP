@@ -13,8 +13,11 @@ const PROMISES = [
  * announcement bar when there is one); when the window is too short the section simply
  * grows, so nothing overlaps. The top padding leaves room for the fixed header.
  */
+/** The quiet line under each input (first screen and closing band); the price part only when there is one. */
+export const factsLine = (fromPrice: string | null) => (fromPrice ? `רואים את החותמת לפני שמשלמים · החל מ-${fromPrice} ₪` : 'רואים את החותמת לפני שמשלמים');
+
 export function HomeHero({ fromPrice, announcement = false }: { fromPrice: string | null; announcement?: boolean }) {
-  const facts = fromPrice ? `רואים את החותמת לפני שמשלמים · החל מ-${fromPrice} ₪` : 'רואים את החותמת לפני שמשלמים';
+  const facts = factsLine(fromPrice);
   return (
     <section
       id="start"

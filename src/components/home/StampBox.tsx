@@ -9,7 +9,7 @@ const PLACEHOLDER = 'לדוגמה: ישראל ישראלי, עורך דין, מ.
  * The home page's single action, styled like a chat input: one growing line and a round send arrow.
  * Rendered twice (first screen and closing section), so every id is built from `idPrefix`.
  */
-export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; focusOnLoad?: boolean }) {
+export function StampBox({ idPrefix, focusOnLoad = false, onBlue = false }: { idPrefix: string; focusOnLoad?: boolean; onBlue?: boolean }) {
   const [text, setText] = useState('');
   const area = useRef<HTMLTextAreaElement>(null);
   const textId = `${idPrefix}-text`;
@@ -56,7 +56,14 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
       <label htmlFor={textId} className="sr-only">
         מה לכתוב בחותמת?
       </label>
-      <div className="flex items-end gap-2 rounded-2xl border border-line bg-white p-2 ps-4 shadow-soft transition focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/10">
+      {/* On the blue band a blue ring would vanish: a white outline with a gap shows focus instead. */}
+      <div
+        className={`flex items-end gap-2 rounded-2xl border bg-white p-2 ps-4 transition ${
+          onBlue
+            ? 'border-white shadow-lift focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-white'
+            : 'border-line shadow-soft focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/10'
+        }`}
+      >
         <textarea
           ref={area}
           id={textId}

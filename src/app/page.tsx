@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { CategoryCard } from '@/components/catalog/CategoryCard';
 import { GoogleReviewsSection } from '@/components/home/GoogleReviewsSection';
-import { HomeHero } from '@/components/home/HomeHero';
+import { factsLine, HomeHero } from '@/components/home/HomeHero';
 import { StampBox } from '@/components/home/StampBox';
 import { StartBar } from '@/components/home/StartBar';
 import { HomeFaq } from '@/components/home/HomeFaq';
@@ -93,13 +93,19 @@ export default async function HomePage() {
       {/* One FAQPage for the home page: exactly the questions shown above. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(faq)) }} />
 
-      <section className="container-x py-12 sm:py-16" aria-labelledby="end-title">
-        <div className="mx-auto max-w-2xl">
-          <h2 id="end-title" className="text-center text-4xl font-extrabold sm:text-5xl">
-            עכשיו תורכם.
-          </h2>
-          <div className="mt-8">
-            <StampBox idPrefix="end" />
+      {/* The page's only coloured band: the final call to act. The 1px overlap covers the footer's
+          top border, so the blue meets the footer's surface directly. */}
+      <section className="relative z-[1] -mb-px bg-blue py-20 sm:py-28" aria-labelledby="end-title">
+        <div className="container-x">
+          <div className="mx-auto max-w-2xl">
+            <h2 id="end-title" className="text-center text-3xl font-extrabold text-white sm:text-5xl">
+              איזו חותמת להכין לכם?
+            </h2>
+            <div className="mt-8">
+              <StampBox idPrefix="end" onBlue />
+            </div>
+            {/* White at 90% on #2457ff is about 4.7:1, above WCAG AA for small text. */}
+            <p className="mt-4 text-center text-sm text-white/90">{factsLine(fromPrice)}</p>
           </div>
         </div>
       </section>
