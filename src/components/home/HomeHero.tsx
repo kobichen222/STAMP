@@ -1,5 +1,5 @@
 import { Icon } from '@/components/ui/Icon';
-import { StampBox } from './StampBox';
+import { StartBlock } from './StartBlock';
 
 const PROMISES = [
   ['clock', 'מוכנה תוך 2 דקות'],
@@ -13,11 +13,7 @@ const PROMISES = [
  * announcement bar when there is one); when the window is too short the section simply
  * grows, so nothing overlaps. The top padding leaves room for the fixed header.
  */
-/** The quiet line under each input (first screen and closing band); the price part only when there is one. */
-export const factsLine = (fromPrice: string | null) => (fromPrice ? `רואים את החותמת לפני שמשלמים · החל מ-${fromPrice} ₪` : 'רואים את החותמת לפני שמשלמים');
-
 export function HomeHero({ fromPrice, announcement = false }: { fromPrice: string | null; announcement?: boolean }) {
-  const facts = factsLine(fromPrice);
   return (
     <section
       id="start"
@@ -25,15 +21,7 @@ export function HomeHero({ fromPrice, announcement = false }: { fromPrice: strin
       className={`flex flex-col bg-gradient-to-b from-white via-white to-surface ${announcement ? 'min-h-[calc(100svh-2rem)]' : 'min-h-svh'}`}
     >
       <div className="container-x flex flex-1 flex-col items-center justify-center pt-24 pb-8 lg:pt-28 lg:pb-12">
-        <div className="w-full max-w-2xl">
-          <h1 id="start-title" className="text-center text-3xl font-extrabold sm:text-5xl">
-            איזו חותמת להכין לכם?
-          </h1>
-          <div className="mt-8">
-            <StampBox idPrefix="start" focusOnLoad />
-          </div>
-          <p className="mt-4 text-center text-sm text-muted">{facts}</p>
-        </div>
+        <StartBlock as="h1" idPrefix="start" focusOnLoad fromPrice={fromPrice} />
       </div>
 
       <div className="shrink-0 border-y border-line bg-white py-3 sm:py-6">

@@ -2,8 +2,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { CategoryCard } from '@/components/catalog/CategoryCard';
 import { GoogleReviewsSection } from '@/components/home/GoogleReviewsSection';
-import { factsLine, HomeHero } from '@/components/home/HomeHero';
-import { StampBox } from '@/components/home/StampBox';
+import { HomeHero } from '@/components/home/HomeHero';
+import { StartBlock } from '@/components/home/StartBlock';
 import { StartBar } from '@/components/home/StartBar';
 import { HomeFaq } from '@/components/home/HomeFaq';
 import { Icon } from '@/components/ui/Icon';
@@ -97,16 +97,8 @@ export default async function HomePage() {
           from the grey FAQ band and footer. The 1px overlap covers the footer's top border, so the tint meets
           the footer's surface directly. */}
       <section className="relative z-[1] -mb-px bg-blue-50 py-20 sm:py-28" aria-labelledby="end-title">
-        <div className="container-x">
-          <div className="mx-auto max-w-2xl">
-            <h2 id="end-title" className="text-center text-3xl font-extrabold sm:text-5xl">
-              איזו חותמת להכין לכם?
-            </h2>
-            <div className="mt-8">
-              <StampBox idPrefix="end" closing />
-            </div>
-            <p className="mt-4 text-center text-sm text-muted">{factsLine(fromPrice)}</p>
-          </div>
+        <div className="container-x flex justify-center">
+          <StartBlock as="h2" idPrefix="end" fromPrice={fromPrice} />
         </div>
       </section>
 
