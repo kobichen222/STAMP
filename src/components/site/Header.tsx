@@ -14,10 +14,10 @@ import { STAMP_MENU, TRADE_NAV } from './nav';
 /**
  * Desktop-only contact strip above the main bar (34px). It collapses to 0 once the page is scrolled,
  * and turns invisible so its links leave the tab order while collapsed.
- * Text only, in one style for the whole strip: address and hours as plain text on the start side,
- * three links split by thin dividers on the end side, all sharing the same hover.
+ * One text style for the whole strip. Start side: the address (a link that opens Waze) and the opening
+ * hours. End side: WhatsApp and the phone. Items on each side are split by a thin divider.
  */
-// Each strip link carries one 16px icon in the text colour (same size and colour for all three).
+// Every strip item carries one 16px icon in the text colour (same size and colour for all four).
 const STRIP_LINK = 'flex items-center gap-1.5 hover:text-ink hover:underline';
 const STRIP_ICON = 16;
 
@@ -29,15 +29,19 @@ function ContactStrip({ collapsed }: { collapsed: boolean }) {
   return (
     <div className={`hidden overflow-hidden bg-surface transition-[height,visibility] duration-300 lg:block ${collapsed ? 'invisible h-0' : 'h-[34px]'}`}>
       <div className="container-x flex h-[34px] items-center justify-between gap-6 text-[12.5px] font-medium whitespace-nowrap text-ink-2">
-        <span className="min-w-0 truncate">
-          {SITE.address} · {SITE.hours}
-        </span>
-        <div className="flex shrink-0 items-center gap-3">
-          <a href={SITE.waze} target="_blank" rel="noopener" className={STRIP_LINK}>
+        <div className="flex min-w-0 items-center gap-3">
+          {/* The address itself is the navigation link, so there is no separate Waze link. */}
+          <a href={SITE.waze} target="_blank" rel="noopener" title="ניווט בווייז" aria-label={`ניווט בווייז אל ${SITE.address}`} className={`min-w-0 ${STRIP_LINK}`}>
             <Icon name="pin" size={STRIP_ICON} className="shrink-0" />
-            ניווט בווייז
+            <span className="truncate">{SITE.address}</span>
           </a>
           <StripDivider />
+          <span className="flex shrink-0 items-center gap-1.5">
+            <Icon name="clock" size={STRIP_ICON} className="shrink-0" />
+            {SITE.hours}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
           <a href={SITE.whatsapp} target="_blank" rel="noopener" className={STRIP_LINK}>
             <Icon name="whatsapp" size={STRIP_ICON} className="shrink-0" />
             וואטסאפ
