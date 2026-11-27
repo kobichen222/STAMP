@@ -12,9 +12,8 @@ export const metadata: Metadata = {
 };
 
 export default function ReviewsPage() {
-  const { rating, count, reviews, collectedAt } = GOOGLE_REVIEWS;
+  const { rating, count, reviews } = GOOGLE_REVIEWS;
   const spread = ratingSpread();
-  const [y, m, d] = collectedAt.split('-');
   return (
     <>
       <PageHero eyebrow="לקוחות מספרים" title="ביקורות מגוגל" lead="כל הביקורות שלקוחות כתבו עלינו בגוגל – הטובות וגם הפחות טובות." crumbs={[{ label: 'ביקורות' }]} />
@@ -51,10 +50,13 @@ export default function ReviewsPage() {
           </div>
         </div>
         <p className="mt-4 text-sm leading-relaxed break-words text-muted">
-          הטקסטים כאן הם תקצירים של מה שכתבו הלקוחות בגוגל, לא ציטוט מילה במילה. הנוסח המלא של כל ביקורת מופיע בגוגל. נאסף ב-{d}.{m}.{y}; שנת הביקורת משוערת.
+          אלה הביקורות של הלקוחות כפי שנכתבו בגוגל.{' '}
+          <a href={GOOGLE_REVIEWS_URL} target="_blank" rel="noopener" className="font-semibold text-blue hover:underline">
+            לכל הביקורות בגוגל
+          </a>
         </p>
         <div className="mt-8">
-          <ReviewsList reviews={reviews} spread={spread} />
+          <ReviewsList reviews={reviews} spread={spread} googleUrl={GOOGLE_REVIEWS_URL} />
         </div>
       </div>
     </>

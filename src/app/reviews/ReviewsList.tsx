@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { ReviewCard } from '@/components/reviews/parts';
 import type { GoogleReview } from '@/lib/google-reviews';
+import { ReviewCard } from './ReviewCard';
 
 const PAGE = 30;
 
-/** Every review, with a star filter and "show more". */
-export function ReviewsList({ reviews, spread }: { reviews: GoogleReview[]; spread: { stars: number; count: number }[] }) {
+/** Every review, with a star filter and "show more". `googleUrl` is the business's page with every review on Google. */
+export function ReviewsList({ reviews, spread, googleUrl }: { reviews: GoogleReview[]; spread: { stars: number; count: number }[]; googleUrl: string }) {
   const [stars, setStars] = useState(0);
   const [shown, setShown] = useState(PAGE);
   const list = stars ? reviews.filter((r) => r.rating === stars) : reviews;
@@ -30,6 +30,15 @@ export function ReviewsList({ reviews, spread }: { reviews: GoogleReview[]; spre
             </button>
           ))}
       </div>
+      {/* 1-3 star reviews carry no text on the site: when the filter leaves no text at all, point to Google. */}
+      {list.length > 0 && !list.some((r) => r.text) && (
+        <p className="mt-5 text-sm text-muted">
+          הנוסח של הביקורות האלה מופיע בגוגל.{' '}
+          <a href={googleUrl} target="_blank" rel="noopener" className="font-semibold text-blue hover:underline">
+            לביקורות בגוגל
+          </a>
+        </p>
+      )}
       <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {list.slice(0, shown).map((r) => (
           <li key={r.n} className="flex">

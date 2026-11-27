@@ -1,5 +1,3 @@
-import type { GoogleReview } from '@/lib/google-reviews';
-
 export function GoogleG({ className = 'h-5 w-5' }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden>
@@ -32,34 +30,5 @@ export function Stars({ value, className = 'h-4 w-4' }: { value: number; classNa
         );
       })}
     </span>
-  );
-}
-
-const TONES = ['bg-blue', 'bg-violet', 'bg-[#12a150]', 'bg-[#d98a00]', 'bg-[#d6283b]', 'bg-ink-2'];
-
-/** One review: who, how many stars, when, and the summary of what they wrote. */
-export function ReviewCard({ r, className = '' }: { r: GoogleReview; className?: string }) {
-  return (
-    <article className={`flex flex-col rounded-3xl border border-line bg-white p-5 shadow-soft ${className}`}>
-      <div className="flex items-center gap-3">
-        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-lg font-bold text-white ${TONES[r.n % TONES.length]}`} aria-hidden>
-          {r.name.charAt(0).toUpperCase()}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-bold">
-            <bdi>{r.name}</bdi>
-          </p>
-          <p className="text-xs text-muted">ביקורת בגוגל · {r.year}</p>
-        </div>
-        <GoogleG className="h-5 w-5 shrink-0" />
-      </div>
-      <div className="mt-3">
-        <Stars value={r.rating} />
-      </div>
-      {r.text ? <p className="mt-2.5 flex-1 text-[15px] leading-relaxed text-ink-2">{r.text}</p> : <p className="mt-2.5 flex-1 text-sm text-muted">דירוג בלי טקסט</p>}
-      <a href={r.profile} target="_blank" rel="noopener nofollow" className="mt-3 self-start text-[13px] font-semibold text-blue hover:underline">
-        לביקורות של הכותב/ת בגוגל ←
-      </a>
-    </article>
   );
 }
