@@ -1,23 +1,18 @@
-import { SITE } from '@/lib/config';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { CategoryCard } from '@/components/catalog/CategoryCard';
-import { AboutSection } from '@/components/home/AboutSection';
+import { GoogleReviewsSection } from '@/components/home/GoogleReviewsSection';
+import { HomeHero } from '@/components/home/HomeHero';
 import { HowItWorks } from '@/components/home/HowItWorks';
-import { QuickDesign } from '@/components/home/QuickDesign';
-import { StampHero } from '@/components/home/StampHero';
-import { TemplateStrip } from '@/components/home/TemplateStrip';
+import { StampBox } from '@/components/home/StampBox';
+import { StartBar } from '@/components/home/StartBar';
 import { WhyUs } from '@/components/home/WhyUs';
 import { FaqList } from '@/components/site/FaqList';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES, categoryCard } from '@/lib/catalog';
-import { FAQ, faqJsonLd, WHY_FAQ } from '@/lib/faq';
 import { site } from '@/lib/content';
-import { designerProducts } from '@/lib/designer-products';
-import { formatSize } from '@/designer/models';
-import { DEFAULT_RULES } from '@/lib/pricing';
-import { GoogleReviewsSection } from '@/components/home/GoogleReviewsSection';
-import { featuredReviews, GOOGLE_REVIEWS, GOOGLE_REVIEWS_URL, ratingSpread } from '@/lib/google-reviews';
+import { allFaqItems, faqJsonLd, type FaqItem } from '@/lib/faq';
+import { featuredReviews, GOOGLE_REVIEWS } from '@/lib/google-reviews';
 import { ensureSettings } from '@/server/settings';
 
 // Same title and description as the WordPress home page (Yoast), so rankings carry over.
@@ -30,23 +25,40 @@ export const metadata: Metadata = {
 
 const HOME_CATEGORIES = ['business', 'personal', 'doctors', 'lawyers', 'company', 'round', 'date', 'numbering', 'logo', 'signature', 'large', 'pocket'];
 
+// Six existing questions: price, timing, unsure about the text, the preview, logo, a single stamp.
+const HOME_FAQ = ['המהירות מייקרת את החותמת?', 'מתי ההזמנה נשלחת?', 'לא בטוחים מה לכתוב או איך לעצב?', 'האם התצוגה המקדימה מדויקת?', 'איזה פורמט לוגו הכי טוב?', 'אפשר להזמין חותמת אחת בלבד?'];
+
+const PROMISES = [
+  ['clock', 'מוכנה תוך 2 דקות'],
+  ['truck', 'משלוח לכל הארץ או איסוף ברמת גן'],
+  ['shield', 'אחריות והחזר כספי'],
+] as const;
+
+/** Price shown as "החל מ-X ₪", or null when nothing has a price. */
+function priceLabel(prices: (number | null | undefined)[]): string | null {
+  const real = prices.filter((p): p is number => typeof p === 'number' && p > 0);
+  return real.length ? Math.min(...real).toLocaleString('he-IL', { maximumFractionDigits: 2 }) : null;
+}
+
 export default async function HomePage() {
+  // Applies the admin's prices, hidden products and added products to the catalogue.
   await ensureSettings();
-  // The quick order form in the hero: what can be ordered and how it can be received.
-  const POPULAR = ['חותמת-פרינט-30', 'חותמת-פרינט-40', 'חותמת-פרינט-20', 'חותמת-פרינט-50', 'print-r-540'];
-  const rank = (slug: string) => (POPULAR.includes(slug) ? POPULAR.indexOf(slug) : POPULAR.length);
-  const leadProducts = designerProducts()
-    .map((p) => ({ slug: p.slug, title: p.title, size: formatSize(p.model), price: p.price, image: p.image, popular: POPULAR.includes(p.slug) }))
-    .sort((a, b) => rank(a.slug) - rank(b.slug));
-  const leadShipping = DEFAULT_RULES.shipping.map(({ id, label, price, eta, address }) => ({ id, label, price, eta, address }));
+  const fromPrice = priceLabel(site.products.filter((p) => !p.hidden).map((p) => p.price));
   const cats = HOME_CATEGORIES.map((s) => CATEGORIES.find((c) => c.slug === s)!).map(categoryCard);
-  const faq = FAQ.filter((f) => f.id !== 'why')
-    .flatMap((f) => f.items.slice(0, 1))
-    .slice(0, 6);
+
+  // The Google score, only when the data is really there.
+  const ratingOk = typeof GOOGLE_REVIEWS.rating === 'number' && GOOGLE_REVIEWS.rating > 0 && typeof GOOGLE_REVIEWS.count === 'number' && GOOGLE_REVIEWS.count > 0;
+  const rating = ratingOk ? GOOGLE_REVIEWS.rating : null;
+  const count = ratingOk ? GOOGLE_REVIEWS.count : null;
+
+  const all = allFaqItems();
+  const faq = HOME_FAQ.map((q) => all.find((f) => f.q === q)).filter((f): f is FaqItem => !!f);
+
   return (
     <>
-      <StampHero whatsapp={SITE.whatsapp} address={SITE.address} products={leadProducts} shipping={leadShipping} />
-      <section className="py-12 sm:py-16">
+      <HomeHero rating={rating != null ? rating.toFixed(1) : null} count={count} fromPrice={fromPrice} />
+
+      <section id="stamps" className="scroll-mt-28 py-12 sm:py-16">
         <div className="container-x">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -64,38 +76,21 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-      <TemplateStrip />
-      <GoogleReviewsSection rating={GOOGLE_REVIEWS.rating} count={GOOGLE_REVIEWS.count} reviews={featuredReviews()} spread={ratingSpread()} url={GOOGLE_REVIEWS_URL} />
-      <HowItWorks />
-      <QuickDesign />
-      <WhyUs />
-      <AboutSection />
 
-      <section className="container-x py-12 sm:py-16">
-        <div className="grid gap-12 lg:grid-cols-2">
-          <div>
-            <p className="eyebrow">הבדיקה שלנו, לפני הייצור שלכם</p>
-            <h2 className="mt-2 text-3xl font-extrabold sm:text-4xl">אתם מעצבים. המערכת מכינה לייצור. אנחנו מייצרים ושולחים.</h2>
-            <p className="mt-5 text-lg leading-8 text-muted">
-              כל עיצוב עובר בדיקה אוטומטית: גבולות, גודל גופן מינימלי, עובי קווים ואיכות לוגו. הקובץ שנשלח לייצור הוא וקטורי ומדויק במילימטר – לא צילום מסך.
-            </p>
-          </div>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {[
-              ['clock', 'מוכנה תוך 2 דקות', 'מכונת לייזר שמייצרת את הגומי ישירות מהקובץ.'],
-              ['check', 'בדיקת ייצור אוטומטית', 'המערכת מתקנת בעיות נפוצות בלחיצה.'],
-              ['shield', 'תוצרת אוסטריה', 'גופי חותמות איכותיים, בלי חיקויים.'],
-              ['truck', 'משלוחים לכל הארץ', 'או איסוף עצמי מהרא״ה 3, רמת גן.'],
-            ].map(([i, t, d]) => (
-              <li key={t} className="card p-5">
-                <Icon name={i} className="text-blue" />
-                <h3 className="mt-3 font-bold">{t}</h3>
-                <p className="mt-1 text-sm leading-6 text-muted">{d}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
+      <section aria-label="ההבטחה שלנו" className="border-y border-line bg-surface py-6">
+        <ul className="container-x flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[15px] font-semibold text-ink-2 sm:text-lg sm:font-bold">
+          {PROMISES.map(([icon, text]) => (
+            <li key={text} className="flex items-center gap-2">
+              <Icon name={icon} size={20} className="shrink-0 text-blue" />
+              {text}
+            </li>
+          ))}
+        </ul>
       </section>
+
+      <HowItWorks />
+      <WhyUs />
+      <GoogleReviewsSection rating={rating} count={count} reviews={featuredReviews(5)} />
 
       <section className="border-t border-line bg-surface py-14">
         <div className="container-x grid gap-10 lg:grid-cols-[1fr_1.4fr]">
@@ -109,17 +104,21 @@ export default async function HomePage() {
           <FaqList items={faq} schema={false} />
         </div>
       </section>
+      {/* One FAQPage for the home page: exactly the questions shown above. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(faq)) }} />
 
-      {/* One FAQPage for the whole home page (why-us + general questions). */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd([...WHY_FAQ, ...faq])) }} />
-
-      <section className="container-x py-16 text-center">
-        <h2 className="text-4xl font-extrabold sm:text-5xl">עכשיו תורכם לעצב.</h2>
-        <p className="mx-auto mt-4 max-w-xl text-lg text-muted">בחרו תבנית או התחילו מדף ריק. תראו בדיוק מה תקבלו – לפני שאתם משלמים.</p>
-        <Link href="/designer/" className="btn-primary btn-lg mt-8">
-          יצירת חותמת
-        </Link>
+      <section className="container-x py-16" aria-labelledby="end-title">
+        <div className="mx-auto max-w-2xl">
+          <h2 id="end-title" className="text-center text-4xl font-extrabold sm:text-5xl">
+            עכשיו תורכם.
+          </h2>
+          <div className="mt-8">
+            <StampBox idPrefix="end" />
+          </div>
+        </div>
       </section>
+
+      <StartBar />
     </>
   );
 }

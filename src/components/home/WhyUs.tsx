@@ -1,12 +1,14 @@
 import Link from 'next/link';
-import { FaqList } from '@/components/site/FaqList';
 import { Icon } from '@/components/ui/Icon';
-import { SITE } from '@/lib/config';
-import { WHY_FAQ } from '@/lib/faq';
 
+const LASER_STATS: [string, string][] = [
+  ['20', 'שניות ייצור'],
+  ['2', 'דקות עד חותמת ביד'],
+  ['100%', 'תוצרת אוסטריה'],
+];
 
 /** Animated laser engraving a stamp plate (pure SVG + CSS, no JS) – in the site palette. */
-export function LaserArt() {
+export function LaserArt({ stats = LASER_STATS }: { stats?: [string, string][] }) {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-line bg-gradient-to-b from-white to-blue-50 p-5 shadow-soft sm:p-6">
       <style>{`
@@ -58,12 +60,8 @@ export function LaserArt() {
         </g>
       </svg>
       <p className="mt-2 text-center text-sm text-muted">הגומי נחרט ישירות מהקובץ – בלי גלופה, בלי המתנה.</p>
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-        {[
-          ['20', 'שניות ייצור'],
-          ['2', 'דקות עד חותמת ביד'],
-          ['100%', 'תוצרת אוסטריה'],
-        ].map(([n, l]) => (
+      <div className={`mt-4 grid gap-2 text-center ${stats.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+        {stats.map(([n, l]) => (
           <div key={l} className="rounded-2xl bg-white px-2 py-3 ring-1 ring-line">
             <p className="text-2xl font-extrabold text-blue tabular-nums sm:text-3xl">{n}</p>
             <p className="mt-0.5 text-[11px] leading-4 text-muted">{l}</p>
@@ -74,56 +72,31 @@ export function LaserArt() {
   );
 }
 
+// Short lines taken from the studio's own story (about page / why-us answers).
+const WHY_LINES = ['גם חותמת אחת מוכנה מיד, בלי הזמנה מראש.', 'כל חותמת "דחופה", בלי תוספת מחיר.', 'שחיקה כמעט אפסית: החותמת מחזיקה שנים.'];
+
+/** Home page: the laser machine in Ramat Gan, its real numbers and three short lines. */
 export function WhyUs() {
   return (
     <section id="why" className="container-x py-12 sm:py-16">
-      {/* Intro across the full width… */}
-      <div className="flex flex-wrap items-end justify-between gap-6">
+      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
         <div className="max-w-2xl">
           <p className="eyebrow">למה רק אצלנו?</p>
           <h2 className="mt-2 text-3xl font-extrabold sm:text-4xl">מכונת הלייזר החזקה בעולם. ברמת גן.</h2>
-          <p className="mt-4 text-lg leading-8 text-muted">
-            בלי גלופות, בלי הזמנה מראש ובלי לחזור פעמיים. החותמת נחרטת בלייזר ומוכנה לשימוש תוך 2 דקות – על גוף חותמת COLOP מאוסטריה.
-          </p>
-          <ul className="mt-5 flex flex-wrap gap-2 text-sm">
-            {[
-              ['shield', 'תוצרת אוסטריה · COLOP'],
-              ['check', 'דיו בתקן אירופי'],
-              ['clock', 'כל חותמת "דחופה"'],
-              ['pin', 'איסוף ברמת גן'],
-            ].map(([i, t]) => (
-              <li key={t} className="flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 font-medium">
-                <Icon name={i} size={15} className="text-blue" /> {t}
+          <ul className="mt-5 grid gap-2.5 text-lg text-ink-2">
+            {WHY_LINES.map((t) => (
+              <li key={t} className="flex items-start gap-2.5">
+                <Icon name="check" size={20} className="mt-1 shrink-0 text-blue" />
+                {t}
               </li>
             ))}
           </ul>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/designer/" className="btn-primary">
-            עיצוב חותמת עכשיו
+          <Link href="/about/" className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-blue hover:underline">
+            עוד עלינו <Icon name="arrowLeft" size={15} />
           </Link>
-          <a href={SITE.whatsapp} target="_blank" rel="noopener" className="btn-outline">
-            <Icon name="whatsapp" size={17} /> שלחו לנו את התוכן
-          </a>
         </div>
-      </div>
-
-      {/* …then the laser and the questions side by side, starting on the same line. */}
-      <div className="mt-10 grid items-start gap-6 lg:grid-cols-2 lg:gap-8">
-        <LaserArt />
-        <div>
-          <FaqList items={WHY_FAQ.slice(0, 5)} schema={false} openFirst compact />
-          <details className="group/more mt-3">
-            <summary className="flex cursor-pointer list-none items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold text-blue marker:hidden hover:bg-blue-50">
-              <span className="group-open/more:hidden">עוד {WHY_FAQ.length - 5} שאלות</span>
-              <span className="hidden group-open/more:inline">פחות שאלות</span>
-              <Icon name="chevronDown" size={16} className="transition group-open/more:rotate-180" />
-            </summary>
-            <div className="mt-2">
-              <FaqList items={WHY_FAQ.slice(5)} schema={false} compact />
-            </div>
-          </details>
-        </div>
+        {/* The "2 minutes" stat is left out here: the home page already says it twice. */}
+        <LaserArt stats={LASER_STATS.filter(([n]) => n !== '2')} />
       </div>
     </section>
   );
