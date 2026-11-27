@@ -13,9 +13,9 @@ export const MAIN_NAV = [
 
 // Direct links next to the stamps menu in the desktop header, for the trades that order most.
 export const TRADE_NAV = [
-  { label: 'לעורכי דין', href: '/stamps/lawyers/' },
-  { label: 'לרופאים', href: '/stamps/doctors/' },
-  { label: 'לחברות', href: '/stamps/company/' },
+  { label: 'עורכי דין', href: '/stamps/lawyers/' },
+  { label: 'רופאים', href: '/stamps/doctors/' },
+  { label: 'חברות', href: '/stamps/company/' },
 ];
 
 export const STAMP_MENU =CATEGORIES.map((c) => ({ label: c.name, href: `/stamps/${c.slug}/`, featured: !!c.featured }));

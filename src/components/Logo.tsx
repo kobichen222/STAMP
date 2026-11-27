@@ -58,13 +58,14 @@ export function LogoMark({ className = '', size = 40 }: { className?: string; si
  * it at about 0.55 x, with fixed tight word gaps, aligned to the start (right)
  * edge rather than stretched. Both lines are italic; the 2 sits on a solid blue
  * badge that is skewed the same way (solid colours only – never clipped
- * gradients that can vanish). Text sizes: sm 22px, md 26px (mark 40px high).
+ * gradients that can vanish). Text sizes: sm 22px, md 24px; the mark is 1.5 x the
+ * text size (33px at sm, 36px at md).
  */
 export function Logo({ className = '', size = 'md', markOnly = false }: { className?: string; size?: 'sm' | 'md'; markOnly?: boolean }) {
-  const t = { sm: 22, md: 26 }[size];
+  const t = { sm: 22, md: 24 }[size];
   return (
     <span className={`inline-flex items-center select-none ${className}`} style={{ gap: Math.round(t * 0.38) }} dir="ltr" aria-label="חותמות תוך 2 דקות" role="img">
-      <LogoMark size={Math.round(t * 1.55)} className="shrink-0" />
+      <LogoMark size={Math.round(t * 1.5)} className="shrink-0" />
       {!markOnly && (
         <span dir="rtl" className="flex flex-col items-start leading-none whitespace-nowrap" aria-hidden>
           <span className="font-black tracking-tight text-ink italic" style={{ fontSize: t, lineHeight: 0.95 }}>
@@ -74,11 +75,30 @@ export function Logo({ className = '', size = 'md', markOnly = false }: { classN
             <span>תוך</span>
             {/* SVG badge: the 2 is centred geometrically, whatever the font metrics. Rect and digit are skewed
                 together around the badge centre (top leaning right, like the synthesized italic); the viewBox
-                is widened by the skew offset (tan 12deg x 11 ≈ 2.34) so the corners are not clipped. */}
-            <svg viewBox="-2.5 0 25 22" className="h-[1.55em] w-auto shrink-0 drop-shadow-[0_2px_3px_rgba(36,87,255,.45)]" aria-hidden>
+                is widened by the skew offset (tan 12deg x 11 ≈ 2.34) so the corners are not clipped.
+                The badge owns its text style: font style, spacing and direction are set on the digit itself, so
+                nothing inherited from the italic line around it (a second slant, tracking, RTL) can move the 2
+                off centre. The group's skew is the only slant. */}
+            <svg viewBox="-2.5 0 25 22" className="h-[1.55em] w-auto shrink-0" aria-hidden>
               <g transform="translate(10 11) skewX(-12) translate(-10 -11)">
                 <rect width="20" height="22" rx="5" fill="#2457ff" />
-                <text x="10" y="11.6" textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="16" fontWeight="900" style={{ fontFamily: "'Heebo Variable', Heebo, Arial, sans-serif" }}>
+                <text
+                  x="10"
+                  y="11.6"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="#fff"
+                  fontSize="16"
+                  fontWeight="900"
+                  style={{
+                    fontFamily: "'Heebo Variable', Heebo, Arial, sans-serif",
+                    fontStyle: 'normal',
+                    letterSpacing: 0,
+                    wordSpacing: 0,
+                    direction: 'ltr',
+                    unicodeBidi: 'normal',
+                  }}
+                >
                   2
                 </text>
               </g>
