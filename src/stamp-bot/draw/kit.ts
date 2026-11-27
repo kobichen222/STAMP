@@ -6,7 +6,8 @@ import type { Block, Form } from '../form'
 
 export const U = 10 // svg units per mm
 export const MIN_CAP = 1.5 * U // the height of a letter of a 7pt font - lower than that does not come out readable
-export const MIN_STROKE = 1.2
+// the thinnest line the laser files take: 0.2 mm. every stroke the shapes draw is at least this wide as it lands on the stamp
+export const MIN_STROKE = 2
 
 // what a shape exports. index.ts walks the sizes and the looks; the shape only lays one look into one size
 export type Laid = { body: string; cap: number; rows: number } // cap = the smallest letter height used, rows = rows of text used (fields included)
@@ -35,7 +36,6 @@ export function sheet(form: Form, size: StampSize, title: string, body: string) 
 }
 
 function iconOf(form: Form): Icon | null {
-  if (form.icon === 'custom') return form.path ? { label: '', stroke: form.path, sw: 5, y: [2, 98] } : null
   return ICONS[form.icon] ?? null
 }
 
@@ -49,10 +49,14 @@ export function iconInkH(form: Form, s: number) {
 export function iconSvg(form: Form, x: number, top: number, s: number) {
   const ic = iconOf(form)
   if (!ic) return ''
+  const k = +n(s / 100) // the scale exactly as the transform writes it
+  // the outline is drawn in the icon's 100 box, so on the stamp it is sw * k wide: a small icon gets a bolder outline,
+  // never thinner than MIN_STROKE. rounded up, so the written number never lands under the floor
+  const sw = k > 0 ? Math.max(ic.sw ?? 0, Math.ceil((MIN_STROKE / k) * 100) / 100) : (ic.sw ?? 0)
   return (
-    `<g transform="translate(${n(x - s / 2)} ${n(top - (s * ic.y[0]) / 100)}) scale(${n(s / 100)})">` +
+    `<g transform="translate(${n(x - s / 2)} ${n(top - (s * ic.y[0]) / 100)}) scale(${k})">` +
     (ic.fill ? `<path d="${ic.fill}"/>` : '') +
-    (ic.stroke ? `<path d="${ic.stroke}" fill="none" stroke="${ink(form)}" stroke-width="${ic.sw}" stroke-linecap="round" stroke-linejoin="round"/>` : '') +
+    (ic.stroke ? `<path d="${ic.stroke}" fill="none" stroke="${ink(form)}" stroke-width="${n(sw)}" stroke-linecap="round" stroke-linejoin="round"/>` : '') +
     '</g>'
   )
 }

@@ -78,10 +78,10 @@ export type Form = {
   font: Family
   size: string // 'auto' or one of the kind's sizes: '47x18'
   look: string // a look id of the kind (draw/), '' = the default one
-  icon: string // '' = none, 'custom' = the outline in path
+  icon: string // '' = none, else a name of the icon library
   iconPos: IconPos
   iconSize: IconSize
-  path: string
+  path: string // always '': the outline of a hand-drawn icon, which this site has no editor for. kept so an old form still reads
 }
 
 // a line of the finished stamp
@@ -127,10 +127,6 @@ function obj(v: unknown) {
   return (v && typeof v === 'object' && !Array.isArray(v) ? v : {}) as Record<string, unknown>
 }
 
-function safePath(d: string) {
-  return /^[MLHVCSQTAZmlhvcsqtaz\d.,\s-]*$/.test(d) ? d : ''
-}
-
 // an empty form, and an unknown template, start from the first template of the list
 export function emptyForm(tmpl = TEMPLATES[0].id): Form {
   return cleanForm({ tmpl })
@@ -165,7 +161,9 @@ export function cleanForm(raw: unknown): Form {
   const d = tpl?.design ?? {}
   const kind = pick(d.kind ?? r.kind, KIND_NAMES, 'rect')
   const def = KINDS[kind]
-  const icon = d.icon ?? (r.icon === 'custom' || isIcon(r.icon) ? (r.icon as string) : '')
+  // a library icon or none. a hand-drawn one ('custom' with a path) is not taken: nothing here can draw or make it
+  const want = d.icon ?? r.icon // a template's fixed icon wins, its '' included
+  const icon = isIcon(want) ? want : ''
 
   return {
     tmpl,
@@ -182,8 +180,7 @@ export function cleanForm(raw: unknown): Form {
     icon,
     iconPos: pick(d.iconPos ?? r.iconPos, def.iconPos, def.iconPos[0]),
     iconSize: pick(d.iconSize ?? r.iconSize, ['s', 'm', 'l'] as const, 'm'),
-    // written raw into <path d="..."> (draw/kit.ts): path commands and numbers only, anything else is dropped
-    path: icon === 'custom' ? safePath(str(r.path, 4000)) : '',
+    path: '',
   }
 }
 

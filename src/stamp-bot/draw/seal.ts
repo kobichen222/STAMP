@@ -26,7 +26,7 @@ export const BORDERS: Record<Border, [number, number][]> = {
   double: [[0, 6], [9.5, 1.6]],
   triple: [[0, 1.8], [6.5, 5], [13, 1.8]],
 }
-const THIN = 1.6 // the line between the ring and the center
+const THIN = Math.max(MIN_STROKE, 1.6) // the line between the ring and the center - thin, never under what the laser files take
 const ARC_CAP = 0.12 // the letter height of the ring, of its radius
 const TRACK = 0.06 // the air between the letters of the ring, in font sizes - letters on a curve need more than on a line
 const SPREAD = 0.2 // the most a short ring text may open up, in font sizes between two letters
@@ -341,7 +341,7 @@ function ring(form: Form, look: SealLook, top: Block | null, bot: Block | null, 
   }
 
   const band = 2 * (pad + half)
-  svg += `<ellipse cx="${n(cx)}" cy="${n(cy)}" rx="${n(a0 - band)}" ry="${n(b0 - band)}" fill="none" stroke="${ink(form)}" stroke-width="${THIN}"/>`
+  svg += `<ellipse cx="${n(cx)}" cy="${n(cy)}" rx="${n(a0 - band)}" ry="${n(b0 - band)}" fill="none" stroke="${ink(form)}" stroke-width="${n(THIN)}"/>`
   const inner = band + THIN / 2 + Math.max(8, cap * 0.5)
   return { svg, cap: Math.min(tl?.cap ?? Infinity, bl?.cap ?? Infinity), ai: a0 - inner, bi: b0 - inner, rows: (tl ? 1 : 0) + (bl ? 1 : 0) }
 }

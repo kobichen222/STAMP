@@ -172,7 +172,7 @@ Only the keys the customer asks to change - never your idea. Never a key that <l
 ${sizes}
   "look": ${lookList}
   "icon": "" (none) or one of: ${icons}
-     Only from the list. When the customer names a symbol that is not there: no icon, and "say" which listed ones come close (by their Hebrew names). Never "custom"
+     Only from the list. When the customer names a symbol that is not there: no icon, and "say" which listed ones come close (by their Hebrew names).
   "iconPos": where the icon stands, by kind:
 ${iconPos}
      right/left = beside the text, top/bottom = on a row of its own above/below the text; on a seal: center = in the middle above its text, bottom = under the center text, sides = on the ring left and right

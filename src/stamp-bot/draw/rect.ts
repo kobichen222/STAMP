@@ -13,15 +13,15 @@ type Design = {
   frame: 'none' | 'single' | 'double'
   layout: 'stack' | 'split' // the lines one under another | the name beside the details
   align: 'center' | 'right'
-  head: 'plain' | 'rule' | 'band' | 'bar' // what sets the name apart from the details
+  head: 'plain' | 'rule' | 'bar' // what sets the name apart from the details
 }
 
-// the catalog. the first one is the default
+// the catalog. the first one is the default. every look is ink on paper only: the laser files are filled ink shapes,
+// so a look that paints letters white over ink (the old "band") cannot be made, and no look may need one
 const DESIGNS: Record<string, Design> = {
   classic: { label: 'קלאסי', frame: 'none', layout: 'stack', align: 'center', head: 'plain' },
   rule: { label: 'קו מפריד', frame: 'none', layout: 'stack', align: 'center', head: 'rule' },
   frame: { label: 'ממוסגר', frame: 'single', layout: 'stack', align: 'center', head: 'plain' },
-  band: { label: 'כותרת מלאה', frame: 'none', layout: 'stack', align: 'center', head: 'band' },
   split: { label: 'שני טורים', frame: 'none', layout: 'split', align: 'center', head: 'rule' },
   bar: { label: 'פס צד', frame: 'none', layout: 'stack', align: 'right', head: 'bar' },
   double: { label: 'מסגרת כפולה', frame: 'double', layout: 'stack', align: 'center', head: 'plain' },
@@ -47,7 +47,6 @@ const LEAD = 0.46 // between two lines, in font sizes
 const GROUP: Pair = [1.15, 1.7] // the gap between the head's lines and the details, in gaps of two lines
 const MAX_AIR = 0.6 // how much the gaps may open to fill a stamp the text does not reach the edges of
 const RULE = { gap: [1.8, 2.4] as Pair, sw: 0.055 } // the gap a rule lies in the middle of, and how thick it is (of the font size)
-const BAND = { pad: 0.5, side: 0.7, gap: 1.35 } // a band: its padding above and under the text and at the sides, in letter heights, and the gap under it
 const BAR = { w: 0.045, gap: 0.08 } // the side bar and the gap between it and the text, of the height of the area
 const COLS = { gap: 2.3, air: 0.5, grow: 1.4 } // two columns: the gap the rule stands in, how much free width it may take, how much the head may grow
 const FIELD = { blank: 5.5, gap: 0.4 } // a field: the line to write on and the gap before it, in font sizes
@@ -56,11 +55,11 @@ const SIDE_ICON = 0.28 // an icon beside the text: its box, of the width
 const ISIZE: Record<IconSize, number> = { s: 0.75, m: 1, l: 1.3 }
 
 // a line measured at font size 1. sx = how narrow its letters are drawn
-type Row = { w: number; cap: number; seen: number; up: number; down: number; cls: Cls; text: boolean; draw: (x: number, top: number, size: number, sx: number, fill?: string) => string }
-// band = the rows on the band [from, to). body = the row the details start at. k = how full the design is drawn, 0 = tight
-type Opts = { band?: [number, number]; body?: number; rule?: boolean; k?: number }
+type Row = { w: number; cap: number; seen: number; up: number; down: number; cls: Cls; text: boolean; draw: (x: number, top: number, size: number, sx: number) => string }
+// body = the row the details start at. k = how full the design is drawn, 0 = tight
+type Opts = { body?: number; rule?: boolean; k?: number }
 // a column at a unit: size and sx per row, gap under every row but the last, pre/post = ink over the first / under the last
-type Col = { size: number[]; sx: number[]; gap: number[]; pre: number; post: number; pad: number; h: number; w: number; cap: number }
+type Col = { size: number[]; sx: number[]; gap: number[]; pre: number; post: number; h: number; w: number; cap: number }
 
 function sum(list: number[]) {
   return list.reduce((a, b) => a + b, 0)
@@ -82,7 +81,7 @@ function textRow(form: Form, text: string, cls: TextCls): Row {
     down: m.down,
     cls,
     text: true,
-    draw: (x, top, s, sx, fill) => `<path d="${linePath(setLine(text, form.font, weight, s, track * s * sx, sx), (gx) => ({ x: x + gx, y: top + m.cap * s, a: 0 }))}"${fill ? ` fill="${fill}"` : ''}/>`,
+    draw: (x, top, s, sx) => `<path d="${linePath(setLine(text, form.font, weight, s, track * s * sx, sx), (gx) => ({ x: x + gx, y: top + m.cap * s, a: 0 }))}"/>`,
   }
 }
 
@@ -135,8 +134,7 @@ function rowsOf(form: Form, blocks: Block[], split: boolean) {
 // or a smaller one when its longest line does not fit the width W even with narrow letters
 function setCol(form: Form, list: Row[], W: number, u: number, o: Opts): Col {
   const last = list.length - 1
-  const inBand = (i: number) => !!o.band && i >= o.band[0] && i < o.band[1]
-  const wide = list.map((r, i) => r.w + (inBand(i) ? 2 * BAND.side * r.cap : 0))
+  const wide = list.map((r) => r.w)
   const of = (c: Cls) => list.filter((r) => r.cls === c)
   const has = (c: Cls) => of(c).length > 0
   const seen = (c: Cls) => Math.max(...of(c).map((r) => r.seen))
@@ -155,21 +153,18 @@ function setCol(form: Form, list: Row[], W: number, u: number, o: Opts): Col {
 
   const size = list.map((r) => sizes[r.cls])
   const sx = list.map((_, i) => Math.min(1, W / (wide[i] * size[i])))
-  const pad = o.band ? BAND.pad * list[o.band[0]].cap * size[o.band[0]] : 0
   const gap = list.slice(1).map((r, i) => {
     const mean = Math.sqrt(size[i] * size[i + 1])
     // never less than what keeps a ק from touching a ל under it
     const g = Math.max(mean * LEAD, list[i].down * size[i] + r.up * size[i + 1] + mean * 0.06)
-    if (o.band && i + 1 === o.band[0]) return list[i].down * size[i] + mean * LEAD * BAND.gap + pad
-    if (o.band && i + 1 === o.band[1]) return pad + mean * LEAD * BAND.gap + r.up * size[i + 1]
     if (i + 1 === o.body) return g * at(o.rule ? RULE.gap : GROUP, k)
     return g
   })
-  const pre = o.band && o.band[0] === 0 ? pad : list[0].up * size[0]
-  const post = o.band && o.band[1] === list.length ? pad : list[last].down * size[last]
+  const pre = list[0].up * size[0]
+  const post = list[last].down * size[last]
   const h = pre + sum(list.map((r, i) => r.cap * size[i])) + sum(gap) + post
   const w = Math.max(...list.map((_, i) => wide[i] * size[i] * sx[i]))
-  return { size, sx, gap, pre, post, pad, h, w, cap: Math.min(...list.map((r, i) => (r.text ? r.cap * size[i] : Infinity))) }
+  return { size, sx, gap, pre, post, h, w, cap: Math.min(...list.map((r, i) => (r.text ? r.cap * size[i] : Infinity))) }
 }
 
 // the biggest unit the test passes at
@@ -201,18 +196,10 @@ function drawCol(form: Form, list: Row[], col: Col, o: Opts, x: number, cy: numb
   })
   const bottom = (i: number) => tops[i] + list[i].cap * col.size[i]
   let body = ''
-
-  if (o.band) {
-    const [a, b] = o.band
-    const y0 = tops[a] - col.pad
-    const y1 = bottom(b - 1) + col.pad
-    body += `<rect x="${n(x - W / 2)}" y="${n(y0)}" width="${n(W)}" height="${n(y1 - y0)}" rx="${n(col.pad * 0.5)}"/>`
-  }
   list.forEach((r, i) => {
     const s = col.size[i]
     const lx = right ? x + W / 2 - (r.w * s * col.sx[i]) / 2 : x
-    const band = !!o.band && i >= o.band[0] && i < o.band[1]
-    body += r.draw(lx, tops[i], s, col.sx[i], band ? '#fff' : undefined)
+    body += r.draw(lx, tops[i], s, col.sx[i])
   })
   if (o.rule && o.body) {
     // in the middle between the ink of the head's last line and the ink of the first detail
@@ -243,7 +230,7 @@ function stack(form: Form, d: Design, heads: Row[], dets: Row[], headRows: numbe
   // a two part design with no details under the head's lines splits after the first line
   const two = d.head === 'rule'
   const body = heads.length && dets.length ? lead + heads.length : two && heads.length > headRows ? lead + headRows : 0
-  const o: Opts = { body, rule: two && body > 0, band: d.head === 'band' ? [lead, lead + headRows] : undefined }
+  const o: Opts = { body, rule: two && body > 0 }
 
   let { cx, W } = a
   let out = ''
@@ -362,7 +349,7 @@ export const RECT: Shape = {
     const d = DESIGNS[look] ?? DESIGNS.classic
     const count = blocks.length + form.fields.length
     // a design made of two parts needs two parts: a head alone has nothing to set apart from
-    if (count < 2 && (d.head === 'rule' || d.head === 'band' || d.layout === 'split')) return null
+    if (count < 2 && (d.head === 'rule' || d.layout === 'split')) return null
     const one = layOnce(form, blocks, size, d, false)
     if (fits(one, size)) return one
     // a head too long for one readable row goes on two, before anything gets smaller than readable

@@ -1,30 +1,69 @@
-// NOT a 'use server' file on purpose: a form -> the Stamp a card on the home page shows. shared by api.ts and the evals.
-// the bodies are read from the catalog as it is now - the caller applies the admin settings (ensureSettings) first
+// NOT a 'use server' file on purpose: a form -> the Stamp a card on the home page shows. shared by api.ts, order.ts
+// and the evals. the bodies are read from the catalog as it is now - the caller applies the admin settings first
 import type { Stamp } from './card-types'
 import { bodiesFor } from './bodies'
-import { drawForm } from './draw'
-import { cleanForm } from './form'
+import { drawForm, type Drawn } from './draw'
+import { asks, badIds, cleanForm, getTemplate, slotValue, structure, type Block, type Form } from './form'
 import { INK_NAMES, type Ink } from './kinds'
 
-const MAX_FORM = 8000 // as turn.ts reads a form from the browser
+export const MAX_FORM = 8000 // as turn.ts reads a form from the browser
+
+// a form as JSON from the browser or a stored line (untrusted) -> the raw object, before cleanForm. null = unreadable
+export function rawForm(json: unknown): Record<string, unknown> | null {
+  if (typeof json !== 'string' || !json || json.length > MAX_FORM) return null
+  let raw: unknown
+  try {
+    raw = JSON.parse(json)
+  } catch {
+    return null
+  }
+  return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null
+}
+
+export function isInk(v: unknown): v is Ink {
+  return INK_NAMES.includes(v as Ink)
+}
+
+// why this drawing must not be ordered yet: one short sentence for the customer, '' = it may be ordered.
+// the first that holds wins - a stamp with nothing on it, a detail still missing (a placeholder printed in its place,
+// or a choice the bot still asks for), a number to confirm, then a text the drawer could not set readably
+export function whyNot(form: Form, d: Drawn): string {
+  const blocks = structure(form)
+  if (!blocks.length && !form.fields.length && !form.icon) return 'כתבו מה יופיע על החותמת.'
+
+  // a needed slot left empty prints its label as a placeholder (form.ts fillLine): those labels, and the `ask` ones
+  const missing = (blocks.some((b) => b.ph) ? needLabels(form, blocks) : []).concat(asks(form))
+  if (missing.length) return `השלימו את הפרטים החסרים: ${[...new Set(missing)].join(', ')}`.replace(/\.?$/, '.') // a label may end in a dot (ע.פ.)
+
+  const bad = badIds(form)
+  if (bad.length) return bad.length > 1 ? `אשרו או תקנו את המספרים ${bad.join(', ')}.` : `אשרו או תקנו את המספר ${bad[0]}.`
+
+  // ok = false: the text is set under the readable size or in more rows than the size holds, or no look could hold it
+  // at all (the drawer's empty fallback)
+  if (!d.ok) return form.size !== 'auto' ? 'הטקסט צפוף מדי למידה הזו: בחרו מידה גדולה יותר או קצרו אותו.' : 'יש יותר מדי טקסט לחותמת הזו: קצרו אותו או הורידו שורה.'
+  return ''
+}
+
+// the labels printed as placeholders: a `need` slot with no value prints its label (form.ts fillLine)
+function needLabels(form: Form, blocks: Block[]) {
+  const ph = blocks.filter((b) => b.ph).map((b) => b.text)
+  const labels = (getTemplate(form.tmpl)?.slots ?? []).filter((s) => s.need && !slotValue(form, s)).map((s) => s.label)
+  const shown = labels.filter((l) => ph.some((t) => t.includes(l)))
+  return shown.length ? shown : labels
+}
 
 // any form (untrusted) -> clean, drawn in one look and one size, with the products it can be ordered on
 export function toStamp(raw: unknown): Stamp {
   const form = cleanForm(raw)
   const d = drawForm(form)
-  return { svg: d.svg, form: JSON.stringify(form), kind: form.kind, size: d.size, ink: form.color, bodies: bodiesFor(form.kind, d.size) }
+  const why = whyNot(form, d)
+  return { svg: d.svg, form: JSON.stringify(form), kind: form.kind, size: d.size, ink: form.color, bodies: bodiesFor(form.kind, d.size), orderable: !why, why }
 }
 
 // the same stamp in another ink, no model call. null = a form that cannot be read or an ink the site does not sell.
 // a template that locks the colour keeps it: cleanForm decides, and `ink` says what came out
 export function reinked(form: unknown, ink: unknown): Stamp | null {
-  if (typeof form !== 'string' || form.length > MAX_FORM || !INK_NAMES.includes(ink as Ink)) return null
-  let raw: unknown
-  try {
-    raw = JSON.parse(form)
-  } catch {
-    return null
-  }
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
-  return toStamp({ ...(raw as Record<string, unknown>), color: ink })
+  const raw = rawForm(form)
+  if (!raw || !isInk(ink)) return null
+  return toStamp({ ...raw, color: ink })
 }

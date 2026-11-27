@@ -1,8 +1,9 @@
 'use server'
 
 import { ensureSettings } from '@/server/settings'
-import type { CardResult, Stamp } from './card-types'
-import { reinked, toStamp } from './card'
+import type { CardResult, CartLine, LineAsk, LinesResult, Stamp } from './card-types'
+import { MAX_FORM, reinked, toStamp } from './card'
+import { botLine } from './order'
 import { SHAPES } from './draw'
 import { KIND_NAMES } from './kinds'
 import { templatesFor, type Msg } from './form'
@@ -79,4 +80,22 @@ export async function stampTurn(msgs: Msg[]): Promise<CardResult> {
 export async function inkStamp(form: string, ink: string): Promise<Stamp | null> {
   await settings() // first, so the bodies carry the live prices
   return reinked(form, ink)
+}
+
+const MAX_LINES = 50
+
+// "continue to order": every card the customer orders -> its cart line, built here from the form (the browser's svg
+// and prices are never taken). all or nothing: one stamp that cannot be ordered stops the order and says which
+export async function orderLines(asks: LineAsk[]): Promise<LinesResult> {
+  if (!Array.isArray(asks) || !asks.length) return { err: true, msg: 'לא נבחרו חותמות להזמנה' }
+  if (asks.length > MAX_LINES) return { err: true, msg: `אפשר להזמין עד ${MAX_LINES} חותמות בבת אחת` }
+  await settings() // first, so the lines carry the live prices and hidden products
+  const lines: CartLine[] = []
+  for (let i = 0; i < asks.length; i++) {
+    const a = asks[i]
+    const got = a && typeof a === 'object' && typeof a.form === 'string' && a.form.length <= MAX_FORM ? botLine(a) : 'לא הצלחנו לקרוא את החותמת. נסו ליצור אותה שוב.'
+    if (typeof got === 'string') return { err: true, msg: `חותמת ${i + 1}: ${got}` }
+    lines.push(got)
+  }
+  return { err: false, lines }
 }
