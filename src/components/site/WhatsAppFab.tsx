@@ -9,10 +9,9 @@ export const WA_PATH =
 
 const HIDDEN = ['/designer', '/checkout', '/cart', '/admin'];
 
-/** Floating WhatsApp button: soft pulse, a gentle wiggle and a one-time "chat with us" bubble. */
+/** Floating WhatsApp button: soft pulse and a gentle wiggle. */
 export function WhatsAppFab({ href }: { href: string }) {
   const pathname = usePathname() ?? '/';
-  const [hint, setHint] = useState(false);
   // Stays out of the way on arrival (the hero has its own WhatsApp button) and slides in once the visitor scrolls.
   const [shown, setShown] = useState(false);
 
@@ -23,26 +22,6 @@ export function WhatsAppFab({ href }: { href: string }) {
     return () => window.removeEventListener('scroll', onScroll);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!shown) return;
-    let seen = false;
-    try {
-      seen = sessionStorage.getItem('wa-hint') === '1';
-    } catch {}
-    if (seen) return;
-    const show = setTimeout(() => setHint(true), 1200);
-    const hide = setTimeout(() => {
-      setHint(false);
-      try {
-        sessionStorage.setItem('wa-hint', '1');
-      } catch {}
-    }, 7000);
-    return () => {
-      clearTimeout(show);
-      clearTimeout(hide);
-    };
-  }, [shown]);
-
   if (HIDDEN.some((p) => pathname.startsWith(p))) return null;
   const product = pathname.startsWith('/stamp/');
 
@@ -51,12 +30,6 @@ export function WhatsAppFab({ href }: { href: string }) {
       className={`fixed right-3 z-[2147483590] transition duration-500 sm:right-5 ${product ? 'bottom-[88px] lg:bottom-5' : 'bottom-3 sm:bottom-5'} ${shown ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-6 scale-75 opacity-0'}`}
       aria-hidden={!shown}
     >
-      <span
-        className={`wa-hint pointer-events-none absolute top-1/2 right-[4.25rem] -translate-y-1/2 rounded-2xl rounded-br-sm bg-white px-3.5 py-2 text-sm font-bold whitespace-nowrap text-ink shadow-[0_10px_30px_-10px_rgba(11,20,38,.45)] transition duration-500 ${hint ? 'translate-x-0 opacity-100' : 'translate-x-2 opacity-0'}`}
-        aria-hidden
-      >
-        יש שאלה? דברו איתנו 👋
-      </span>
       <a
         href={href}
         target="_blank"

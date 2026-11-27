@@ -6,7 +6,6 @@ import { Logo } from '@/components/Logo';
 import { Icon } from '@/components/ui/Icon';
 import { SITE } from '@/lib/config';
 import { MAIN_NAV, STAMP_MENU } from './nav';
-import { NewsletterForm } from './NewsletterForm';
 import { CookieSettingsButton } from './CookieNotice';
 
 export function Footer() {
@@ -20,7 +19,7 @@ export function Footer() {
           <p className="mt-4 text-sm leading-6 text-muted">
             אתם מעצבים. המערכת מכינה לייצור. אנחנו מייצרים ושולחים – חותמות מוכנות תוך 2 דקות, כבר למעלה מ־20 שנה.
           </p>
-          <NewsletterForm />
+          {/* Newsletter sign-up is paused (NewsletterForm is kept for later); nothing should compete with the main action. */}
         </div>
         <div>
           <h2 className="text-sm font-semibold">חותמות</h2>

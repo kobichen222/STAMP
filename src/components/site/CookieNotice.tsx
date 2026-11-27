@@ -30,21 +30,23 @@ export function CookieNotice() {
     setOpen(false);
   };
   return (
-    <div role="dialog" aria-label="הודעה על עוגיות" className="fixed inset-x-3 bottom-[5.75rem] z-[60] mx-auto max-w-2xl rounded-2xl border border-line bg-white p-4 shadow-lift sm:bottom-5 sm:p-5">
-      <p className="text-sm leading-6 text-ink-2">
-        <strong className="text-ink">האתר משתמש בעוגיות.</strong> עוגיות חיוניות שומרות את העגלה, את העיצובים ואת העדפות הנגישות שלכם. עוגיות סטטיסטיקה (Google Analytics) עוזרות לנו להבין איך משתמשים באתר ולשפר אותו.{' '}
-        <Link href="/privacy/" className="font-semibold text-blue underline">
+    // Thin, quiet, non-modal bar: one line of text and two equal-weight choices (wraps to two lines on phones).
+    // Bottom offset and z-index are relied on by the home page's phone bottom bar – keep them.
+    <div role="dialog" aria-label="הודעה על עוגיות" className="fixed inset-x-3 bottom-[5.75rem] z-[60] mx-auto flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-white px-3 py-2 shadow-soft sm:bottom-5 sm:px-4">
+      <p className="text-sm text-ink-2">
+        האתר משתמש בעוגיות ·{' '}
+        <Link href="/privacy/" className="text-blue underline">
           מדיניות הפרטיות
         </Link>
       </p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => choose('all')} className="btn-primary btn-sm">
+      <div className="flex items-center gap-2 sm:ms-auto">
+        <button type="button" onClick={() => choose('all')} className="btn-outline btn-sm">
           מאשר/ת הכול
         </button>
         <button type="button" onClick={() => choose('essential')} className="btn-outline btn-sm">
           חיוניות בלבד
         </button>
-        {current && <span className="text-xs text-muted">הבחירה הנוכחית: {current === 'all' ? 'הכול' : 'חיוניות בלבד'}</span>}
+        {current && <span className="text-xs text-muted">כרגע: {current === 'all' ? 'הכול' : 'חיוניות בלבד'}</span>}
       </div>
     </div>
   );
