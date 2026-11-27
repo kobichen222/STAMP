@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { ReviewAvatar } from '@/components/ReviewAvatar';
 import { GoogleG, Stars } from '@/components/reviews/parts';
+import { Icon } from '@/components/ui/Icon';
 import type { GoogleReview } from '@/lib/google-reviews';
 import { useMotionReduced } from '@/lib/motion';
 
-const INTERVAL_MS = 7000;
+const INTERVAL_MS = 20000;
 const PER_GROUP = 3;
 
 /** A review the way Google shows it: avatar, name, stars and year, then the reviewer's own words. */
@@ -34,12 +35,16 @@ function Card({ r }: { r: GoogleReview }) {
   );
 }
 
+const CONTROL = 'grid h-9 w-9 place-items-center rounded-full border border-line bg-white text-ink-2 transition hover:border-ink/30 hover:text-ink';
+
 /**
- * Three reviews at a time; every few seconds the next group cross-fades in.
+ * Three reviews at a time; every 20 seconds the next group cross-fades in.
  * All groups sit in the same grid cell, so the height is always the tallest group's and never jumps.
- * Pauses on hover or keyboard focus; the button stops it for good; with reduced motion it never starts by itself.
+ * Pauses on hover or keyboard focus over the cards; "next" or pause stops it for good (play resumes it);
+ * with reduced motion it never starts by itself. `header` is the server-rendered heading and summary,
+ * placed in the heading row with the controls at its end. Timer changes are not announced (no aria-live).
  */
-export function ReviewRotator({ reviews }: { reviews: GoogleReview[] }) {
+export function ReviewRotator({ header, reviews }: { header: ReactNode; reviews: GoogleReview[] }) {
   const groups: GoogleReview[][] = [];
   for (let i = 0; i < reviews.length; i += PER_GROUP) groups.push(reviews.slice(i, i + PER_GROUP));
 
@@ -59,10 +64,42 @@ export function ReviewRotator({ reviews }: { reviews: GoogleReview[] }) {
     return () => window.clearTimeout(t);
   }, [running, index, groups.length]);
 
+  const next = () => {
+    setIndex((i) => (i + 1) % groups.length);
+    setUserPaused(true);
+  };
+
   return (
     <div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">{header}</div>
+        {groups.length > 1 && (
+          <div className="ms-auto flex shrink-0 items-center gap-2">
+            <button type="button" onClick={next} aria-label="הביקורות הבאות" className={CONTROL}>
+              <Icon name="arrowLeft" size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setUserPaused(playing)}
+              aria-label={playing ? 'עצירת החלפת הביקורות' : 'הפעלת החלפת הביקורות'}
+              className={CONTROL}
+            >
+              {playing ? (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden>
+                  <rect x="6" y="5" width="4" height="14" rx="1" />
+                  <rect x="14" y="5" width="4" height="14" rx="1" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden>
+                  <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" />
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
       <div
-        className="grid"
+        className="mt-8 grid"
         onPointerEnter={() => setHovered(true)}
         onPointerLeave={() => setHovered(false)}
         onFocus={() => setFocused(true)}
@@ -86,27 +123,6 @@ export function ReviewRotator({ reviews }: { reviews: GoogleReview[] }) {
           );
         })}
       </div>
-      {groups.length > 1 && (
-        <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setUserPaused(playing)}
-            aria-label={playing ? 'עצירת החלפת הביקורות' : 'הפעלת החלפת הביקורות'}
-            className="grid h-9 w-9 place-items-center rounded-full border border-line bg-white text-ink-2 transition hover:border-ink/30 hover:text-ink"
-          >
-            {playing ? (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden>
-                <rect x="6" y="5" width="4" height="14" rx="1" />
-                <rect x="14" y="5" width="4" height="14" rx="1" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden>
-                <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" />
-              </svg>
-            )}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
