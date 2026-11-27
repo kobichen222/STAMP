@@ -48,6 +48,7 @@
     "@fontsource/rubik": "^5.3.0",
     "@fontsource/secular-one": "^5.3.0",
     "@fontsource/suez-one": "^5.3.0",
+    "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.2",
     "@types/nodemailer": "^8.0.2",
