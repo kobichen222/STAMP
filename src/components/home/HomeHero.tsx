@@ -4,7 +4,7 @@ import { StartBlock } from './StartBlock';
 // [icon, the promise itself (bold), an optional addition in regular weight]
 const PROMISES: readonly (readonly [IconName, string, string?])[] = [
   ['clock', 'החותמות מוכנות תוך 2 דקות'],
-  ['truck', 'משלוחים לכל הארץ', '· איסוף מרמת גן'],
+  ['truck', 'משלוחים לכל הארץ', 'או איסוף מרמת גן'],
   ['shield', 'החזר כספי מלא', 'אם לא מרוצים'],
 ];
 
