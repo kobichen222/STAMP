@@ -1,10 +1,12 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { addToCart } from '@/lib/cart-store';
 import { formatPrice } from '@/lib/format';
-import { inkStamp, splitStamps, stampTurn, warmStamps } from '@/stamp-bot/api';
-import type { Stamp } from '@/stamp-bot/card-types';
+import { inkStamp, orderLines, splitStamps, stampTurn, warmStamps } from '@/stamp-bot/api';
+import type { LineAsk, Stamp } from '@/stamp-bot/card-types';
 import type { Msg } from '@/stamp-bot/form';
 import { cardTotal, pickBody, StampCard, type StampCardData } from './StampCard';
 
@@ -12,6 +14,7 @@ const PLACEHOLDER = 'לדוגמה: ישראל ישראלי, עורך דין, מ.
 const PLACEHOLDER_MORE = 'להוסיף עוד חותמת…';
 const UNAVAILABLE = 'הבוט לא זמין כרגע';
 const INK_FAILED = 'לא הצלחנו להחליף צבע, נסו שוב';
+const ORDER_FAILED = 'לא הצלחנו להעביר לסל, נסו שוב';
 const MAX_RUNNING = 3;
 
 // The box is rendered twice on the page; the model processes need booting only once per page.
@@ -34,14 +37,22 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
   const area = useRef<HTMLTextAreaElement>(null);
   const textId = `${idPrefix}-text`;
   const placeholder = cards.length ? PLACEHOLDER_MORE : PLACEHOLDER;
+  const router = useRouter();
+  const [ordering, setOrdering] = useState(false);
+  const [orderErr, setOrderErr] = useState('');
+  const orderRunning = useRef(false);
 
-  // The order so far: only cards that have a body and so a price.
+  // The order so far: only orderable cards that have a body and so a price. Exactly these go to the cart.
   const priced = cards.flatMap((c) => {
     const total = cardTotal(c);
-    return total == null ? [] : [{ qty: c.qty, total }];
+    return total == null || !c.stamp ? [] : [{ card: c, stamp: c.stamp, total }];
   });
-  const count = priced.reduce((n, p) => n + p.qty, 0);
+  const count = priced.reduce((n, p) => n + p.card.qty, 0);
   const sum = Math.round(priced.reduce((s, p) => s + p.total, 0) * 100) / 100;
+  // Stamps on screen that will not go with the order (not orderable yet, or no body at this size).
+  const left = cards.filter((c) => c.stamp && cardTotal(c) == null).length;
+  // A card still changing could send an outdated drawing or price.
+  const settling = cards.some((c) => c.busy || c.inking);
 
   // The turn queue: at most MAX_RUNNING bot calls at once for this box, the rest wait in order.
   const queue = useRef<Job[]>([]);
@@ -203,6 +214,30 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
     setCards((cs) => cs.filter((c) => c.id !== id));
   }
 
+  // The server builds the cart lines (it redraws each stamp and reads the catalog); the browser only adds them.
+  async function order() {
+    if (orderRunning.current || settling || !priced.length) return;
+    orderRunning.current = true;
+    setOrdering(true);
+    setOrderErr('');
+    const sent = priced.map((p) => p.card.id);
+    const asks = priced.map(({ card, stamp }): LineAsk => ({ form: stamp.form, slug: card.body, ink: stamp.ink, quantity: card.qty }));
+    try {
+      const res = await orderLines(asks);
+      if (res.err) {
+        setOrderErr(res.msg);
+      } else {
+        res.lines.forEach((line) => addToCart(line));
+        sent.forEach(remove);
+        router.push('/cart/?added=' + res.lines.length);
+      }
+    } catch {
+      setOrderErr(ORDER_FAILED);
+    }
+    orderRunning.current = false;
+    setOrdering(false);
+  }
+
   return (
     <div>
       <form
@@ -271,9 +306,18 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
           </ul>
         )}
         {priced.length > 0 && (
-          <p className="mt-4 text-center text-sm text-ink">
-            {count === 1 ? 'חותמת אחת' : `${count} חותמות`} · סה״כ <span className="font-semibold tabular-nums">{formatPrice(sum)}</span>
-          </p>
+          <div className="mt-4 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-ink">
+              {count === 1 ? 'חותמת אחת' : `${count} חותמות`} · סה״כ <span className="font-semibold tabular-nums">{formatPrice(sum)}</span>
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+              <button type="button" disabled={ordering || settling} onClick={() => void order()} className="btn-primary">
+                {ordering ? 'מעבירים לסל…' : 'המשך להזמנה'}
+              </button>
+              {left > 0 && <p className="text-sm text-muted">{left === 1 ? 'חותמת אחת לא נכנסת להזמנה' : `${left} חותמות לא נכנסות להזמנה`}</p>}
+            </div>
+            {orderErr && <p className="text-sm font-medium text-bad">{orderErr}</p>}
+          </div>
         )}
       </div>
     </div>

@@ -63,9 +63,12 @@ export function CartView() {
                     </p>
                   )}
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                    <button type="button" className="btn-ghost btn-sm" onClick={() => edit(i)}>
-                      <Icon name="text" size={15} /> עריכה
-                    </button>
+                    {/* A bot stamp cannot be opened in the designer. */}
+                    {!i.design.bot && (
+                      <button type="button" className="btn-ghost btn-sm" onClick={() => edit(i)}>
+                        <Icon name="text" size={15} /> עריכה
+                      </button>
+                    )}
                     <button type="button" className="btn-ghost btn-sm" onClick={() => duplicateCartItem(i.id)}>
                       <Icon name="copy" size={15} /> שכפול
                     </button>

@@ -25,10 +25,10 @@ export type StampCardData = {
 export const pickBody = (stamp: Stamp, prev: string) =>
   stamp.bodies.some((b) => b.slug === prev) ? prev : (stamp.bodies[0]?.slug ?? '');
 
-/** The card's line total, or null when it has nothing to order. */
+/** The card's line total, or null when it has nothing to order (no stamp, no body, or not orderable yet). */
 export function cardTotal(c: StampCardData): number | null {
   const b = c.stamp?.bodies.find((x) => x.slug === c.body);
-  return c.stamp && b ? linePrice(b.price, c.qty, c.stamp.ink) : null;
+  return c.stamp?.orderable && b ? linePrice(b.price, c.qty, c.stamp.ink) : null;
 }
 
 function sizeLabel(s: Stamp) {
@@ -62,6 +62,9 @@ export function StampCard({
   const { stamp } = card;
   const body = stamp?.bodies.find((b) => b.slug === card.body);
   const total = cardTotal(card);
+  const blocked = stamp != null && !stamp.orderable;
+  // The bot often says the same thing as `why`; print it once.
+  const reply = blocked && card.reply.trim() === stamp?.why.trim() ? '' : card.reply;
 
   useEffect(() => {
     const el = area.current;
@@ -97,7 +100,9 @@ export function StampCard({
         </div>
       )}
 
-      {stamp && (
+      {stamp && blocked && <p className="mt-2 text-sm text-ink">{stamp.why}</p>}
+
+      {stamp && !blocked && (
         <p className="mt-2 text-sm text-ink">
           {body ? (
             <>
@@ -115,7 +120,7 @@ export function StampCard({
       ) : card.err ? (
         <p className="mt-3 text-sm font-medium text-bad">{card.err}</p>
       ) : (
-        card.reply && <p className="mt-3 text-sm text-muted">{card.reply}</p>
+        reply && <p className="mt-3 text-sm text-muted">{reply}</p>
       )}
 
       {fixOpen && (
@@ -156,7 +161,7 @@ export function StampCard({
         </form>
       )}
 
-      {optsOpen && stamp && (
+      {optsOpen && stamp && !blocked && (
         <StampOptions
           id={optsId}
           stamp={stamp}
@@ -183,7 +188,7 @@ export function StampCard({
         >
           תיקון
         </button>
-        {stamp && (
+        {stamp && !blocked && (
           <button
             type="button"
             aria-expanded={optsOpen}

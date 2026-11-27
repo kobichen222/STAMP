@@ -103,9 +103,12 @@ export function OrderEditor({ order: o, rules, basePrices }: { order: Order; rul
                       <p className="font-bold">{it.productName}</p>
                       <p className="text-xs text-muted">{it.size}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <button type="button" onClick={() => editDesign(i)} disabled={!it.productSlug || d.removed} className="btn-outline btn-sm">
-                          <Icon name="edit" size={15} /> עריכת העיצוב
-                        </button>
+                        {/* A bot stamp cannot be opened in the designer. */}
+                        {!it.design.bot && (
+                          <button type="button" onClick={() => editDesign(i)} disabled={!it.productSlug || d.removed} className="btn-outline btn-sm">
+                            <Icon name="edit" size={15} /> עריכת העיצוב
+                          </button>
+                        )}
                         {(liveCount > 1 || d.removed) && (
                           <button type="button" onClick={() => setItem(it.id, { removed: !d.removed })} className="btn-ghost btn-sm text-bad">
                             {d.removed ? 'ביטול הסרה' : 'הסרת פריט'}

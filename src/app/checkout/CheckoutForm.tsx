@@ -76,7 +76,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
           name: form.name.trim() || undefined,
           phone: form.phone.trim() || undefined,
           total: q.total || undefined,
-          items: items.map((i) => ({ productSlug: i.productSlug, productName: i.productName, modelId: i.modelId, size: i.size, design: i.design, ink: i.ink, bodyColor: i.bodyColor, quantity: i.quantity, unitPrice: i.unitPrice, addons: i.addons, previewSvg: i.previewSvg?.length < 80000 ? i.previewSvg : undefined })),
+          items: items.map((i) => ({ productSlug: i.productSlug, productName: i.productName, modelId: i.modelId, size: i.size, design: i.design, ink: i.ink, bodyColor: i.bodyColor, quantity: i.quantity, unitPrice: i.unitPrice, addons: i.addons, previewSvg: !i.design.bot && i.previewSvg?.length < 80000 ? i.previewSvg : undefined })), // a bot drawing alone exceeds the 64 KiB keepalive cap
         }),
       }).catch(() => undefined);
     }, 1800);
