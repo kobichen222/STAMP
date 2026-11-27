@@ -5,7 +5,8 @@ import { GoogleReviewsSection } from '@/components/home/GoogleReviewsSection';
 import { HomeHero } from '@/components/home/HomeHero';
 import { StampBox } from '@/components/home/StampBox';
 import { StartBar } from '@/components/home/StartBar';
-import { FaqList } from '@/components/site/FaqList';
+import { HomeFaq } from '@/components/home/HomeFaq';
+import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES, categoryCard } from '@/lib/catalog';
 import { site } from '@/lib/content';
 import { allFaqItems, faqJsonLd, type FaqItem } from '@/lib/faq';
@@ -25,10 +26,14 @@ const HOME_CATEGORIES = ['business', 'personal', 'doctors', 'lawyers', 'company'
 // Six existing questions: price, timing, unsure about the text, the preview, logo, a single stamp.
 const HOME_FAQ = ['המהירות מייקרת את החותמת?', 'מתי ההזמנה נשלחת?', 'לא בטוחים מה לכתוב או איך לעצב?', 'האם התצוגה המקדימה מדויקת?', 'איזה פורמט לוגו הכי טוב?', 'אפשר להזמין חותמת אחת בלבד?'];
 
-const PROMISES = 'מוכנה תוך 2 דקות · משלוח לכל הארץ או איסוף ברמת גן · אחריות והחזר כספי';
+const PROMISES = [
+  ['clock', 'מוכנה תוך 2 דקות'],
+  ['truck', 'משלוח לכל הארץ או איסוף ברמת גן'],
+  ['shield', 'אחריות והחזר כספי'],
+] as const;
 
-// Links below the first screen stay quiet: the brand blue is kept for the action.
-const QUIET_LINK = 'text-sm font-medium text-ink-2 underline underline-offset-4 hover:text-ink';
+// The site's usual text-link style (blue, arrow); these stay text links, never buttons.
+const SECTION_LINK = 'inline-flex items-center gap-1 text-sm font-medium text-blue hover:underline';
 
 /** Price shown as "החל מ-X ₪", or null when nothing has a price. */
 function priceLabel(prices: (number | null | undefined)[]): string | null {
@@ -54,41 +59,57 @@ export default async function HomePage() {
     <>
       <HomeHero fromPrice={fromPrice} />
 
-      <p className="container-x py-8 text-center text-[15px] text-ink-2">{PROMISES}</p>
-
-      <section id="stamps" className="container-x scroll-mt-28 py-16 sm:py-24">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 className="text-3xl font-extrabold sm:text-4xl">איזו חותמת אתם צריכים?</h2>
-          <Link href="/stamps/" className={QUIET_LINK}>
-            לכל החותמות
-          </Link>
-        </div>
-        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {cats.map((c) => (
-            <CategoryCard key={c.slug} c={c} />
+      {/* Bands below the first screen alternate white and surface. */}
+      <section aria-label="ההבטחה שלנו" className="border-y border-line bg-white py-6">
+        <ul className="container-x flex flex-col items-center gap-3 text-[15px] font-semibold text-ink-2 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-10">
+          {PROMISES.map(([icon, text]) => (
+            <li key={text} className="flex items-center gap-2">
+              <Icon name={icon} size={20} className="shrink-0 text-blue" />
+              {text}
+            </li>
           ))}
+        </ul>
+      </section>
+
+      <section id="stamps" className="scroll-mt-28 bg-surface py-12 sm:py-16">
+        <div className="container-x">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <h2 className="text-3xl font-extrabold sm:text-4xl">איזו חותמת אתם צריכים?</h2>
+            <Link href="/stamps/" className={SECTION_LINK}>
+              לכל החותמות <Icon name="arrowLeft" size={15} />
+            </Link>
+          </div>
+          <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {cats.map((c) => (
+              <CategoryCard key={c.slug} c={c} />
+            ))}
+          </div>
         </div>
       </section>
 
       <GoogleReviewsSection rating={rating} count={count} reviews={featuredReviews(3)} />
 
-      <section className="container-x py-16 sm:py-24" aria-labelledby="faq-title">
-        <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr] lg:gap-10">
-          <div>
-            <h2 id="faq-title" className="text-3xl font-extrabold sm:text-4xl">
-              שאלות נפוצות
-            </h2>
-            <Link href="/faq/" className={`${QUIET_LINK} mt-4 inline-block`}>
-              לכל השאלות
-            </Link>
+      <section className="bg-surface py-12 sm:py-16" aria-labelledby="faq-title">
+        <div className="container-x">
+          <div className="mx-auto max-w-3xl">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <h2 id="faq-title" className="text-3xl font-extrabold sm:text-4xl">
+                שאלות נפוצות
+              </h2>
+              <Link href="/faq/" className={SECTION_LINK}>
+                לכל השאלות <Icon name="arrowLeft" size={15} />
+              </Link>
+            </div>
+            <div className="mt-8">
+              <HomeFaq items={faq} />
+            </div>
           </div>
-          <FaqList items={faq} schema={false} />
         </div>
       </section>
       {/* One FAQPage for the home page: exactly the questions shown above. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(faq)) }} />
 
-      <section className="container-x py-16 sm:py-24" aria-labelledby="end-title">
+      <section className="container-x py-12 sm:py-16" aria-labelledby="end-title">
         <div className="mx-auto max-w-2xl">
           <h2 id="end-title" className="text-center text-4xl font-extrabold sm:text-5xl">
             עכשיו תורכם.
