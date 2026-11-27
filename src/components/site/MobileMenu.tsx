@@ -26,13 +26,8 @@ const ICON_FOR: Record<string, string> = {
 const MAIN = [
   { label: 'ראשי', href: '/', icon: 'store' },
   { label: 'כל החותמות', href: '/stamps/', icon: 'grid' },
-  { label: 'תבניות', href: '/templates/', icon: 'template' },
-  { label: 'דוגמאות', href: '/examples/', icon: 'image' },
-  { label: 'איך זה עובד', href: '/how-it-works/', icon: 'sparkles' },
-  { label: 'שאלות נפוצות', href: '/faq/', icon: 'help' },
-  { label: 'אודות', href: '/about/', icon: 'info' },
-  { label: 'צור קשר', href: '/contact/', icon: 'mail' },
 ];
+// Kept minimal on purpose: the other pages (templates, examples, FAQ, about, contact) live in the footer.
 
 /**
  * Full-screen mobile drawer. Rendered in a portal on <body> so it is never
@@ -93,7 +88,7 @@ export function MobileMenu({ open, onClose, pathname, cartCount }: { open: boole
   const featured = CATEGORIES.filter((c) => c.featured);
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] xl:hidden" role="dialog" aria-modal="true" aria-label="תפריט ניווט" dir="rtl">
+    <div className="fixed inset-0 z-[90] lg:hidden" role="dialog" aria-modal="true" aria-label="תפריט ניווט" dir="rtl">
       <div className={`absolute inset-0 bg-ink/40 backdrop-blur-sm transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
       <div
         ref={panelRef}

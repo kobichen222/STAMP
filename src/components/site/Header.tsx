@@ -8,7 +8,8 @@ import { Logo } from '@/components/Logo';
 import { useCartCount } from '@/lib/cart-store';
 import { MobileMenu } from './MobileMenu';
 import { showAnnouncement } from './AnnouncementBar';
-import { MAIN_NAV, STAMP_MENU } from './nav';
+import { SITE } from '@/lib/config';
+import { STAMP_MENU } from './nav';
 
 function CartLink({ count, className = '' }: { count: number; className?: string }) {
   return (
@@ -68,7 +69,8 @@ export function Header() {
           </span>
         </Link>
 
-        <nav aria-label="תפריט ראשי" className="hidden flex-1 items-center gap-0.5 xl:flex">
+        {/* Desktop nav is kept minimal on purpose: only the stamps menu. The other pages live in the footer. */}
+        <nav aria-label="תפריט ראשי" className="hidden flex-1 items-center gap-0.5 lg:flex">
           <div className="relative" onMouseEnter={() => setMega(true)} onMouseLeave={() => setMega(false)}>
             <button
               type="button"
@@ -93,19 +95,13 @@ export function Header() {
               </div>
             )}
           </div>
-          {MAIN_NAV.map((m, i) => (
-            <Link
-              key={m.href}
-              href={m.href}
-              // The two category shortcuts also live in the "חותמות" menu – only shown when there is room.
-              className={`rounded-full px-2.5 py-2 text-[15.5px] font-medium whitespace-nowrap hover:text-ink ${i < 2 ? 'hidden 2xl:inline-block' : ''} ${pathname.startsWith(m.href) ? 'text-ink font-medium' : 'text-ink-2'}`}
-            >
-              {m.label}
-            </Link>
-          ))}
         </nav>
 
         <div className="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+          <a href={SITE.phoneHref} className="btn-ghost hidden !px-3 lg:inline-flex">
+            <Icon name="phone" size={18} />
+            <span dir="ltr">{SITE.phone}</span>
+          </a>
           <Link href="/account/" className="btn-ghost hidden !px-3 sm:inline-flex" aria-label="האזור שלי">
             <Icon name="user" size={19} />
             <span className="hidden 2xl:inline">האזור שלי</span>
@@ -117,7 +113,7 @@ export function Header() {
           <Link href="/designer/" className="btn-primary hidden !px-5 sm:inline-flex lg:!h-12 lg:!px-6 lg:!text-base lg:font-bold">
             עצבו חותמת
           </Link>
-          <button type="button" className="hidden h-11 w-11 place-items-center rounded-full hover:bg-surface sm:grid xl:hidden" aria-label="פתיחת תפריט" aria-expanded={drawer} onClick={() => setDrawer(true)}>
+          <button type="button" className="hidden h-11 w-11 place-items-center rounded-full hover:bg-surface sm:grid lg:hidden" aria-label="פתיחת תפריט" aria-expanded={drawer} onClick={() => setDrawer(true)}>
             <Icon name="menu" size={22} />
           </button>
         </div>

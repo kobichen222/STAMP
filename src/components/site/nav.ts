@@ -1,5 +1,6 @@
 import { CATEGORIES } from '@/lib/categories';
 
+// Full site list for the footer. The header shows only the stamps menu (STAMP_MENU).
 export const MAIN_NAV = [
   { label: 'חותמות לעסקים', href: '/stamps/business/' },
   { label: 'חותמות אישיות', href: '/stamps/personal/' },
