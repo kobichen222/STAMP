@@ -1,22 +1,41 @@
 'use client';
 
-import { useState } from 'react';
-import { STAMP_EXAMPLES, type StampExample } from './stamp-examples';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Icon } from '@/components/ui/Icon';
+
+const PLACEHOLDER = 'לדוגמה: ישראל ישראלי, עורך דין, מ.ר. 12345, הרצל 1 תל אביב, 050-1234567';
 
 /**
- * The home page's single action: write what should be on the stamp.
+ * The home page's single action, styled like a chat input: one growing line and a round send arrow.
  * Rendered twice (first screen and closing section), so every id is built from `idPrefix`.
  */
-export function StampBox({ idPrefix, onPick }: { idPrefix: string; onPick?: (example: StampExample) => void }) {
+export function StampBox({ idPrefix }: { idPrefix: string }) {
   const [text, setText] = useState('');
-  const [active, setActive] = useState<string | null>(null);
+  const area = useRef<HTMLTextAreaElement>(null);
   const textId = `${idPrefix}-text`;
 
-  const pick = (ex: StampExample) => {
-    setText(ex.lines.join('\n'));
-    setActive(ex.id);
-    onPick?.(ex);
-  };
+  // Grow with the text (the CSS max height caps it at about five lines, then it scrolls).
+  // While empty, size to the example placeholder so it is never cut off on narrow screens.
+  const grow = useCallback(() => {
+    const el = area.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    if (el.value) {
+      el.style.height = `${el.scrollHeight}px`;
+      return;
+    }
+    el.value = PLACEHOLDER;
+    const h = el.scrollHeight;
+    el.value = '';
+    el.style.height = `${h}px`;
+  }, []);
+
+  useEffect(() => {
+    grow();
+    window.addEventListener('resize', grow);
+    return () => window.removeEventListener('resize', grow);
+  }, [grow]);
+  useEffect(grow, [text, grow]);
 
   return (
     <form
@@ -26,31 +45,33 @@ export function StampBox({ idPrefix, onPick }: { idPrefix: string; onPick?: (exa
         e.preventDefault();
       }}
     >
-      <div className="card p-4 shadow-soft sm:p-5">
-        <label htmlFor={textId} className="label !text-base !font-bold !text-ink">
-          מה לכתוב בחותמת?
-        </label>
+      <label htmlFor={textId} className="sr-only">
+        מה לכתוב בחותמת?
+      </label>
+      <div className="flex items-end gap-2 rounded-2xl border border-line bg-white p-2 ps-4 shadow-soft transition focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/10">
         <textarea
+          ref={area}
           id={textId}
-          rows={3}
+          rows={1}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="לדוגמה: ישראל ישראלי, עורך דין, מ.ר. 12345, הרצל 1 תל אביב, 050-1234567"
-          className="input resize-y !text-[17px] leading-7"
+          onKeyDown={(e) => {
+            // Enter sends, Shift+Enter starts a new line.
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }
+          }}
+          placeholder={PLACEHOLDER}
+          className="max-h-40 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-1.5 text-[17px] leading-7 outline-none placeholder:text-muted/70 focus-visible:outline-none"
         />
-        <div className="mt-3 flex justify-end">
-          <button type="submit" className="btn-primary btn-lg w-full font-bold sm:w-auto">
-            הכינו לי חותמת
-          </button>
-        </div>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="דוגמאות לטקסט">
-        <span className="text-sm text-muted">דוגמה:</span>
-        {STAMP_EXAMPLES.map((ex) => (
-          <button key={ex.id} type="button" aria-pressed={active === ex.id} onClick={() => pick(ex)} className={`chip ${active === ex.id ? 'chip-on' : ''}`}>
-            {ex.label}
-          </button>
-        ))}
+        <button
+          type="submit"
+          aria-label="הכינו לי חותמת"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue text-white transition hover:bg-blue-600 active:scale-[0.96]"
+        >
+          <Icon name="arrowLeft" size={20} strokeWidth={2.25} />
+        </button>
       </div>
     </form>
   );

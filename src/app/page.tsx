@@ -56,7 +56,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <HomeHero rating={rating != null ? rating.toFixed(1) : null} count={count} fromPrice={fromPrice} />
+      <HomeHero rating={rating != null ? rating.toFixed(1) : null} fromPrice={fromPrice} />
 
       <section id="stamps" className="scroll-mt-28 py-12 sm:py-16">
         <div className="container-x">
