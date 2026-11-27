@@ -129,7 +129,7 @@ export default async function LoginPage({
 
         <div className="relative mx-auto max-w-md text-center lg:mx-0 lg:max-w-lg lg:text-start">
           <span className="inline-block rounded-2xl bg-white px-4 py-2.5 text-ink shadow-[0_10px_30px_-12px_rgba(0,0,0,.4)]">
-            <Logo />
+            <Logo variant="full" />
           </span>
           <h2 className="mt-7 text-[1.7rem] leading-tight font-extrabold sm:text-4xl lg:mt-16 lg:text-5xl">
             ניהול האתר

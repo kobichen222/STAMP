@@ -38,7 +38,7 @@ const organization = {
   url: SITE.url,
   telephone: '+972-3-6733770',
   email: SITE.email,
-  logo: `${SITE.url}/favicon.svg`,
+  logo: `${SITE.url}/logo.svg`,
   address: { '@type': 'PostalAddress', streetAddress: 'הרא"ה 3', addressLocality: 'רמת גן', addressCountry: 'IL' },
   openingHoursSpecification: [
     { '@type': 'OpeningHoursSpecification', dayOfWeek: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'], opens: '09:00', closes: '17:00' },

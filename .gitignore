@@ -12,3 +12,5 @@ wordpress-export/
 # public/wp-content/
 screenshots/
 .data/
+# Font files downloaded by scripts/generate-logo.mjs
+scripts/.logo-fonts/
