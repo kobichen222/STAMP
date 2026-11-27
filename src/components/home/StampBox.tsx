@@ -9,7 +9,7 @@ const PLACEHOLDER = 'לדוגמה: ישראל ישראלי, עורך דין, מ.
  * The home page's single action, styled like a chat input: one growing line and a round send arrow.
  * Rendered twice (first screen and closing section), so every id is built from `idPrefix`.
  */
-export function StampBox({ idPrefix }: { idPrefix: string }) {
+export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; focusOnLoad?: boolean }) {
   const [text, setText] = useState('');
   const area = useRef<HTMLTextAreaElement>(null);
   const textId = `${idPrefix}-text`;
@@ -36,6 +36,14 @@ export function StampBox({ idPrefix }: { idPrefix: string }) {
     return () => window.removeEventListener('resize', grow);
   }, [grow]);
   useEffect(grow, [text, grow]);
+
+  // Desktop only (fine pointer + hover), so a phone keyboard never opens by itself; and only when the
+  // page was opened at its top without a hash, so a visitor arriving at /#stamps is not pulled away.
+  useEffect(() => {
+    if (!focusOnLoad || window.location.hash || window.scrollY > 0) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    area.current?.focus({ preventScroll: true });
+  }, [focusOnLoad]);
 
   return (
     <form
