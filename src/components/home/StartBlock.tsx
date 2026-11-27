@@ -24,7 +24,9 @@ export function StartBlock({
       <div className="mt-8">
         <StampBox idPrefix={idPrefix} focusOnLoad={focusOnLoad} />
       </div>
-      <p className="mt-4 text-center text-sm text-muted">{fromPrice ? `רואים את החותמת לפני שמשלמים · החל מ-${fromPrice} ₪` : 'רואים את החותמת לפני שמשלמים'}</p>
+      <p className="mt-4 text-center text-sm text-muted">{fromPrice
+          ? `אפשר לכתוב כמה חותמות בהודעה אחת · רואים את החותמת לפני שמשלמים · החל מ-${fromPrice} ₪`
+          : 'אפשר לכתוב כמה חותמות בהודעה אחת · רואים את החותמת לפני שמשלמים'}</p>
     </div>
   );
 }
