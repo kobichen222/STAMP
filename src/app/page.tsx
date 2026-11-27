@@ -93,19 +93,19 @@ export default async function HomePage() {
       {/* One FAQPage for the home page: exactly the questions shown above. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(faq)) }} />
 
-      {/* The page's only coloured band: the final call to act. The 1px overlap covers the footer's
-          top border, so the blue meets the footer's surface directly. */}
-      <section className="relative z-[1] -mb-px bg-blue py-20 sm:py-28" aria-labelledby="end-title">
+      {/* The final call to act, on a soft brand-blue tint (blue-50, about 8% blue on white) so it reads apart
+          from the grey FAQ band and footer. The 1px overlap covers the footer's top border, so the tint meets
+          the footer's surface directly. */}
+      <section className="relative z-[1] -mb-px bg-blue-50 py-20 sm:py-28" aria-labelledby="end-title">
         <div className="container-x">
           <div className="mx-auto max-w-2xl">
-            <h2 id="end-title" className="text-center text-3xl font-extrabold text-white sm:text-5xl">
+            <h2 id="end-title" className="text-center text-3xl font-extrabold sm:text-5xl">
               איזו חותמת להכין לכם?
             </h2>
             <div className="mt-8">
-              <StampBox idPrefix="end" onBlue />
+              <StampBox idPrefix="end" closing />
             </div>
-            {/* White at 90% on #2457ff is about 4.7:1, above WCAG AA for small text. */}
-            <p className="mt-4 text-center text-sm text-white/90">{factsLine(fromPrice)}</p>
+            <p className="mt-4 text-center text-sm text-muted">{factsLine(fromPrice)}</p>
           </div>
         </div>
       </section>

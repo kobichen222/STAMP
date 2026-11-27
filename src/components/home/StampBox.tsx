@@ -9,7 +9,7 @@ const PLACEHOLDER = 'לדוגמה: ישראל ישראלי, עורך דין, מ.
  * The home page's single action, styled like a chat input: one growing line and a round send arrow.
  * Rendered twice (first screen and closing section), so every id is built from `idPrefix`.
  */
-export function StampBox({ idPrefix, focusOnLoad = false, onBlue = false }: { idPrefix: string; focusOnLoad?: boolean; onBlue?: boolean }) {
+export function StampBox({ idPrefix, focusOnLoad = false, closing = false }: { idPrefix: string; focusOnLoad?: boolean; closing?: boolean }) {
   const [text, setText] = useState('');
   const area = useRef<HTMLTextAreaElement>(null);
   const textId = `${idPrefix}-text`;
@@ -56,12 +56,10 @@ export function StampBox({ idPrefix, focusOnLoad = false, onBlue = false }: { id
       <label htmlFor={textId} className="sr-only">
         מה לכתוב בחותמת?
       </label>
-      {/* On the blue band a blue ring would vanish: a white outline with a gap shows focus instead. */}
+      {/* The closing variant is a little larger, with a soft brand-blue shadow; focus looks the same in both. */}
       <div
-        className={`flex items-end gap-2 rounded-2xl border bg-white p-2 ps-4 transition ${
-          onBlue
-            ? 'border-white shadow-lift focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-white'
-            : 'border-line shadow-soft focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/10'
+        className={`flex items-end gap-2 rounded-2xl border border-line bg-white transition focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/10 ${
+          closing ? 'p-2.5 ps-5 shadow-[0_18px_40px_-14px_rgb(36_87_255/0.35)]' : 'p-2 ps-4 shadow-soft'
         }`}
       >
         <textarea
@@ -78,12 +76,14 @@ export function StampBox({ idPrefix, focusOnLoad = false, onBlue = false }: { id
             }
           }}
           placeholder={PLACEHOLDER}
-          className="max-h-40 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-1.5 text-[17px] leading-7 outline-none placeholder:text-muted/70 focus-visible:outline-none"
+          className={`min-w-0 flex-1 resize-none overflow-y-auto bg-transparent outline-none placeholder:text-muted/70 focus-visible:outline-none ${
+            closing ? 'max-h-44 py-2 text-lg leading-8' : 'max-h-40 py-1.5 text-[17px] leading-7'
+          }`}
         />
         <button
           type="submit"
           aria-label="הכינו לי חותמת"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue text-white transition hover:bg-blue-600 active:scale-[0.96]"
+          className={`grid shrink-0 place-items-center rounded-full bg-blue text-white transition hover:bg-blue-600 active:scale-[0.96] ${closing ? 'h-12 w-12' : 'h-10 w-10'}`}
         >
           <Icon name="arrowLeft" size={20} strokeWidth={2.25} />
         </button>
