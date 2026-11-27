@@ -34,7 +34,7 @@ export function CookieNotice() {
     // Bottom offset and z-index are relied on by the home page's phone bottom bar – keep them.
     <div role="dialog" aria-label="הודעה על עוגיות" className="fixed inset-x-3 bottom-[5.75rem] z-[60] mx-auto flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-white px-3 py-2 shadow-soft sm:bottom-5 sm:px-4">
       <p className="text-sm text-ink-2">
-        האתר משתמש בעוגיות ·{' '}
+        האתר משתמש בעוגיות לשמירת העגלה והעיצובים ולסטטיסטיקה (Google Analytics) ·{' '}
         <Link href="/privacy/" className="text-blue underline">
           מדיניות הפרטיות
         </Link>
