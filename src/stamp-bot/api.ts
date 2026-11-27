@@ -5,26 +5,43 @@ import { KIND_NAMES } from './kinds'
 import { templatesFor, type Msg, type TurnResult } from './form'
 import { ask, AskTimeout, warmPool } from './proc'
 import { extractSystem, placeSystem, type Looks } from './prompt'
+import { split, splitSystem } from './split'
 import { runTurn, type Stations } from './turn'
 
-// the two prompts. the looks station 1 may pick are the ones the shapes draw; station 2 places into the general
-// templates (accounts come later)
+// the three prompts. the looks station 1 may pick are the ones the shapes draw; station 2 places into the general
+// templates (accounts come later); split cuts one message into several stamps before the turn
 function systems() {
   const looks = Object.fromEntries(KIND_NAMES.map((k) => [k, SHAPES[k].looks.map((l) => ({ id: l.id, label: l.label }))])) as Looks
-  return { extract: extractSystem(looks), place: placeSystem(templatesFor(null)) }
+  return { extract: extractSystem(looks), place: placeSystem(templatesFor(null)), split: splitSystem() }
 }
 
-// called on the first keystroke: the processes of both prompts boot while the customer is still typing
+// warmPool drops every pool whose prompt is not passed, so EVERY call site passes all three - or each would kill the others' warm processes
+function warmAll(sys: ReturnType<typeof systems>) {
+  warmPool(sys.extract, sys.place, sys.split)
+}
+
+// called on the first keystroke: the processes of every prompt boot while the customer is still typing
 export async function warmStamps() {
-  const sys = systems()
-  warmPool(sys.extract, sys.place)
+  warmAll(systems())
+}
+
+// cuts one customer message into the text of each stamp it asks for. always resolves with at least one piece:
+// any failure (model, parse, a word lost or invented) returns the whole message as one stamp
+export async function splitStamps(text: string): Promise<string[]> {
+  try {
+    const sys = systems()
+    warmAll(sys)
+    return await split(text, (req) => ask(sys.split, req))
+  } catch {
+    return typeof text === 'string' && text.trim() ? [text] : []
+  }
 }
 
 // one turn of the conversation. the svg is drawn HERE - nothing the model wrote reaches the screen as markup
 export async function stampTurn(msgs: Msg[]): Promise<TurnResult> {
   if (!Array.isArray(msgs) || !msgs.length) return { err: true, msg: 'לא התקבלה הודעה' }
   const sys = systems()
-  warmPool(sys.extract, sys.place) // drops the pools of a prompt no longer in use
+  warmAll(sys) // drops the pools of a prompt no longer in use
   const st: Stations = { extract: (req) => ask(sys.extract, req), place: (req) => ask(sys.place, req) }
 
   // round 2 runs only when a process died mid-turn - never after a timeout, the customer already waited

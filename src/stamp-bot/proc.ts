@@ -1,5 +1,5 @@
 // NOT a 'use server' file on purpose - server-internal. small pools of PRE-SPAWNED, SINGLE-USE headless Claude Code
-// processes, one pool per system prompt (the bot has two: extract and place): a request takes a warm one of its
+// processes, one pool per system prompt (the bot has three: split, extract and place): a request takes a warm one of its
 // prompt, sends ONE message, reads the answer and the process dies; a fresh one takes its place. nothing outlives a
 // request, so one customer's messages can never reach another customer's conversation.
 // rides this machine's Claude login (or CLAUDE_CODE_OAUTH_TOKEN when it is set, e.g. on a server) - no API key, no extra cost

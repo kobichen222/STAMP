@@ -20,7 +20,7 @@ export type Stations = { extract: (req: string) => Promise<string>; place: (req:
 
 const MAX_REPLY = 12000
 const MAX_FORM = 8000
-const MAX_TEXT = 4000
+export const MAX_TEXT = 4000 // one customer message; split.ts cuts its input to the same length
 const MAX_LINES = 12
 const MAX_LINE = 200
 const MAX_SAY = 600
@@ -44,7 +44,7 @@ function obj(v: unknown): Record<string, unknown> | null {
 }
 
 // the one json object of a reply - tolerates code fences and text around it. null = no object in it
-function parseObj(raw: string): Record<string, unknown> | null {
+export function parseObj(raw: string): Record<string, unknown> | null {
   const s = String(raw ?? '')
     .replace(/```\w*/g, '')
     .trim()
