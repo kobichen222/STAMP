@@ -17,7 +17,9 @@ import { STAMP_MENU, TRADE_NAV } from './nav';
  * Text only, in one style for the whole strip: address and hours as plain text on the start side,
  * three links split by thin dividers on the end side, all sharing the same hover.
  */
-const STRIP_LINK = 'hover:text-ink hover:underline';
+// Each strip link carries one 16px icon in the text colour (same size and colour for all three).
+const STRIP_LINK = 'flex items-center gap-1.5 hover:text-ink hover:underline';
+const STRIP_ICON = 16;
 
 function StripDivider() {
   return <span className="h-3 w-px shrink-0 bg-ink/20" aria-hidden />;
@@ -32,14 +34,17 @@ function ContactStrip({ collapsed }: { collapsed: boolean }) {
         </span>
         <div className="flex shrink-0 items-center gap-3">
           <a href={SITE.waze} target="_blank" rel="noopener" className={STRIP_LINK}>
+            <Icon name="pin" size={STRIP_ICON} className="shrink-0" />
             ניווט בווייז
           </a>
           <StripDivider />
           <a href={SITE.whatsapp} target="_blank" rel="noopener" className={STRIP_LINK}>
+            <Icon name="whatsapp" size={STRIP_ICON} className="shrink-0" />
             וואטסאפ
           </a>
           <StripDivider />
           <a href={SITE.phoneHref} className={STRIP_LINK}>
+            <Icon name="phone" size={STRIP_ICON} className="shrink-0" />
             <span dir="ltr">{SITE.phone}</span>
           </a>
         </div>
