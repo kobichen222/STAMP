@@ -33,7 +33,7 @@ const MAIN = [
  * Full-screen mobile drawer. Rendered in a portal on <body> so it is never
  * clipped by the header (whose backdrop-filter creates a containing block).
  */
-export function MobileMenu({ open, onClose, pathname, cartCount }: { open: boolean; onClose: () => void; pathname: string; cartCount: number }) {
+export function MobileMenu({ open, onClose, pathname }: { open: boolean; onClose: () => void; pathname: string }) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [stampsOpen, setStampsOpen] = useState(true);
@@ -109,7 +109,8 @@ export function MobileMenu({ open, onClose, pathname, cartCount }: { open: boole
             {[
               { href: SITE.phoneHref, icon: 'phone', label: 'חיוג' },
               { href: SITE.whatsapp, icon: 'whatsapp', label: 'וואטסאפ', external: true },
-              { href: '/cart/', icon: 'cart', label: cartCount ? `סל (${cartCount})` : 'סל' },
+              // The cart is already in the header on phones and tablets, so this tile navigates to the studio instead.
+              { href: SITE.waze, icon: 'pin', label: 'ניווט', external: true },
               { href: '/account/', icon: 'user', label: 'האזור שלי' },
             ].map((q) =>
               q.href.startsWith('/') ? (

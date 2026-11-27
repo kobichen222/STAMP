@@ -54,27 +54,34 @@ export function LogoMark({ className = '', size = 40 }: { className?: string; si
 
 /**
  * Wordmark "חותמות תוך 2 דקות" in a compact two-line block next to the stamp
- * mark: "חותמות" large, "תוך 2 דקות" under it with the 2 on a solid blue badge
- * (solid colours only – never clipped gradients that can vanish).
+ * mark (gap of about 0.38 x the text size): "חותמות" large, "תוך 2 דקות" under
+ * it at about 0.55 x, with fixed tight word gaps, aligned to the start (right)
+ * edge rather than stretched. Both lines are italic; the 2 sits on a solid blue
+ * badge that is skewed the same way (solid colours only – never clipped
+ * gradients that can vanish). Text sizes: sm 22px, md 26px (mark 40px high).
  */
-export function Logo({ className = '', size = 'md', markOnly = false }: { className?: string; size?: 'sm' | 'md' | 'lg'; markOnly?: boolean }) {
-  const t = { sm: 22, md: 27, lg: 32 }[size];
+export function Logo({ className = '', size = 'md', markOnly = false }: { className?: string; size?: 'sm' | 'md'; markOnly?: boolean }) {
+  const t = { sm: 22, md: 26 }[size];
   return (
-    <span className={`inline-flex items-center gap-1.5 select-none ${className}`} dir="ltr" aria-label="חותמות תוך 2 דקות" role="img">
+    <span className={`inline-flex items-center select-none ${className}`} style={{ gap: Math.round(t * 0.38) }} dir="ltr" aria-label="חותמות תוך 2 דקות" role="img">
       <LogoMark size={Math.round(t * 1.55)} className="shrink-0" />
       {!markOnly && (
-        <span dir="rtl" className="flex flex-col items-stretch leading-none whitespace-nowrap" aria-hidden>
+        <span dir="rtl" className="flex flex-col items-start leading-none whitespace-nowrap" aria-hidden>
           <span className="font-black tracking-tight text-ink italic" style={{ fontSize: t, lineHeight: 0.95 }}>
             חותמות
           </span>
-          <span className="mt-[0.18em] flex items-center justify-between gap-[0.22em] font-extrabold text-ink-2" style={{ fontSize: Math.round(t * 0.5) }}>
+          <span className="mt-[0.18em] flex items-center gap-[0.28em] font-extrabold text-ink-2 italic" style={{ fontSize: Math.round(t * 0.55) }}>
             <span>תוך</span>
-            {/* SVG badge: the 2 is centred geometrically, whatever the font metrics. */}
-            <svg viewBox="0 0 20 22" className="h-[1.55em] w-auto shrink-0 drop-shadow-[0_2px_3px_rgba(36,87,255,.45)]" aria-hidden>
-              <rect width="20" height="22" rx="5" fill="#2457ff" />
-              <text x="10" y="11.6" textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="16" fontWeight="900" style={{ fontFamily: "'Heebo Variable', Heebo, Arial, sans-serif" }}>
-                2
-              </text>
+            {/* SVG badge: the 2 is centred geometrically, whatever the font metrics. Rect and digit are skewed
+                together around the badge centre (top leaning right, like the synthesized italic); the viewBox
+                is widened by the skew offset (tan 12deg x 11 ≈ 2.34) so the corners are not clipped. */}
+            <svg viewBox="-2.5 0 25 22" className="h-[1.55em] w-auto shrink-0 drop-shadow-[0_2px_3px_rgba(36,87,255,.45)]" aria-hidden>
+              <g transform="translate(10 11) skewX(-12) translate(-10 -11)">
+                <rect width="20" height="22" rx="5" fill="#2457ff" />
+                <text x="10" y="11.6" textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="16" fontWeight="900" style={{ fontFamily: "'Heebo Variable', Heebo, Arial, sans-serif" }}>
+                  2
+                </text>
+              </g>
             </svg>
             <span>דקות</span>
           </span>

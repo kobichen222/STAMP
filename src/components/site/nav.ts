@@ -1,6 +1,6 @@
 import { CATEGORIES } from '@/lib/categories';
 
-// Full site list for the footer. The header shows only the stamps menu (STAMP_MENU).
+// Full site list for the footer. The desktop header shows the stamps menu (STAMP_MENU) plus the direct trade links (TRADE_NAV).
 export const MAIN_NAV = [
   { label: 'חותמות לעסקים', href: '/stamps/business/' },
   { label: 'חותמות אישיות', href: '/stamps/personal/' },
@@ -11,4 +11,11 @@ export const MAIN_NAV = [
   { label: 'צור קשר', href: '/contact/' },
 ];
 
-export const STAMP_MENU = CATEGORIES.map((c) => ({ label: c.name, href: `/stamps/${c.slug}/`, featured: !!c.featured }));
+// Direct links next to the stamps menu in the desktop header, for the trades that order most.
+export const TRADE_NAV = [
+  { label: 'לעורכי דין', href: '/stamps/lawyers/' },
+  { label: 'לרופאים', href: '/stamps/doctors/' },
+  { label: 'לחברות', href: '/stamps/company/' },
+];
+
+export const STAMP_MENU =CATEGORIES.map((c) => ({ label: c.name, href: `/stamps/${c.slug}/`, featured: !!c.featured }));
