@@ -11,7 +11,7 @@ import { CATEGORIES, categoryCard } from '@/lib/catalog';
 import { site } from '@/lib/content';
 import { SITE } from '@/lib/config';
 import { allFaqItems, faqJsonLd, type FaqItem } from '@/lib/faq';
-import { featuredReviews, GOOGLE_REVIEWS } from '@/lib/google-reviews';
+import { GOOGLE_REVIEWS, homeReviews } from '@/lib/google-reviews';
 import { ensureSettings } from '@/server/settings';
 
 // Same title and description as the WordPress home page (Yoast), so rankings carry over.
@@ -71,7 +71,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <GoogleReviewsSection rating={rating} count={count} reviews={featuredReviews(3)} />
+      <GoogleReviewsSection rating={rating} count={count} reviews={homeReviews()} />
 
       <section className="bg-surface py-12 sm:py-16" aria-labelledby="faq-title">
         <div className="container-x">
