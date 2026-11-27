@@ -2,37 +2,66 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { formatPrice } from '@/lib/format';
+import type { Stamp } from '@/stamp-bot/card-types';
 import type { Msg } from '@/stamp-bot/form';
+import { linePrice, StampOptions } from './StampOptions';
 
-/** One stamp under the home page box: its own conversation with the bot, its own image. */
+/** One stamp under the home page box: its own conversation with the bot, its own image, its own order line. */
 export type StampCardData = {
   id: string;
   msgs: Msg[];
-  svg: string;
-  form?: string;
+  stamp: Stamp | null;
+  body: string; // slug of the chosen body, '' when the stamp has none
+  qty: number;
   reply: string;
   err: string;
-  busy: boolean; // waiting in the queue or running
-  fixOpen: boolean;
+  busy: boolean; // a bot turn is waiting in the queue or running
+  inking: boolean; // an ink redraw is in flight
+  panel: 'fix' | 'opts' | null; // at most one panel open
 };
+
+/** Keep the chosen body when the new stamp still offers it, otherwise the cheapest one. */
+export const pickBody = (stamp: Stamp, prev: string) =>
+  stamp.bodies.some((b) => b.slug === prev) ? prev : (stamp.bodies[0]?.slug ?? '');
+
+/** The card's line total, or null when it has nothing to order. */
+export function cardTotal(c: StampCardData): number | null {
+  const b = c.stamp?.bodies.find((x) => x.slug === c.body);
+  return c.stamp && b ? linePrice(b.price, c.qty, c.stamp.ink) : null;
+}
+
+function sizeLabel(s: Stamp) {
+  const [w, h] = s.size.split('x');
+  return s.kind === 'round' ? `עגול ${w} מ״מ` : `${w}×${h} מ״מ`;
+}
 
 export function StampCard({
   card,
   inputId,
-  onToggleFix,
+  optsId,
+  onChange,
   onFix,
+  onInk,
   onRemove,
 }: {
   card: StampCardData;
   inputId: string;
-  onToggleFix: () => void;
+  optsId: string;
+  onChange: (p: Partial<StampCardData>) => void;
   onFix: (text: string) => void;
+  onInk: (ink: string) => void;
   onRemove: () => void;
 }) {
   const [text, setText] = useState('');
   const area = useRef<HTMLTextAreaElement>(null);
   // Focus only when the customer opened the row, not when it opened by itself after a question.
   const wantFocus = useRef(false);
+  const fixOpen = card.panel === 'fix';
+  const optsOpen = card.panel === 'opts';
+  const { stamp } = card;
+  const body = stamp?.bodies.find((b) => b.slug === card.body);
+  const total = cardTotal(card);
 
   useEffect(() => {
     const el = area.current;
@@ -43,29 +72,42 @@ export function StampCard({
       wantFocus.current = false;
       el.focus();
     }
-  }, [text, card.fixOpen]);
+  }, [text, fixOpen]);
 
   function send() {
     const t = text.trim();
-    if (!t || card.busy) return;
+    if (!t || card.busy || card.inking) return;
     setText('');
     onFix(t);
   }
 
   return (
     <li className="card flex flex-col p-4">
-      {(card.svg || card.busy) && (
+      {(stamp || card.busy) && (
         <div className="grid aspect-[3/2] place-items-center rounded-xl bg-[#fdfcf8] p-4">
-          {card.svg ? (
+          {stamp ? (
             <img
-              src={'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(card.svg)}
+              src={'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(stamp.svg)}
               alt="החותמת שלכם"
-              className={`h-full w-full object-contain transition ${card.busy ? 'opacity-40' : ''}`}
+              className={`h-full w-full object-contain transition ${card.busy || card.inking ? 'opacity-40' : ''}`}
             />
           ) : (
             <div className="h-full w-full animate-pulse rounded-lg bg-line/40" />
           )}
         </div>
+      )}
+
+      {stamp && (
+        <p className="mt-2 text-sm text-ink">
+          {body ? (
+            <>
+              {body.title} · {sizeLabel(stamp)}
+              {card.qty > 1 && ` · ${card.qty} יח׳`} · <span className="font-semibold tabular-nums">{formatPrice(total)}</span>
+            </>
+          ) : (
+            <span className="text-muted">המידה הזו לא זמינה כרגע</span>
+          )}
+        </p>
       )}
 
       {card.busy ? (
@@ -76,7 +118,7 @@ export function StampCard({
         card.reply && <p className="mt-3 text-sm text-muted">{card.reply}</p>
       )}
 
-      {card.fixOpen && (
+      {fixOpen && (
         <form
           className="mt-3"
           onSubmit={(e) => {
@@ -104,7 +146,7 @@ export function StampCard({
             />
             <button
               type="submit"
-              disabled={card.busy}
+              disabled={card.busy || card.inking}
               aria-label="שליחת התיקון"
               className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue text-white transition hover:bg-blue-600 active:scale-[0.96] disabled:opacity-60"
             >
@@ -114,20 +156,46 @@ export function StampCard({
         </form>
       )}
 
-      <div className="mt-auto flex gap-4 pt-3 text-sm font-medium">
+      {optsOpen && stamp && (
+        <StampOptions
+          id={optsId}
+          stamp={stamp}
+          body={card.body}
+          qty={card.qty}
+          busy={card.busy}
+          inking={card.inking}
+          onBody={(slug) => onChange({ body: slug })}
+          onQty={(qty) => onChange({ qty })}
+          onInk={onInk}
+        />
+      )}
+
+      <div className="mt-auto flex gap-4 pt-1 text-sm font-medium">
         <button
           type="button"
-          aria-expanded={card.fixOpen}
-          aria-controls={card.fixOpen ? inputId : undefined}
+          aria-expanded={fixOpen}
+          aria-controls={fixOpen ? inputId : undefined}
           onClick={() => {
-            wantFocus.current = !card.fixOpen;
-            onToggleFix();
+            wantFocus.current = !fixOpen;
+            onChange({ panel: fixOpen ? null : 'fix' });
           }}
-          className="text-blue hover:underline"
+          className="min-h-10 text-blue hover:underline"
         >
           תיקון
         </button>
-        <button type="button" onClick={onRemove} className="text-muted hover:text-ink hover:underline">
+        {stamp && (
+          <button
+            type="button"
+            aria-expanded={optsOpen}
+            aria-controls={optsOpen ? optsId : undefined}
+            disabled={card.busy}
+            onClick={() => onChange({ panel: optsOpen ? null : 'opts' })}
+            className="min-h-10 text-blue hover:underline disabled:text-muted disabled:no-underline disabled:opacity-60"
+          >
+            דגם וצבע
+          </button>
+        )}
+        <button type="button" onClick={onRemove} className="min-h-10 text-muted hover:text-ink hover:underline">
           הסרה
         </button>
       </div>

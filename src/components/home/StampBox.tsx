@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
-import { splitStamps, stampTurn, warmStamps } from '@/stamp-bot/api';
+import { formatPrice } from '@/lib/format';
+import { inkStamp, splitStamps, stampTurn, warmStamps } from '@/stamp-bot/api';
+import type { Stamp } from '@/stamp-bot/card-types';
 import type { Msg } from '@/stamp-bot/form';
-import { StampCard, type StampCardData } from './StampCard';
+import { cardTotal, pickBody, StampCard, type StampCardData } from './StampCard';
 
 const PLACEHOLDER = 'לדוגמה: ישראל ישראלי, עורך דין, מ.ר. 12345, הרצל 1 תל אביב, 050-1234567';
 const PLACEHOLDER_MORE = 'להוסיף עוד חותמת…';
 const UNAVAILABLE = 'הבוט לא זמין כרגע';
+const INK_FAILED = 'לא הצלחנו להחליף צבע, נסו שוב';
 const MAX_RUNNING = 3;
 
 // The box is rendered twice on the page; the model processes need booting only once per page.
@@ -32,10 +35,19 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
   const textId = `${idPrefix}-text`;
   const placeholder = cards.length ? PLACEHOLDER_MORE : PLACEHOLDER;
 
+  // The order so far: only cards that have a body and so a price.
+  const priced = cards.flatMap((c) => {
+    const total = cardTotal(c);
+    return total == null ? [] : [{ qty: c.qty, total }];
+  });
+  const count = priced.reduce((n, p) => n + p.qty, 0);
+  const sum = Math.round(priced.reduce((s, p) => s + p.total, 0) * 100) / 100;
+
   // The turn queue: at most MAX_RUNNING bot calls at once for this box, the rest wait in order.
   const queue = useRef<Job[]>([]);
   const running = useRef(0);
   const alive = useRef(new Set<string>()); // ids of cards still on screen
+  const inking = useRef(new Set<string>()); // ids of cards with an ink redraw in flight
   const nextId = useRef(0);
 
   const patch = useCallback((id: string, p: Partial<StampCardData>) => {
@@ -54,7 +66,7 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
             patch(job.id, { busy: false, err: res.msg });
             return;
           }
-          const { shown, text: reply } = res;
+          const { stamp, text: reply } = res;
           setCards((cs) =>
             cs.map((c): StampCardData =>
               c.id !== job.id
@@ -63,12 +75,13 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
                     ...c,
                     busy: false,
                     err: '',
-                    msgs: [...job.msgs, { role: 'ai', text: reply, form: shown?.form }],
+                    msgs: [...job.msgs, { role: 'ai', text: reply, form: stamp?.form }],
                     reply,
-                    svg: shown ? shown.svg : c.svg,
-                    form: shown ? shown.form : c.form,
+                    // No stamp: keep the previous stamp, body and quantity.
+                    stamp: stamp ?? c.stamp,
+                    body: stamp ? pickBody(stamp, c.body) : c.body,
                     // No stamp means the bot asked or declined: open the row so the customer can answer.
-                    fixOpen: !shown,
+                    panel: stamp ? null : 'fix',
                   },
             ),
           );
@@ -139,7 +152,9 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
       });
       setCards((cs) => [
         ...cs,
-        ...jobs.map((j): StampCardData => ({ id: j.id, msgs: j.msgs, svg: '', reply: '', err: '', busy: true, fixOpen: false })),
+        ...jobs.map(
+          (j): StampCardData => ({ id: j.id, msgs: j.msgs, stamp: null, body: '', qty: 1, reply: '', err: '', busy: true, inking: false, panel: null }),
+        ),
       ]);
       jobs.forEach((j) => enqueue(j.id, j.msgs));
     } catch {
@@ -152,15 +167,38 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
   }
 
   function fix(card: StampCardData, t: string) {
+    // A correction waits for an ink redraw, so it carries the form in the ink on screen.
+    if (inking.current.has(card.id)) return;
     // The customer message carries the form as it is on screen now, so the model continues from it.
     // On an error the customer message stays in the list, as in the reference client.
-    const next: Msg[] = [...card.msgs, { role: 'user', text: t, form: card.form }];
+    const next: Msg[] = [...card.msgs, { role: 'user', text: t, form: card.stamp?.form }];
     patch(card.id, { msgs: next, busy: true, err: '' });
     enqueue(card.id, next);
   }
 
+  // Redraw the same stamp in another ink, without the model.
+  async function changeInk(card: StampCardData, ink: string) {
+    const cur = card.stamp;
+    if (!cur || card.busy || ink === cur.ink || inking.current.has(card.id)) return;
+    inking.current.add(card.id);
+    patch(card.id, { inking: true, err: '' });
+    const next: Stamp | null = await inkStamp(cur.form, ink).catch(() => null);
+    inking.current.delete(card.id);
+    if (!alive.current.has(card.id)) return;
+    setCards((cs) =>
+      cs.map((c): StampCardData =>
+        c.id !== card.id
+          ? c
+          : next
+            ? { ...c, inking: false, stamp: next, body: pickBody(next, c.body) }
+            : { ...c, inking: false, err: INK_FAILED },
+      ),
+    );
+  }
+
   function remove(id: string) {
     alive.current.delete(id);
+    inking.current.delete(id);
     queue.current = queue.current.filter((j) => j.id !== id);
     setCards((cs) => cs.filter((c) => c.id !== id));
   }
@@ -223,12 +261,19 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
                 key={c.id}
                 card={c}
                 inputId={`${idPrefix}-fix-${c.id}`}
-                onToggleFix={() => patch(c.id, { fixOpen: !c.fixOpen })}
+                optsId={`${idPrefix}-opts-${c.id}`}
+                onChange={(p) => patch(c.id, p)}
                 onFix={(t) => fix(c, t)}
+                onInk={(ink) => void changeInk(c, ink)}
                 onRemove={() => remove(c.id)}
               />
             ))}
           </ul>
+        )}
+        {priced.length > 0 && (
+          <p className="mt-4 text-center text-sm text-ink">
+            {count === 1 ? 'חותמת אחת' : `${count} חותמות`} · סה״כ <span className="font-semibold tabular-nums">{formatPrice(sum)}</span>
+          </p>
         )}
       </div>
     </div>
