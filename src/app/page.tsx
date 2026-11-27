@@ -9,6 +9,7 @@ import { HomeFaq } from '@/components/home/HomeFaq';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORIES, categoryCard } from '@/lib/catalog';
 import { site } from '@/lib/content';
+import { SITE } from '@/lib/config';
 import { allFaqItems, faqJsonLd, type FaqItem } from '@/lib/faq';
 import { featuredReviews, GOOGLE_REVIEWS } from '@/lib/google-reviews';
 import { ensureSettings } from '@/server/settings';
@@ -25,12 +26,6 @@ const HOME_CATEGORIES = ['business', 'personal', 'doctors', 'lawyers', 'company'
 
 // Six existing questions: price, timing, unsure about the text, the preview, logo, a single stamp.
 const HOME_FAQ = ['המהירות מייקרת את החותמת?', 'מתי ההזמנה נשלחת?', 'לא בטוחים מה לכתוב או איך לעצב?', 'האם התצוגה המקדימה מדויקת?', 'איזה פורמט לוגו הכי טוב?', 'אפשר להזמין חותמת אחת בלבד?'];
-
-const PROMISES = [
-  ['clock', 'מוכנה תוך 2 דקות'],
-  ['truck', 'משלוח לכל הארץ או איסוף ברמת גן'],
-  ['shield', 'אחריות והחזר כספי'],
-] as const;
 
 // The site's usual text-link style (blue, arrow); these stay text links, never buttons.
 const SECTION_LINK = 'inline-flex items-center gap-1 text-sm font-medium text-blue hover:underline';
@@ -57,19 +52,8 @@ export default async function HomePage() {
 
   return (
     <>
-      <HomeHero fromPrice={fromPrice} />
-
-      {/* Bands below the first screen alternate white and surface. */}
-      <section aria-label="ההבטחה שלנו" className="border-y border-line bg-white py-6">
-        <ul className="container-x flex flex-col items-center gap-3 text-[15px] font-semibold text-ink-2 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-10">
-          {PROMISES.map(([icon, text]) => (
-            <li key={text} className="flex items-center gap-2">
-              <Icon name={icon} size={20} className="shrink-0 text-blue" />
-              {text}
-            </li>
-          ))}
-        </ul>
-      </section>
+      {/* The first screen ends with the white promise band; the bands below alternate surface and white. */}
+      <HomeHero fromPrice={fromPrice} announcement={!!SITE.announcement} />
 
       <section id="stamps" className="scroll-mt-28 bg-surface py-12 sm:py-16">
         <div className="container-x">
