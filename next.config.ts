@@ -12,10 +12,19 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   poweredByHeader: false,
   images: { unoptimized: true },
-  // The server-side production engine reads the stamp fonts from disk.
+  // The server-side production engine reads the stamp fonts from disk: the designer's (public/fonts/stamp) and,
+  // for a stamp-bot line, the bot's drawer (src/stamp-bot/fonts, read through process.cwd()). Every route that
+  // renders a stamp needs them: order creation, payment confirmation, file export / print / regeneration in the
+  // admin, and the home page, whose server actions draw the bot's stamps.
   outputFileTracingIncludes: {
-    '/api/orders': ['./public/fonts/stamp/**'],
-    '/admin/orders/[id]': ['./public/fonts/stamp/**'],
+    '/': ['./src/stamp-bot/fonts/**'],
+    '/api/orders': ['./public/fonts/stamp/**', './src/stamp-bot/fonts/**'],
+    '/api/payments/tranzila/notify': ['./public/fonts/stamp/**', './src/stamp-bot/fonts/**'],
+    '/api/admin/export': ['./public/fonts/stamp/**', './src/stamp-bot/fonts/**'],
+    '/admin/orders/[id]': ['./public/fonts/stamp/**', './src/stamp-bot/fonts/**'],
+    '/admin/orders/[id]/edit': ['./public/fonts/stamp/**', './src/stamp-bot/fonts/**'],
+    '/admin/orders/[id]/print': ['./public/fonts/stamp/**', './src/stamp-bot/fonts/**'],
+    '/admin/print-station': ['./public/fonts/stamp/**', './src/stamp-bot/fonts/**'],
   },
   async redirects() {
     return [

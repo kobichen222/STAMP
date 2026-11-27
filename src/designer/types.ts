@@ -97,6 +97,12 @@ export interface Design {
   elements: DesignElement[];
   inkColor: InkColor;
   dateBand?: boolean;
+  /**
+   * Set on a line that came from the stamp bot: the bot's clean form as JSON, with its size and look pinned.
+   * Such a design has no elements and no border - the drawing is the bot's (src/stamp-bot), and the server redraws
+   * it from this form for the order check and for the production files. `inkColor` stays the source of truth for ink.
+   */
+  bot?: { form: string };
 }
 
 export type InkColor = 'black' | 'blue' | 'red' | 'green' | 'purple';

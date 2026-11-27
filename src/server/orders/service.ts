@@ -2,7 +2,7 @@ import 'server-only';
 import crypto from 'node:crypto';
 import { z } from 'zod';
 import { designerModelForProduct, formatSize } from '@/designer/models';
-import type { Design } from '@/designer/types';
+import type { Design, StampModel } from '@/designer/types';
 import { INK_COLORS } from '@/designer/types';
 import { getProduct } from '@/lib/content';
 import { addressNeed, ADDONS, DEFAULT_RULES, lineInputFor, quoteCart, quoteLine, type PricingRules } from '@/lib/pricing';
@@ -10,6 +10,8 @@ import { notify } from '../notifications';
 import { ensureSettings } from '../settings';
 import { getPaymentProvider, manualAutoProduction } from '../payments';
 import { logoFiles, runProductionEngine } from '../production-engine';
+import { checkBotDesign } from '@/stamp-bot/order';
+import { botPreflight, renderBot } from '@/stamp-bot/production';
 import { carrierCardFor, createShipment, datalogicsConfigured } from '../shipping/datalogics';
 import { getStore } from '../store';
 import { canTransition, type Order, type OrderItem, type OrderStatus, type ProductionFileRef } from './types';
@@ -27,6 +29,8 @@ const designSchema = z
     elements: z.array(z.record(z.string(), z.unknown())).max(60),
     inkColor: z.enum(Object.keys(INK_COLORS) as [string, ...string[]]),
     dateBand: z.boolean().optional(),
+    // A line from the stamp bot: its clean form as JSON (see Design.bot). The server redraws it for the files.
+    bot: z.object({ form: z.string().min(2).max(8000) }).optional(),
   })
   .passthrough();
 
@@ -209,6 +213,27 @@ export class CheckoutError extends Error {
   }
 }
 
+/**
+ * A stamp-bot line (design.bot) is checked and drawn here, before the order is stored or any payment starts:
+ * a line that cannot be produced is refused now, never discovered after the customer paid.
+ */
+function assertBotLine(design: Design, model: StampModel, slug: string) {
+  if (design.elements.length !== 0 || design.border.style !== 'none') throw new CheckoutError('חותמת מהבוט לא יכולה לכלול גם רכיבים מהעורך');
+  const wrong = checkBotDesign(design, model);
+  if (wrong) throw new CheckoutError(wrong);
+  let reason: string | null = null;
+  try {
+    const errors = botPreflight(renderBot(design), design).filter((i) => i.severity === 'error');
+    if (errors.length) reason = errors.map((i) => i.message).join(' · ');
+  } catch (e) {
+    reason = e instanceof Error ? e.message : String(e);
+  }
+  if (reason) {
+    console.error('[bot-order]', slug, reason);
+    throw new CheckoutError('לא הצלחנו להכין את קובץ הייצור של החותמת. תקנו אותה או פנו אלינו');
+  }
+}
+
 export async function createOrder(input: CheckoutInput): Promise<Order> {
   const store = getStore();
   const existing = await store.findByIdempotencyKey(input.idempotencyKey);
@@ -223,6 +248,7 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
     if (Math.abs(design.width - model.width) > 0.01 || Math.abs(design.height - model.height) > 0.01 || design.shape !== model.shape) {
       throw new CheckoutError(`מידות העיצוב אינן תואמות למוצר ${product.title}`);
     }
+    if (design.bot) assertBotLine(design, model, product.slug);
     // Prices are always recomputed on the server – never trusted from the client.
     const addons = it.addons ? Object.fromEntries(Object.entries(it.addons).filter(([k]) => ADDONS.some((a) => a.id === k))) : undefined;
     const q = quoteLine(lineInputFor({ basePrice: product.price, quantity: it.quantity, design, ink: design.inkColor, body: it.bodyColor, addons }), rules);
@@ -573,6 +599,8 @@ export async function applyOrderEdit(o: Order, input: EditOrderInput, actor: str
 export async function replaceItemDesign(o: Order, index: number, productSlug: string, design: Design, actor: string) {
   const it = o.items[index];
   if (!it) throw new Error('פריט לא נמצא');
+  // The editor cannot open a stamp-bot drawing, and its designs cannot carry one.
+  if (it.design.bot || design.bot) throw new Error('חותמת מהבוט לא נערכת בעורך');
   const product = getProduct(productSlug);
   const model = product && designerModelForProduct(product);
   if (!product || !model) throw new Error('מוצר לא זמין');

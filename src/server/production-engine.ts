@@ -4,9 +4,10 @@ import path from 'node:path';
 import { FONT_FAMILIES, faceKey, loadFace, type FontFace } from '@/designer/fonts';
 import { buildProductionBundle, productionBaseName, type ProductionBundle } from '@/designer/production';
 import { profileForModel } from '@/designer/profiles';
-import { renderDesign, type FaceResolver } from '@/designer/render';
+import { renderDesign, type FaceResolver, type RenderResult } from '@/designer/render';
 import type { Design } from '@/designer/types';
-import { isProductionReady, preflightScore, validateDesign } from '@/designer/validate';
+import { isProductionReady, preflightScore, validateDesign, type Issue } from '@/designer/validate';
+import { botPreflight, renderBot } from '@/stamp-bot/production';
 import { withTracedLogos } from './logo-trace';
 
 const FONT_DIR = path.join(process.cwd(), 'public', 'fonts', 'stamp');
@@ -28,6 +29,21 @@ async function resolverFor(design: Design): Promise<FaceResolver> {
   return (font, bold) => faces.get(faceKey(font, bold));
 }
 
+/**
+ * The one place a stored design becomes production geometry. A stamp-bot line (design.bot) is drawn by the
+ * bot's own drawer from its form and checked by the bot's preflight; every other line goes through the
+ * designer's renderer (logos traced to outlines first) and validateDesign.
+ */
+async function renderStamp(original: Design): Promise<{ design: Design; render: RenderResult; check: (profile: ReturnType<typeof profileForModel>) => Issue[] }> {
+  if (original.bot) {
+    const render = renderBot(original);
+    return { design: original, render, check: () => botPreflight(render, original) };
+  }
+  const { design } = await withTracedLogos(original);
+  const render = renderDesign(design, await resolverFor(design));
+  return { design, render, check: (profile) => validateDesign(design, render, profile) };
+}
+
 export interface EngineResult {
   bundle: ProductionBundle;
   preflight: { ready: boolean; score: number; errors: string[]; warnings: string[] };
@@ -43,15 +59,13 @@ export async function runProductionEngine(
   original: Design,
   meta: { orderId: string; customer: string; productName: string; productId?: string; ink: string; quantity: number; designVersion: string },
 ): Promise<EngineResult> {
-  // Picture logos become outlines, so every production file carries them.
-  const { design } = await withTracedLogos(original);
-  const resolve = await resolverFor(design);
-  const render = renderDesign(design, resolve);
+  // Picture logos become outlines, so every production file carries them (renderStamp).
+  const { design, render, check } = await renderStamp(original);
   const profile = profileForModel({ shape: design.shape, width: design.width, height: design.height, dateBand: design.dateBand });
-  const issues = validateDesign(design, render, profile);
-  const names = Object.fromEntries(
-    design.elements.map((e) => [e.id, e.type === 'text' ? e.text.split('\n')[0] : e.type === 'image' ? `logo ${e.source.name}` : e.type]),
-  );
+  const issues = check(profile);
+  const names: Record<string, string> = design.bot
+    ? {}
+    : Object.fromEntries(design.elements.map((e) => [e.id, e.type === 'text' ? e.text.split('\n')[0] : e.type === 'image' ? `logo ${e.source.name}` : e.type]));
   const bundle = await buildProductionBundle(
     render,
     design,
@@ -103,8 +117,7 @@ export async function exportDesign(
     if (hit.length === 1) return { data: hit[0].data, name: hit[0].name, mime: hit[0].mime, omittedImages: 0 };
     return { data: zip(hit), name: `${hit[0].name.replace(/_\d+\.png$/, '')}.zip`, mime: 'application/zip', omittedImages: 0 };
   }
-  const { design } = await withTracedLogos(original);
-  const render = renderDesign(design, await resolverFor(design));
+  const { design, render } = await renderStamp(original);
   // Every format, the CorelDRAW file (AI) included, carries the whole stamp: a picture the customer uploaded
   // goes in as a smooth outline (see logo-trace), so the operator gets one complete file to edit.
   const pm = { orderId: meta.orderId, customer: meta.customer, productName: meta.productName, width: design.width, height: design.height, ink: meta.ink, quantity: meta.quantity, createdAt: new Date().toISOString() };
@@ -125,6 +138,8 @@ export async function exportDesign(
  * and a CorelDRAW file with the logo as outlines, at its place and size on the stamp.
  */
 export async function logoFiles(original: Design, base: string, mirror = false): Promise<{ name: string; data: Uint8Array | string; mime: string }[]> {
+  // A stamp-bot line has no uploaded logo: its drawing is the bot's own.
+  if (original.bot) return [];
   const logos = original.elements.filter((e) => e.type === 'image');
   if (!logos.length) return [];
   const out: { name: string; data: Uint8Array | string; mime: string }[] = [];
