@@ -24,18 +24,15 @@ export function CategoryCard({ c }: { c: CategoryCardData }) {
         <p className="mt-1 text-[13px] text-muted">
           {[c.size, c.lines].filter(Boolean).join(' · ') || `${c.count} דגמים`}
         </p>
-        <div className="mt-auto flex items-center justify-between pt-4">
-          <span className="text-sm">
-            {c.fromPrice != null ? (
-              <>
-                החל מ־<strong className="text-base">{formatPrice(c.fromPrice)}</strong>
-              </>
-            ) : (
-              `${c.count} דגמים`
-            )}
-          </span>
-          <span className="text-sm font-medium text-blue transition group-hover:-translate-x-1">לבחירה ←</span>
-        </div>
+        <p className="mt-auto pt-4 text-sm">
+          {c.fromPrice != null ? (
+            <>
+              החל מ־<strong className="text-base">{formatPrice(c.fromPrice)}</strong>
+            </>
+          ) : (
+            `${c.count} דגמים`
+          )}
+        </p>
       </div>
     </Link>
   );
