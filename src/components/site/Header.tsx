@@ -125,10 +125,10 @@ export function Header() {
           </button>
           <Link href="/" aria-label="חותמות תוך 2 דקות – דף הבית" className="min-w-0 shrink text-ink max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2 sm:shrink-0">
             <span className="sm:hidden">
-              <Logo size="sm" />
+              <Logo variant="full" size="sm" />
             </span>
             <span className="hidden sm:inline">
-              <Logo />
+              <Logo variant="full" />
             </span>
           </Link>
 

@@ -15,7 +15,7 @@ export function Footer() {
     <footer className="border-t border-line bg-surface">
       <div className="container-x grid gap-10 py-14 md:grid-cols-4">
         <div className="md:col-span-1">
-          <Logo variant="full" />
+          <Logo variant="full" size="lg" />
           <p className="mt-4 text-sm leading-6 text-muted">
             אתם מעצבים. המערכת מכינה לייצור. אנחנו מייצרים ושולחים – חותמות מוכנות תוך 2 דקות, כבר למעלה מ־20 שנה.
           </p>

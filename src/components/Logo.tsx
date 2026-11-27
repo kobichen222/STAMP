@@ -2,8 +2,9 @@ import { LOGO_COMPACT, LOGO_FULL } from './logo-paths';
 
 /** Rendered height in px per variant and size; width follows the artwork's aspect ratio. */
 const HEIGHT = {
-  compact: { sm: 24, md: 30 },
-  full: { sm: 48, md: 60 },
+  compact: { sm: 24, md: 30, lg: 36 },
+  // sm and md fit the site header (phone row 64px, desktop row 60px); lg is for the footer and the admin login.
+  full: { sm: 42, md: 48, lg: 60 },
 } as const;
 
 /**
@@ -13,7 +14,7 @@ const HEIGHT = {
  * To change it, edit scripts/generate-logo.mjs and run `node scripts/generate-logo.mjs` (rewrites logo-paths.ts
  * and the SVGs in public/).
  */
-export function Logo({ className = '', size = 'md', variant = 'compact' }: { className?: string; size?: 'sm' | 'md'; variant?: 'compact' | 'full' }) {
+export function Logo({ className = '', size = 'md', variant = 'compact' }: { className?: string; size?: 'sm' | 'md' | 'lg'; variant?: 'compact' | 'full' }) {
   const logo = variant === 'full' ? LOGO_FULL : LOGO_COMPACT;
   const height = HEIGHT[variant][size];
   const width = Math.round(((height * logo.width) / logo.height) * 100) / 100;

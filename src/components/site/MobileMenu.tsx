@@ -96,7 +96,7 @@ export function MobileMenu({ open, onClose, pathname }: { open: boolean; onClose
       >
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-4">
           <Link href="/" onClick={onClose} aria-label="דף הבית">
-            <Logo size="sm" />
+            <Logo variant="full" size="sm" />
           </Link>
           <button type="button" data-autofocus className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface" aria-label="סגירת התפריט" onClick={onClose}>
             <Icon name="close" size={24} />
