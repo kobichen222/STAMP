@@ -24,7 +24,7 @@ const CACHE = path.join(HERE, '.logo-fonts');
 const PREVIEW = process.argv[2] || process.env.LOGO_PREVIEW_DIR || '';
 
 const FONTS = {
-  mplus: 'https://cdn.jsdelivr.net/npm/@fontsource/m-plus-rounded-1c@5/files/m-plus-rounded-1c-latin-700-normal.woff',
+  mplus: 'https://cdn.jsdelivr.net/npm/@fontsource/m-plus-rounded-1c@5/files/m-plus-rounded-1c-latin-800-normal.woff',
   nunito600i: 'https://cdn.jsdelivr.net/npm/@fontsource/nunito@5/files/nunito-latin-600-italic.woff',
   nunito800i: 'https://cdn.jsdelivr.net/npm/@fontsource/nunito@5/files/nunito-latin-800-italic.woff',
   rubik: 'https://cdn.jsdelivr.net/npm/@fontsource/rubik@5/files/rubik-hebrew-700-normal.woff',
@@ -35,8 +35,8 @@ const FILL_HEBREW = '#1c2a44';
 const FILL_TWO = '#2457ff';
 
 // Design-size constants (px; y grows downward).
-const LAT = 50; // Latin size (M PLUS Rounded 1c 700)
-const HEB = 22; // Hebrew size (Rubik 700)
+const LAT = 50; // Latin size (M PLUS Rounded 1c 800)
+const HEB = 30; // Hebrew size (Rubik 700) - smaller than the Latin so stamp2go stays the name and the Hebrew is the tagline
 const RG = 4; // row gap
 const G = 6; // ink gap beside the 2 (full lockup)
 const DOWN = 2; // the 2 starts this far below the x-height

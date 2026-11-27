@@ -4,7 +4,8 @@ import { LOGO_COMPACT, LOGO_FULL } from './logo-paths';
 const HEIGHT = {
   compact: { sm: 24, md: 30, lg: 36 },
   // sm and md fit the site header (phone row 64px, desktop row 60px); lg is for the footer and the admin login.
-  full: { sm: 42, md: 48, lg: 60 },
+  // Set so the full logo keeps the widths it had before the Hebrew line grew (about 180, 208 and 260px).
+  full: { sm: 40, md: 46, lg: 58 },
 } as const;
 
 /**
