@@ -2,7 +2,9 @@
  * The home page's model catalog: every body has a sample form the bot engine draws cleanly in that body's own size,
  * and the compressed imprint scale keeps the order of sizes (a bigger stamp never gets a smaller box).
  */
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { sampleSvg, sampleVersion } from '@/stamp-bot/sample-svg';
 import { BODY_IDS, bodyById, catalogRows } from '@/stamp-bot/bodies';
 import { cleanForm } from '@/stamp-bot/form';
 import { drawForm } from '@/stamp-bot/draw';
@@ -30,6 +32,20 @@ describe('home model catalog', () => {
       expect(d.svg).toContain(`viewBox="0 0 ${b.w * 10} ${b.h * 10}"`); // the route pads exactly this viewBox
     });
   }
+
+  // The image's address carries this fingerprint, so it must follow the drawing: the same for the same drawing,
+  // another for another drawing.
+  it('every sample has a fingerprint of its own drawing', () => {
+    const seen = new Map<string, string>();
+    for (const id of BODY_IDS) {
+      const v = sampleVersion(id);
+      expect(v).toMatch(/^[0-9a-f]{8}$/);
+      expect(v).toBe(createHash('sha1').update(sampleSvg(id)!).digest('hex').slice(0, 8));
+      expect(seen.has(v), `${id} and ${seen.get(v)} share a fingerprint`).toBe(false);
+      seen.set(v, id);
+    }
+    expect(sampleSvg('no-such-body')).toBeNull();
+  });
 
   it('catalog rows come in list order: rect, round, square, small to big', () => {
     const rows = catalogRows();
