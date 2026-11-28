@@ -9,7 +9,9 @@ import { loadOrder, verifyToken } from '@/server/orders/service';
 import { statusLabel, STATUS_LABEL, TIMELINE } from '@/server/orders/types';
 import { headers } from 'next/headers';
 import { getPaymentProvider } from '@/server/payments';
-import { ApprovalBox, PaymentWatcher, PayNow, PrintButton } from './OrderActions';
+import { orderConfirmationSent, trackingLink } from '@/server/notifications';
+import { toChatId } from '@/server/whatsapp';
+import { ApprovalBox, OrderConfirmation, PaymentWatcher, PayNow, PrintButton } from './OrderActions';
 import { PurchaseEvent } from '@/components/analytics/PurchaseEvent';
 
 export const metadata: Metadata = { title: 'ההזמנה שלי', robots: { index: false } };
@@ -27,7 +29,12 @@ export default async function OrderPage({ params, searchParams }: Props) {
   const failed = ['PAYMENT_FAILED', 'PRODUCTION_FILE_ERROR', 'CANCELLED'].includes(order.status);
   const card = order.paymentMethod !== 'manual';
   const unpaid = card && order.paymentStatus !== 'paid' && ['PAYMENT_PENDING', 'PAYMENT_FAILED'].includes(order.status);
+  // Back from a successful payment (new=1) while the bank's confirmation is still on its way: no "pay" button,
+  // for as long as it takes (PaymentWatcher tells the customer not to pay again when it is slow).
   const verifying = unpaid && isNew && order.status === 'PAYMENT_PENDING';
+  const link = trackingLink(order);
+  const mobile = toChatId(order.customer.phone)?.replace(/@c\.us$/, '');
+  const selfWa = mobile?.startsWith('9725') ? `https://wa.me/${mobile}?text=${encodeURIComponent(`ההזמנה שלי ב-${SITE.name}: ${order.id}\n${link}`)}` : undefined;
   let payUrl: string | undefined;
   if (unpaid && !verifying && getPaymentProvider().id === order.paymentMethod) {
     const h = await headers();
@@ -37,7 +44,6 @@ export default async function OrderPage({ params, searchParams }: Props) {
 
   return (
     <div className="container-x max-w-3xl pt-24 pb-20 print:pt-4">
-      {verifying && <PaymentWatcher />}
       {(order.paymentStatus === 'paid' || (!card && !failed)) && (
         <PurchaseEvent
           order={{
@@ -61,9 +67,9 @@ export default async function OrderPage({ params, searchParams }: Props) {
           <span className="mx-auto grid h-16 w-16 animate-pop place-items-center rounded-full bg-ok/10 text-ok">
             <Icon name="check" size={32} />
           </span>
-          <h1 className="mt-4 text-3xl font-extrabold">{verifying ? 'מאמתים את התשלום…' : 'ההזמנה התקבלה'}</h1>
-          <p className="mt-2 text-muted">{verifying ? 'זה לוקח כמה שניות. הדף יתעדכן לבד.' : null}</p>
-          <p className={`mt-2 text-muted ${verifying ? 'hidden' : ''}`}>שלחנו אישור {order.customer.email ? `ל־${order.customer.email}` : 'בהודעה'} ונעדכן בכל שלב.</p>
+          {verifying && <PaymentWatcher />}
+          {!verifying && <h1 className="mt-4 text-3xl font-extrabold">ההזמנה התקבלה</h1>}
+          <OrderConfirmation hold={!!verifying} sent={orderConfirmationSent(order)} email={order.customer.email} final={!card} link={link} selfWa={selfWa} />
         </div>
       )}
       <div className="card p-6">

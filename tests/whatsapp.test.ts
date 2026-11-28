@@ -3,7 +3,7 @@
  * mobiles, nothing is sent while no instance is configured, and each event has its text.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { whatsappText } from '@/server/notifications';
+import { orderConfirmationSent, orderPaymentText, whatsappText } from '@/server/notifications';
 import type { Order } from '@/server/orders/types';
 import { sendWhatsApp, staffChats, toChatId, whatsappCustomer, whatsappStaff } from '@/server/whatsapp';
 
@@ -93,5 +93,24 @@ describe('texts', () => {
   it('has no WhatsApp text for the quiet events', () => {
     expect(whatsappText('production.started', order)).toEqual({});
     expect(whatsappText('order.reward', order)).toEqual({});
+  });
+});
+
+describe('order received', () => {
+  it('says the payment was approved only for a paid order', () => {
+    expect(orderPaymentText({ paymentStatus: 'paid' })).toBe('התשלום אושר והעיצוב נשמר');
+    for (const paymentStatus of ['unpaid', 'pending', 'failed'] as const) {
+      const t = orderPaymentText({ paymentStatus });
+      expect(t).toBe('ההזמנה התקבלה והעיצוב נשמר. התשלום עוד לא בוצע: נציג יחזור אליכם לתשלום בטלפון, או שתשלמו באיסוף.');
+      expect(t).not.toContain('אושר');
+    }
+  });
+  it('the order page names only the confirmation that was really sent', () => {
+    const customer = { name: 'יעל', phone: '0501234567', email: 'y@example.com' };
+    expect(orderConfirmationSent({ customer, notificationsSent: ['order.created:staff', 'order.created:customer', 'order.created:customer:wa'] })).toBe('email');
+    expect(orderConfirmationSent({ customer: { ...customer, email: undefined }, notificationsSent: ['order.created:customer:wa'] })).toBe('whatsapp');
+    expect(orderConfirmationSent({ customer, notificationsSent: ['order.created:customer:wa'] })).toBe('whatsapp');
+    expect(orderConfirmationSent({ customer, notificationsSent: ['order.created:staff', 'order.awaiting_approval:customer'] })).toBeNull();
+    expect(orderConfirmationSent({ customer, notificationsSent: [] })).toBeNull();
   });
 });

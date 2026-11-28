@@ -26,6 +26,24 @@ function shippingText(o: Order) {
   return [o.shipping.label, a ? [a.street, a.city].filter(Boolean).join(', ') : ''].filter(Boolean).join(' · ');
 }
 
+/**
+ * The payment sentence of the customer's "order received" texts, from the order's real payment state:
+ * a manual-payment order is received (and may go to production) before anything is paid.
+ */
+export function orderPaymentText(o: Pick<Order, 'paymentStatus'>): string {
+  return o.paymentStatus === 'paid' ? 'התשלום אושר והעיצוב נשמר' : 'ההזמנה התקבלה והעיצוב נשמר. התשלום עוד לא בוצע: נציג יחזור אליכם לתשלום בטלפון, או שתשלמו באיסוף.';
+}
+
+/**
+ * What the customer really got for "order received" (the ids notify() stores): the e-mail,
+ * else the WhatsApp message, else nothing.
+ */
+export function orderConfirmationSent(o: Pick<Order, 'notificationsSent' | 'customer'>): 'email' | 'whatsapp' | null {
+  if (o.customer.email && o.notificationsSent.includes('order.created:customer')) return 'email';
+  if (o.notificationsSent.includes('order.created:customer:wa')) return 'whatsapp';
+  return null;
+}
+
 /** Items + totals, for the order e-mails. */
 function orderSummary(o: Order): string {
   const items = emailDetails(o.items.map((i) => [`${i.productName} · ${i.size}${i.quantity > 1 ? ` × ${i.quantity}` : ''}`, money(i.total)]));
@@ -68,7 +86,7 @@ function build(event: NotifyEvent, o: Order): Built {
           body:
             emailP('איזה כיף שבחרת בנו. הקובץ שלך עבר בדיקה אוטומטית ונכנס לתור הייצור – נעדכן אותך בכל שלב.') +
             emailSteps([
-              { title: 'ההזמנה התקבלה', text: 'התשלום אושר והעיצוב נשמר', done: true },
+              { title: 'ההזמנה התקבלה', text: orderPaymentText(o), done: true },
               { title: 'ייצור', text: 'החותמת מיוצרת תוך דקות מרגע האישור' },
               { title: o.shipping.method === 'pickup' ? 'מוכן לאיסוף' : 'משלוח', text: shippingText(o) },
             ]) +
