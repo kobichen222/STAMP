@@ -18,12 +18,15 @@ export const SAMPLES: Record<string, SampleForm> = {
   'print-20': { tmpl: 'licensed', slots: { name: 'ישראל ישראלי', profession: 'רואה חשבון' }, tail: { phones: [PHONE] } },
   mouse: { tmpl: 'doctor', slots: { name: 'אבי כהן', specialty: 'רפואת משפחה', license: LICENSE } },
   slider: { tmpl: 'employee', slots: { name: 'משה לוי', position: 'מנהל רכש', org: COMPANY } },
+  // the bigger rect bodies: the name line is long on purpose, so the ink fills the stamp's width as it does on the
+  // 38x14 bodies. the engine sets a line by its height, so a short name leaves a big stamp looking narrower than a
+  // small one (a test fails when a bigger body's text comes out narrower on the card than a smaller body's)
   // rect 47x18
-  'print-30': { tmpl: 'licensed', slots: { name: 'אבי כהן', profession: 'מהנדס בניין', license: LICENSE }, tail: { phones: [PHONE] } },
+  'print-30': { tmpl: 'licensed', slots: { name: 'אלכסנדר ישראלי', profession: 'מהנדס בניין', license: LICENSE }, tail: { phones: [PHONE] } },
   // rect 58x22 and up
-  'print-40': { tmpl: 'doctor', slots: { name: 'יעל כהן', specialty: 'רופאת שיניים', license: LICENSE }, tail: { address: ADDRESS, phones: [PHONE] } },
-  'print-50': { tmpl: 'licensed', slots: { name: 'ישראל ישראלי', profession: 'אדריכל', license: LICENSE }, tail: { address: ADDRESS, phones: [PHONE, MOBILE], email: EMAIL } },
-  'print-60': { tmpl: 'company', slots: { name: COMPANY, signer: 'אבי כהן', position: 'מנכ"ל', number: COMPANY_NO }, tail: { address: ADDRESS, phones: [PHONE, MOBILE], email: EMAIL } },
+  'print-40': { tmpl: 'doctor', slots: { name: 'יעל כהן ישראלי', specialty: 'רופאת שיניים', license: LICENSE }, tail: { address: ADDRESS, phones: [PHONE] } },
+  'print-50': { tmpl: 'licensed', slots: { name: 'ישראל ישראלי אדריכלים', profession: 'תכנון ועיצוב פנים', license: LICENSE }, tail: { address: ADDRESS, phones: [PHONE, MOBILE], email: EMAIL } },
+  'print-60': { tmpl: 'company', slots: { name: 'חברה לדוגמה ישראל בע"מ', signer: 'אבי כהן', position: 'מנכ"ל', number: COMPANY_NO }, tail: { address: ADDRESS, phones: [PHONE, MOBILE], email: EMAIL } },
   // round
   'r-530': { tmpl: 'company', slots: { name: COMPANY, number: COMPANY_NO }, tail: { phones: [PHONE] } },
   'r-540': { tmpl: 'lawyer', slots: { name: 'אבי כהן', license: LICENSE }, tail: { address: ADDRESS } },
