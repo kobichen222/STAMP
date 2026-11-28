@@ -1,6 +1,6 @@
 import { legacyRedirects } from './redirects';
 import { designerModelForProduct, formatSize } from '@/designer/models';
-import { getPage, site } from './content';
+import { getPage, site, visibleProducts } from './content';
 import type { Block, Page, Product } from './types';
 
 import { CATEGORIES, type StampCategory } from './categories';
@@ -14,7 +14,7 @@ function productIdsInBlocks(blocks: Block[]): number[] {
     for (const b of bs) {
       if (b.type === 'products') {
         if (b.productIds) ids.push(...b.productIds);
-        if (b.categoryIds) ids.push(...site.products.filter((p) => p.categoryIds.some((c) => b.categoryIds!.includes(c))).map((p) => p.id));
+        if (b.categoryIds) ids.push(...visibleProducts().filter((p) => p.categoryIds.some((c) => b.categoryIds!.includes(c))).map((p) => p.id));
       } else if (b.type === 'section') b.columns.forEach((c) => walk(c.blocks));
     }
   };
@@ -29,8 +29,7 @@ export function categoryPage(cat: StampCategory): Page | undefined {
 export function productsForCategory(cat: StampCategory): Product[] {
   const page = categoryPage(cat);
   const fromPage = new Set(page ? productIdsInBlocks(page.blocks) : []);
-  return site.products.filter((p) => {
-    if (p.hidden) return false;
+  return visibleProducts().filter((p) => {
     const t = p.title;
     if (cat.titleIncludes) return cat.titleIncludes.some((x) => t.includes(x));
     if (cat.titleExcludes?.some((x) => t.includes(x))) return false;

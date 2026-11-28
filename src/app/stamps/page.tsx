@@ -3,8 +3,7 @@ import { CatalogBrowser } from '@/components/catalog/CatalogBrowser';
 import { CategoryCard } from '@/components/catalog/CategoryCard';
 import { PageHero } from '@/components/site/PageHero';
 import { CATEGORIES, categoryCard } from '@/lib/catalog';
-import { site } from '@/lib/content';
-import { summarize } from '@/lib/summaries';
+import { allModelsGrid } from '@/lib/summaries';
 import { ensureSettings } from '@/server/settings';
 
 export const metadata: Metadata = {
@@ -27,7 +26,7 @@ export default async function StampsPage() {
           ))}
         </div>
         <h2 className="mt-16 mb-6 text-2xl font-bold">כל הדגמים</h2>
-        <CatalogBrowser products={site.products.map(summarize)} />
+        <CatalogBrowser products={allModelsGrid()} />
       </div>
     </>
   );

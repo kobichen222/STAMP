@@ -22,13 +22,21 @@ export const getProduct = (slug: string): Product | undefined =>
 
 export const getProductById = (id: number): Product | undefined => site.products.find((p) => p.id === id);
 
+/**
+ * The products a visitor may be shown: not hidden by the admin. Every visitor-facing list (grids, categories,
+ * sitemap, feeds, designer) must come from here, never from `site.products`: a list that forgets the filter shows
+ * a card whose page is a 404. A function, not a constant, because ensureSettings() changes `hidden` at runtime.
+ * tests/visible-products.test.ts fails on a new direct read of `site.products` outside its allow-list.
+ */
+export const visibleProducts = (): Product[] => site.products.filter((p) => !p.hidden);
+
 export const getCategory = (slug: string): Category | undefined =>
   site.categories.find((c) => c.slug === normalizeSlug(slug));
 
 export const getCategoryById = (id: number): Category | undefined => site.categories.find((c) => c.id === id);
 
 export function getProductsInCategories(ids: number[], order: 'asc' | 'desc' = 'desc'): Product[] {
-  const list = site.products.filter((p) => p.categoryIds.some((c) => ids.includes(c)));
+  const list = visibleProducts().filter((p) => p.categoryIds.some((c) => ids.includes(c)));
   // WooCommerce ordered by publish date; our export keeps that order ascending.
   return order === 'asc' ? list : [...list].reverse();
 }

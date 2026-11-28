@@ -1,10 +1,9 @@
 import type { DesignerProduct } from '@/designer/editor/Editor';
 import { designerModelForProduct } from '@/designer/models';
-import { site } from './content';
+import { visibleProducts } from './content';
 
 export function designerProducts(): DesignerProduct[] {
-  return site.products
-    .filter((p) => !p.hidden)
+  return visibleProducts()
     .map((p) => {
       const model = designerModelForProduct(p);
       return model ? { slug: p.slug, title: p.title, price: p.price, image: p.image?.src ?? null, model } : null;

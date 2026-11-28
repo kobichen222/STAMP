@@ -7,7 +7,7 @@ import { StartBlock } from '@/components/home/StartBlock';
 import { StartBar } from '@/components/home/StartBar';
 import { HomeFaq } from '@/components/home/HomeFaq';
 import { Icon } from '@/components/ui/Icon';
-import { site } from '@/lib/content';
+import { site, visibleProducts } from '@/lib/content';
 import { SITE } from '@/lib/config';
 import { allFaqItems, faqJsonLd, type FaqItem } from '@/lib/faq';
 import { GOOGLE_REVIEWS, homeReviews } from '@/lib/google-reviews';
@@ -42,7 +42,7 @@ export default async function HomePage() {
   // The live pricing rules (ensureSettings applied the admin's tiers, ink surcharges and shipping onto them), without
   // the coupons: both stamp boxes price their cards with these, as the server will.
   const rules = publicRules(DEFAULT_RULES);
-  const fromPrice = priceLabel(site.products.filter((p) => !p.hidden).map((p) => p.price));
+  const fromPrice = priceLabel(visibleProducts().map((p) => p.price));
   // The stamp models that can be ordered now; the imprints are scaled against the biggest of them.
   const models = catalogRows();
   const maxW = Math.max(0, ...models.map((m) => m.w));

@@ -1,6 +1,6 @@
 import { SITE } from '@/lib/config';
 import { productFacts, SERIES_LABEL } from '@/lib/catalog';
-import { site } from '@/lib/content';
+import { site, visibleProducts } from '@/lib/content';
 import { ensureSettings } from '@/server/settings';
 
 /**
@@ -29,8 +29,8 @@ function description(p: (typeof site.products)[number]) {
 
 export async function GET() {
   await ensureSettings();
-  const items = site.products
-    .filter((p) => p.price != null && p.image && !p.hidden)
+  const items = visibleProducts()
+    .filter((p) => p.price != null && p.image)
     .map((p) => {
       const f = productFacts(p);
       const images = p.gallery.filter((g) => g.src !== p.image!.src).slice(0, 10);

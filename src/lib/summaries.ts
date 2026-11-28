@@ -1,5 +1,6 @@
 import type { ProductSummary } from '@/components/catalog/types';
 import { productFacts } from './catalog';
+import { visibleProducts } from './content';
 import type { Product } from './types';
 
 export function summarize(p: Product): ProductSummary {
@@ -12,3 +13,6 @@ export function summarize(p: Product): ProductSummary {
     subtitle: p.headings[1] ?? null,
   };
 }
+
+/** The "כל הדגמים" grid on /stamps/: every product a visitor may see. */
+export const allModelsGrid = (): ProductSummary[] => visibleProducts().map(summarize);
