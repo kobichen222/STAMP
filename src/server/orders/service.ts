@@ -223,7 +223,7 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
     }
     // Prices are always recomputed on the server – never trusted from the client.
     const addons = it.addons ? Object.fromEntries(Object.entries(it.addons).filter(([k]) => ADDONS.some((a) => a.id === k))) : undefined;
-    const q = quoteLine(lineInputFor({ basePrice: product.price, quantity: it.quantity, design, ink: design.inkColor, body: it.bodyColor, addons }), rules);
+    const q = quoteLine(lineInputFor({ basePrice: product.price, quantity: it.quantity, design, ink: design.inkColor, body: it.bodyColor, addons, fixedPrice: product.fixedPrice }), rules);
     return {
       id: `${i + 1}`,
       productSlug: product.slug,
@@ -250,9 +250,10 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
   const method = rules.shipping.find((s) => s.id === input.shipping.method);
   if (!method) throw new CheckoutError('שיטת משלוח לא תקינה');
   if (method.id !== 'pickup' && (!input.shipping.address?.street || !input.shipping.address?.city)) throw new CheckoutError('נא למלא כתובת למשלוח');
+  const couponExempt = items.reduce((sum, i) => sum + (i.productSlug && getProduct(i.productSlug)?.fixedPrice ? i.total : 0), 0);
   const cart = quoteCart(
     items.map((i) => i.total),
-    { shippingId: method.id, couponCode: input.couponCode || undefined },
+    { shippingId: method.id, couponCode: input.couponCode || undefined, couponExempt },
     rules,
   );
   if (input.couponCode && cart.couponError) throw new CheckoutError(cart.couponError);

@@ -1,12 +1,13 @@
 import type { LayoutContent, LayoutStyle } from './compose';
 import { sampleLogo } from './sampleLogos';
 
-export type TemplateCategory = 'business' | 'doctor' | 'lawyer' | 'company' | 'private' | 'signature' | 'logo' | 'round';
+export type TemplateCategory = 'business' | 'doctor' | 'lawyer' | 'notary' | 'company' | 'private' | 'signature' | 'logo' | 'round';
 
 export const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string }[] = [
   { id: 'business', label: 'עסקי' },
   { id: 'doctor', label: 'רופא' },
   { id: 'lawyer', label: 'עורך דין' },
+  { id: 'notary', label: 'נוטריון' },
   { id: 'company', label: 'חברה' },
   { id: 'private', label: 'חותמת פרטית' },
   { id: 'signature', label: 'חתימה' },
@@ -82,7 +83,14 @@ export const TEMPLATES: StampTemplate[] = [
   { id: 'tutor-logo', name: 'מורה פרטי + לוגו', category: 'private', style: 'classic', withLogo: true, content: { lines: ['ישראל ישראלי', 'מורה פרטי למתמטיקה', '052-1234567'], logo: sampleLogo('cap') } },
   { id: 'pharmacy-logo', name: 'בית מרקחת + לוגו', category: 'doctor', style: 'classic', withLogo: true, content: { lines: ['בית מרקחת הדוגמה', 'רוקח אחראי: ישראל ישראלי'], logo: sampleLogo('medical') } },
   { id: 'company-round-logo', name: 'חברה – עגולה עם לוגו', category: 'company', style: 'classic', shape: 'round', withLogo: true, content: { arcTop: 'שם החברה בע״מ', arcBottom: 'ח.פ. 512345678', lines: [], logo: sampleLogo('building') } },
-  { id: 'notary-round', name: 'נוטריון – עגולה', category: 'lawyer', style: 'classic', shape: 'round', content: { arcTop: 'ישראל ישראלי, נוטריון', arcBottom: 'רישיון נוטריון 1234', lines: ['נוטריון'] } },
+  // Notary: the seal is round – name around the ring, "נוטריון" in the centre, notary licence number; often bilingual.
+  { id: 'notary-round', name: 'נוטריון – עגולה', category: 'notary', style: 'classic', shape: 'round', content: { arcTop: 'ישראל ישראלי, נוטריון', arcBottom: 'רישיון נוטריון 1234', lines: ['נוטריון'] } },
+  { id: 'notary-round-bilingual', name: 'נוטריון – עגולה עברית ואנגלית', category: 'notary', style: 'classic', shape: 'round', content: { arcTop: 'ישראל ישראלי, נוטריון', arcBottom: 'ISRAEL ISRAELI, NOTARY', lines: ['רישיון', '1234'] } },
+  { id: 'notary-round-scales', name: 'נוטריון – עגולה עם מאזניים', category: 'notary', style: 'classic', shape: 'round', withLogo: true, content: { arcTop: 'ישראל ישראלי, נוטריון', arcBottom: 'רישיון נוטריון 1234', lines: [], logo: sampleLogo('scales') } },
+  { id: 'notary-rect', name: 'נוטריון – מלבנית', category: 'notary', style: 'classic', content: { lines: ['ישראל ישראלי', 'נוטריון', 'רישיון נוטריון מס׳ 1234'] } },
+  { id: 'notary-rect-bilingual', name: 'נוטריון – מלבנית עברית ואנגלית', category: 'notary', style: 'classic', content: { lines: ['ישראל ישראלי, נוטריון', 'ISRAEL ISRAELI, NOTARY', 'רישיון / License No. 1234'] } },
+  { id: 'notary-lawyer', name: 'עורך דין ונוטריון', category: 'notary', style: 'modern', content: { lines: ['עו״ד ישראל ישראלי', 'עורך דין ונוטריון', 'מ.ר. 12345 · רישיון נוטריון 1234'] } },
+  { id: 'notary-true-copy', name: 'נוטריון – העתק נאמן למקור', category: 'notary', style: 'classic', content: { lines: ['העתק נאמן למקור', 'ישראל ישראלי, נוטריון', 'רישיון נוטריון 1234'] } },
   { id: 'paid-rect', name: 'שולם + תאריך', category: 'business', style: 'minimal', content: { lines: ['שולם', 'תאריך: __________'] } },
   { id: 'copy-rect', name: 'העתק', category: 'business', style: 'classic', content: { lines: ['העתק'] } },
   { id: 'confidential', name: 'סודי', category: 'business', style: 'modern', content: { lines: ['סודי', 'לשימוש פנימי בלבד'] } },

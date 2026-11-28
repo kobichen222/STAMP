@@ -44,20 +44,22 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
     }
   }, [form]);
 
-  const lineTotals = useMemo(() => items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons })).total)), [items]);
-  const localQuote = quoteCart(lineTotals, { shippingId: method });
+  const lineTotals = useMemo(() => items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons, fixedPrice: i.fixedPrice })).total)), [items]);
+  // Fixed-price lines (e.g. the notary seal) are never discounted by a coupon.
+  const couponExempt = useMemo(() => lineTotals.reduce((sum, t, idx) => sum + (items[idx].fixedPrice ? t : 0), 0), [lineTotals, items]);
+  const localQuote = quoteCart(lineTotals, { shippingId: method, couponExempt });
   const q = serverQuote ?? localQuote;
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/quote/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lineTotals, shippingId: method, couponCode: applied }) })
+    fetch('/api/quote/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lineTotals, couponExempt, shippingId: method, couponCode: applied }) })
       .then((r) => r.json())
       .then((d) => alive && setServerQuote(d))
       .catch(() => undefined);
     return () => {
       alive = false;
     };
-  }, [lineTotals, method, applied]);
+  }, [lineTotals, couponExempt, method, applied]);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value });
   const needsAddress = method !== 'pickup';

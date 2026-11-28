@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Blocks } from '@/components/Blocks';
 import { CatalogBrowser } from '@/components/catalog/CatalogBrowser';
+import { EmarkPromo } from '@/components/catalog/EmarkPromo';
 import { PageHero } from '@/components/site/PageHero';
 import { FaqList } from '@/components/site/FaqList';
 import { CATEGORIES, categoryPage, editorialBlocks, getStampCategory, productsForCategory } from '@/lib/catalog';
@@ -56,6 +57,7 @@ export default async function CategoryPage({ params }: Props) {
         </div>
       </PageHero>
       <div className="container-x py-12">
+        {(cat.slug === 'date' || cat.slug === 'numbering') && <EmarkPromo topic={cat.slug} />}
         {products.length > 0 ? <CatalogBrowser products={products} /> : <p className="text-muted">דגמים לקטגוריה זו זמינים בהזמנה טלפונית.</p>}
         {editorial.length > 0 && (
           <article className="mx-auto mt-20 max-w-3xl">

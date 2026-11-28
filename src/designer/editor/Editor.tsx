@@ -40,6 +40,8 @@ export interface DesignerProduct {
   slug: string;
   title: string;
   price: number | null;
+  /** List price is final – no discounts (see Product.fixedPrice). */
+  fixedPrice?: boolean;
   image: string | null;
   model: StampModel;
 }
@@ -241,7 +243,7 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
   }, [issues]);
 
   const hasLogo = design.elements.some((e) => e.type === 'image');
-  const quote = quoteLine(lineInputFor({ basePrice: product.price, quantity: qty, design, ink: design.inkColor, body: bodyColor, addons }));
+  const quote = quoteLine(lineInputFor({ basePrice: product.price, quantity: qty, design, ink: design.inkColor, body: bodyColor, addons, fixedPrice: product.fixedPrice }));
   // Professional stamps (lawyers, accountants, notaries) are offered the "נאמן למקור" stamp.
   const proStamp = /עורך|עו״ד|עו"ד|רו״ח|רו"ח|רואה חשבון|נוטריון|עורכת/.test(
     `${product.title} ${design.elements.map((e) => (e.type === 'text' ? e.text : '')).join(' ')}`,
@@ -499,6 +501,7 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
           bodyColor,
           quantity: 1,
           unitPrice: product.price,
+          fixedPrice: product.fixedPrice,
         });
       }
       clearActiveDraft();
@@ -523,6 +526,7 @@ export function Editor({ product: initialProduct, products, initialDesign, desig
       bodyColor,
       quantity: qty,
       unitPrice: product.price,
+      fixedPrice: product.fixedPrice,
       designId,
       addons: Object.values(addons).some(Boolean) ? addons : undefined,
     });

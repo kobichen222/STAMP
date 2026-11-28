@@ -18,6 +18,8 @@ export interface CartItem {
   quantity: number;
   /** Base list price per unit; quantity tiers are applied by the pricing engine. */
   unitPrice: number | null;
+  /** Final price per unit – the pricing engine applies no discounts to this line. */
+  fixedPrice?: boolean;
   /** Extras chosen in the order summary (ink bottle, pad, extra body…). */
   addons?: AddonSelection;
   /** Id of the design in "my designs", if saved. */

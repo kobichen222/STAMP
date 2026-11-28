@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>מחתימה לחותמת – עם יד אמיתית</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@500;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #0b1426; --ink2: #1c2a44; --muted: #5b6678; --line: #e3e8ef; --surface: #f5f7fa;
+    --blue: #2457ff; --blue50: #eef3ff; --pen: #1f3a8a; --stamp-ink: #1d44e0; --rubber: #6f737c;
+  }
+  html, body { margin: 0; background: #fff; font-family: Heebo, Arial, sans-serif; color: var(--ink); }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 16px; }
+  .stage { position: relative; width: 100%; aspect-ratio: 800 / 520; border-radius: 24px; overflow: hidden;
+           background: linear-gradient(180deg, var(--surface), #fff 70%); border: 1px solid var(--line); }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .real { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; transition: none; }
+  .flash { position: absolute; inset: 0; background: #fff; opacity: 0; z-index: 2; pointer-events: none; }
+  .caption { z-index: 3; 
+ position: absolute; left: 0; right: 0; bottom: 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; }
+  .caption .t { background: rgba(255,255,255,.92); padding: 4px 14px; border-radius: 999px; box-shadow: 0 6px 20px -10px rgba(11,20,38,.35); font-weight: 800; font-size: clamp(16px, 2.6vw, 22px); transition: opacity .35s, transform .35s; }
+  .dots { display: flex; gap: 8px; direction: rtl; }
+  .dots span { width: 8px; height: 8px; border-radius: 99px; background: var(--line); transition: background .3s, width .3s; }
+  .dots span.on { background: var(--blue); width: 22px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stage" role="img" aria-label="אדם חותם בעט, החתימה נסרקת, מנוקה, נחרטת על פלטת גומי ומוטבעת כחותמת">
+    <video class="real" id="real" src="source/pexels-7685212-signing.mp4" muted playsinline preload="auto"></video>
+    <div class="flash" id="flash"></div>
+    <svg viewBox="0 0 800 520" aria-hidden="true">
+      <defs>
+        <!-- pen-on-paper roughness for the hand-written signature -->
+        <filter id="rough" x="-5%" y="-20%" width="110%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" />
+        </filter>
+        <!-- inked impression texture -->
+        <filter id="inked" x="-5%" y="-20%" width="110%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="1" seed="9" result="n" />
+          <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.3 1.25" result="holes" />
+          <feComposite in="SourceGraphic" in2="holes" operator="in" />
+        </filter>
+        <linearGradient id="scan" x1="0" x2="1">
+          <stop offset="0" stop-color="#2457ff" stop-opacity="0" />
+          <stop offset=".5" stop-color="#2457ff" stop-opacity=".28" />
+          <stop offset="1" stop-color="#2457ff" stop-opacity="0" />
+        </linearGradient>
+        <linearGradient id="handle" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#1c2a44" /><stop offset="1" stop-color="#0b1426" />
+        </linearGradient>
+        <path id="sig" d="M232 286 C246 232 278 222 282 262 C286 300 252 318 264 284 C276 248 316 236 320 276 C322 300 304 306 312 286 C320 264 346 258 350 282 C352 298 342 302 350 288 C360 268 386 262 394 282 C400 296 388 300 396 288 C406 270 436 256 452 274 C468 292 436 304 458 286 C482 266 520 252 552 260 C584 268 584 290 540 300 C496 310 400 314 300 322" />
+      </defs>
+
+      <!-- paper -->
+      <g id="paper">
+        <rect x="150" y="110" width="500" height="300" rx="14" fill="#fff" stroke="#e3e8ef" />
+        <line x1="200" y1="350" x2="600" y2="350" stroke="#e3e8ef" stroke-width="2" stroke-dasharray="4 6" />
+        <text x="600" y="378" font-size="13" fill="#5b6678" text-anchor="start" style="direction:rtl">חתימה</text>
+      </g>
+
+      <!-- signature: hand-written (rough) and cleaned (vector) -->
+      <use id="sigRough" href="#sig" fill="none" stroke="var(--pen)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#rough)" />
+      <use id="sigClean" href="#sig" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0" />
+      <g id="nodes" opacity="0"></g>
+
+      <!-- scan light -->
+      <rect id="scanBar" x="0" y="110" width="90" height="300" fill="url(#scan)" opacity="0" />
+
+      <!-- impression left by the stamp -->
+      <g id="impression" opacity="0" filter="url(#inked)">
+        <rect x="205" y="200" width="390" height="150" rx="10" fill="none" stroke="var(--stamp-ink)" stroke-width="4" />
+        <use href="#sig" fill="none" stroke="var(--stamp-ink)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      <!-- step 4: the rubber plate seen from above, signature engraved mirrored -->
+      <g id="plateTop" opacity="0">
+        <rect x="175" y="150" width="450" height="220" rx="18" fill="#0b1426" opacity=".08" transform="translate(6 8)" />
+        <rect x="175" y="150" width="450" height="220" rx="18" fill="var(--rubber)" />
+        <rect x="195" y="170" width="410" height="180" rx="10" fill="none" stroke="#d9dce2" stroke-width="5" />
+      </g>
+
+      <!-- the stamp: rubber plate (with mirrored signature) + housing + handle -->
+      <g id="stamp" opacity="0">
+        <g id="body" opacity="0">
+          <rect x="-150" y="-185" width="300" height="70" rx="34" fill="url(#handle)" />
+          <rect x="-185" y="-125" width="370" height="105" rx="16" fill="#f6f7f9" stroke="#dfe4ec" />
+          <rect x="-170" y="-50" width="340" height="9" rx="3" fill="#2457ff" />
+          <text x="0" y="-78" font-size="22" font-weight="800" text-anchor="middle" fill="#0b1426">חותמות 2 דקות</text>
+        </g>
+        <g id="plate">
+          <rect x="-200" y="-22" width="400" height="30" rx="6" fill="var(--rubber)" />
+          <rect x="-195" y="-6" width="390" height="10" rx="4" fill="#5a5e66" />
+        </g>
+      </g>
+
+      <!-- flying copy of the clean signature (paper → rubber plate, mirrored) -->
+      <g id="flyer" opacity="0">
+        <use href="#sig" fill="none" stroke="#d9dce2" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      <!-- hand + pen (tip at 0,0) -->
+      <g id="hand" opacity="0">
+        <ellipse cx="6" cy="6" rx="26" ry="6" fill="#0b1426" opacity=".08" />
+        <g transform="rotate(30) scale(.9)">
+          <path d="M-5 -8 L0 0 L5 -8 Z" fill="#b8bec9" />
+          <rect x="-6.5" y="-130" width="13" height="124" rx="6.5" fill="#1c2a44" />
+          <rect x="-6.5" y="-46" width="13" height="16" fill="#2457ff" />
+          <rect x="-3" y="-128" width="2.5" height="60" rx="1.2" fill="#fff" opacity=".25" />
+          <!-- stylised hand -->
+          <path d="M-16 -40 C-34 -44 -40 -70 -26 -86 C-14 -100 22 -104 34 -84 C44 -66 34 -46 18 -40 Z" fill="#f1c6a6" stroke="#dba783" stroke-width="1.5" />
+          <path d="M-14 -44 C-26 -40 -30 -30 -22 -24 C-14 -18 -6 -26 -4 -34" fill="#f1c6a6" stroke="#dba783" stroke-width="1.5" />
+          <path d="M14 -44 C24 -40 26 -30 18 -26 C10 -22 6 -30 6 -36" fill="#f1c6a6" stroke="#dba783" stroke-width="1.5" />
+          <path d="M-26 -86 C-40 -110 -30 -140 -6 -150 L 30 -150 C 46 -130 44 -100 34 -84" fill="#f1c6a6" stroke="#dba783" stroke-width="1.5" />
+          <rect x="-34" y="-176" width="74" height="34" rx="12" fill="#2457ff" opacity=".9" />
+        </g>
+      </g>
+    </svg>
+    <div class="caption"><div class="t" id="cap">חותמים</div><div class="dots" id="dots"><span></span><span></span><span></span><span></span><span></span></div></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const path = document.querySelector('#sig');
+  const L = path.getTotalLength();
+  const rough = $('sigRough'), clean = $('sigClean'), hand = $('hand'), scan = $('scanBar');
+  const nodes = $('nodes'), flyer = $('flyer'), stamp = $('stamp'), body = $('body'), imp = $('impression');
+  const cap = $('cap'), dots = [...$('dots').children];
+  rough.style.strokeDasharray = L; clean.style.strokeDasharray = 'none';
+
+  // a few "vector anchor" dots along the cleaned line
+  for (let i = 1; i < 14; i++) {
+    const p = path.getPointAtLength((L * i) / 14);
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', 4.2);
+    c.setAttribute('fill', '#fff'); c.setAttribute('stroke', '#2457ff'); c.setAttribute('stroke-width', 2);
+    nodes.appendChild(c);
+  }
+
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const ease = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const seg = (t, a, b) => ease(clamp((t - a) / (b - a)));
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  const T = 9.2; // seconds per loop
+  const STEPS = [
+    [0, 'חותמים בעט, על דף רגיל'],
+    [2.7, 'מצלמים או סורקים'],
+    [3.8, 'המערכת מנקה ומחדדת את הקו'],
+    [5.0, 'נחרט על פלטת גומי – הפוך, כמו בחותמת'],
+    [6.5, 'ומחתימים – החתימה שלכם, בחותמת'],
+  ];
+  let lastStep = -1;
+
+  // centre of the signature drawing (for the mirrored flight onto the plate)
+  const bb = path.getBBox();
+  const sx = bb.x + bb.width / 2, sy = bb.y + bb.height / 2;
+  const PAPER = { x: 400, y: 345 };   // stamp position when pressing (plate bottom just below the impression)
+  const PLATE = { x: 400, y: 260 };   // centre of the face-up rubber plate
+
+  function render(t) {
+    // 1. signing
+    const write = seg(t, 0.25, 2.55);
+    rough.style.strokeDashoffset = L * (1 - write);
+    const tip = path.getPointAtLength(L * write);
+    const handIn = seg(t, 0, 0.3) * (1 - seg(t, 2.55, 2.9));
+    hand.setAttribute('opacity', handIn);
+    hand.setAttribute('transform', `translate(${tip.x + (1 - handIn) * 40} ${tip.y - (1 - handIn) * 30})`);
+
+    // 2. scan
+    const sc = seg(t, 2.8, 3.75);
+    scan.setAttribute('opacity', sc > 0 && sc < 1 ? 1 : 0);
+    scan.setAttribute('x', lerp(110, 640, sc));
+
+    // 3. clean: rough → crisp black line, anchor dots blink in and out
+    const cl = seg(t, 3.85, 4.4);
+    const leave = seg(t, 5.0, 5.5);
+    rough.setAttribute('opacity', (1 - cl));
+    clean.setAttribute('opacity', cl * (1 - leave));
+    nodes.setAttribute('opacity', seg(t, 4.0, 4.3) * (1 - seg(t, 4.6, 4.9)));
+
+    // 4. onto the rubber plate: paper dims, plate appears, signature flies onto it and flips (mirrored)
+    const plateIn = seg(t, 5.0, 5.45) * (1 - seg(t, 6.45, 6.8));
+    const fly = seg(t, 5.1, 5.9);
+    const k = lerp(1, 0.86, fly);
+    const mx = lerp(1, -1, seg(t, 5.4, 6.0));
+    const fx = lerp(sx, PLATE.x, fly), fy = lerp(sy, PLATE.y, fly);
+    $('plateTop').setAttribute('opacity', plateIn);
+    $('paper').setAttribute('opacity', 1 - 0.85 * plateIn);
+    flyer.setAttribute('opacity', fly > 0 ? plateIn : 0);
+    flyer.setAttribute('transform', `translate(${fx} ${fy}) scale(${k * mx} ${k}) translate(${-sx} ${-sy})`);
+
+    // 5. press: the stamp drops onto the paper, squashes, lifts away – the impression stays
+    const down = seg(t, 6.55, 7.1);
+    const squash = seg(t, 7.1, 7.22) * (1 - seg(t, 7.3, 7.5));
+    const up = seg(t, 7.5, 8.15);
+    const y = lerp(-60, PAPER.y, down) - up * 420;
+    stamp.setAttribute('opacity', seg(t, 6.5, 6.7) * (1 - seg(t, 8.0, 8.15)));
+    body.setAttribute('opacity', 1);
+    stamp.setAttribute('transform', `translate(${PAPER.x} ${y}) scale(${1 + squash * 0.02} ${1 - squash * 0.05})`);
+    imp.setAttribute('opacity', seg(t, 7.15, 7.32) * (1 - seg(t, 8.9, 9.2)));
+    if (t > 5) rough.setAttribute('opacity', 0);
+
+    // captions
+    let s = 0; STEPS.forEach(([at], i) => { if (t >= at) s = i; });
+    if (s !== lastStep) {
+      lastStep = s; cap.style.opacity = 0; cap.style.transform = 'translateY(6px)';
+      setTimeout(() => { cap.textContent = STEPS[s][1]; cap.style.opacity = 1; cap.style.transform = 'none'; }, 160);
+      dots.forEach((d, i) => d.classList.toggle('on', i === s));
+    }
+  }
+
+  // ---- real footage (seconds 18.0–22.9 of the clip) → illustrated steps from "scan"
+  const real = document.getElementById('real'), flash = document.getElementById('flash');
+  const CLIP_IN = 18.0, CLIP_OUT = 22.9, RATE = 1.2;
+  const A = (CLIP_OUT - CLIP_IN) / RATE;   // ≈4.1 s of real video
+  const FADE = 0.45;
+  const B0 = 2.65;                          // illustrated timeline starts at the scan step
+  const TOTAL = A + (T - B0);
+  hand.style.display = 'none';
+  STEPS[0][1] = 'חותמים בעט, על דף רגיל';
+
+  function frame(t) {
+    if (t < A) {
+      real.style.opacity = 1; flash.style.opacity = t > A - FADE ? (t - (A - FADE)) / FADE : 0;
+      render(0.2); // caption + dots on step 1
+      return;
+    }
+    const tb = B0 + (t - A);
+    real.style.opacity = 0;
+    flash.style.opacity = Math.max(0, 1 - (t - A) / FADE);
+    rough.style.strokeDashoffset = 0;
+    render(tb);
+    rough.style.strokeDashoffset = 0;
+  }
+
+  const q = new URLSearchParams(location.search);
+  if (q.has('t')) {
+    const t = parseFloat(q.get('t'));
+    real.currentTime = CLIP_IN + Math.min(t, A) * RATE;
+    real.addEventListener('seeked', () => { frame(t); document.body.dataset.ready = 1; }, { once: true });
+    return;
+  }
+  real.playbackRate = RATE;
+  const startAll = () => {
+    real.currentTime = CLIP_IN;
+    real.addEventListener('seeked', () => {
+      real.play();
+      const start = performance.now();
+      document.body.dataset.ready = 1;
+      const loop = (now) => {
+        const t = (now - start) / 1000;
+        if (t >= TOTAL) { real.pause(); startAll(); return; }
+        if (t >= A) real.pause();
+        frame(t);
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    }, { once: true });
+  };
+  if (real.readyState >= 1) startAll(); else real.addEventListener('loadedmetadata', startAll, { once: true });
+})();
+</script>
+</body>
+</html>

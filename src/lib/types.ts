@@ -60,6 +60,8 @@ export interface Product {
   modified: string;
   /** Hidden by the admin (not listed / not orderable). */
   hidden?: boolean;
+  /** The list price is final: no quantity tiers, online-design discount or coupons (e.g. the notary seal). */
+  fixedPrice?: boolean;
 }
 
 export interface Category {

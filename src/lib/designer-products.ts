@@ -5,9 +5,9 @@ import { site } from './content';
 export function designerProducts(): DesignerProduct[] {
   return site.products
     .filter((p) => !p.hidden)
-    .map((p) => {
+    .map((p): DesignerProduct | null => {
       const model = designerModelForProduct(p);
-      return model ? { slug: p.slug, title: p.title, price: p.price, image: p.image?.src ?? null, model } : null;
+      return model ? { slug: p.slug, title: p.title, price: p.price, fixedPrice: p.fixedPrice, image: p.image?.src ?? null, model } : null;
     })
     .filter((x): x is DesignerProduct => !!x);
 }

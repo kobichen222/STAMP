@@ -16,8 +16,9 @@ export function CartView() {
   const router = useRouter();
   const added = useSearchParams().get('added');
   // unitPrice stored in the cart is the base unit price at design time; tiers apply on quantity.
-  const totals = items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons })).total));
-  const cart = quoteCart(totals);
+  const totals = items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons, fixedPrice: i.fixedPrice })).total));
+  const couponExempt = totals.reduce((sum, t, idx) => sum + (items[idx].fixedPrice ? t : 0), 0);
+  const cart = quoteCart(totals, { couponExempt });
 
   const edit = (i: CartItem) => {
     const id = i.designId ?? `d-${i.id}`;

@@ -13,6 +13,7 @@ const ICON_FOR: Record<string, string> = {
   personal: 'user',
   doctors: 'shield',
   lawyers: 'file',
+  notary: 'circle',
   company: 'layers',
   round: 'circle',
   date: 'clock',
@@ -21,6 +22,8 @@ const ICON_FOR: Record<string, string> = {
   signature: 'text',
   large: 'fit',
   pocket: 'square',
+  'wood-handles': 'square',
+  'e-mark': 'sparkles',
 };
 
 const MAIN = [
@@ -90,7 +93,7 @@ export function MobileMenu({ open, onClose, pathname, cartCount }: { open: boole
 
   if (!mounted || !open) return null;
   const active = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
-  const featured = CATEGORIES.filter((c) => c.featured);
+  const featured = CATEGORIES.filter((c) => c.featured || c.menu);
 
   return createPortal(
     <div className="fixed inset-0 z-[90] xl:hidden" role="dialog" aria-modal="true" aria-label="תפריט ניווט" dir="rtl">

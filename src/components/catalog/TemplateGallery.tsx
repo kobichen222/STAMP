@@ -30,6 +30,7 @@ export function TemplateGallery({ items, filters, cta = 'החל תבנית' }: {
   );
   return (
     <div>
+      {filters.length > 0 && (
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           <button type="button" className={`chip ${cat === 'all' ? 'chip-on' : ''}`} onClick={() => setCat('all')}>
@@ -47,6 +48,7 @@ export function TemplateGallery({ items, filters, cta = 'החל תבנית' }: {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש…" className="input !pr-10" />
         </label>
       </div>
+      )}
       <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {list.map((it) => {
           const model = it.template.shape === 'round' ? ROUND : RECT;

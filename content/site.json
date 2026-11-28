@@ -9477,6 +9477,62 @@
    "modified": "2023-05-15 18:02:22"
   },
   {
+   "id": 9001,
+   "slug": "notary-stamp",
+   "fixedPrice": true,
+   "path": "/product/notary-stamp/",
+   "title": "חותמת נוטריון",
+   "price": 780,
+   "regularPrice": 780,
+   "image": {
+    "src": "/img/colop/embossing-press-r41.jpg",
+    "alt": "חותמת נוטריון – מכבש הבלטה COLOP Embossing Press R 41",
+    "width": 1000,
+    "height": 1000
+   },
+   "gallery": [
+    {
+     "src": "/img/colop/notary-seal-sample.png",
+     "alt": "דוגמת הבלטה של חותם נוטריון – שם בעברית ובאנגלית, NOTARY · NOTAIRE · נוטריון",
+     "width": 900,
+     "height": 900
+    },
+    {
+     "src": "/img/colop/embossing-press-r51.jpg",
+     "alt": "מכבש הבלטה COLOP R 51 – קוטר 51 מ\"מ",
+     "width": 1000,
+     "height": 1000
+    },
+    {
+     "src": "/img/colop/embossing-press-50x25.jpg",
+     "alt": "מכבש הבלטה COLOP מלבני 50×25 מ\"מ",
+     "width": 1000,
+     "height": 1000
+    }
+   ],
+   "categoryIds": [
+    23
+   ],
+   "primaryCategoryId": 23,
+   "tags": [
+    "נוטריון"
+   ],
+   "stampArea": "קוטר 41",
+   "rowsCount": null,
+   "headings": [
+    "מכבש הבלטה COLOP R 41 – חותם נוטריון יבש",
+    "קוטר הבלטה 41 מ\"מ, עד 7 שורות"
+   ],
+   "shortDescription": "<p>חותם נוטריון מובלט (Embossing Press) של COLOP: מכבש הבלטה מצופה כרום עם ידית ובסיס מגומי רך, לוחית הבלטה עגולה בקוטר 41 מ\"מ ונרתיק קשיח לנשיאה. מבליט את שם הנוטריון, \"נוטריון\" ומספר הרישיון בנייר – ללא דיו, לא ניתן לזיוף בצילום.</p>",
+   "blocks": [],
+   "seo": {
+    "title": "חותמת נוטריון – חותם הבלטה COLOP R 41, מוכן תוך 2 דקות",
+    "description": "חותם נוטריון מובלט COLOP Embossing Press R 41: קוטר 41 מ\"מ, שם הנוטריון ומספר הרישיון, כולל נרתיק. 780 ₪ כולל מע\"מ, מוכן תוך 2 דקות."
+   },
+   "menuOrder": 0,
+   "modified": "2026-10-16 12:00:00"
+  },
+  {
    "id": 1992,
    "slug": "חותמת-תאריך-לעורך-דין-c-4530",
    "path": "/product/חותמת-תאריך-לעורך-דין-c-4530/",

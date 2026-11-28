@@ -105,6 +105,8 @@ export interface LineInput {
   hasFrame?: boolean;
   /** Designed in the online designer (5% discount). */
   designedOnline?: boolean;
+  /** Final list price: no surcharges and no discounts of any kind on this line. */
+  fixedPrice?: boolean;
   addons?: AddonSelection;
 }
 
@@ -133,6 +135,10 @@ export function quoteLine(input: LineInput, rules: PricingRules = DEFAULT_RULES,
     return { unitPrice: 0, quantity: input.quantity, lines: [{ label: 'מחיר לפי הצעה', amount: 0 }], total: 0, onRequest: true };
   }
   const q = Math.max(1, Math.floor(input.quantity));
+  if (input.fixedPrice) {
+    const total = round2(input.basePrice * q);
+    return { unitPrice: input.basePrice, quantity: q, lines: [{ label: 'מחיר קבוע', amount: input.basePrice }], total, onRequest: false };
+  }
   const lines: PriceLine[] = [{ label: 'מחיר בסיס', amount: input.basePrice }];
   const ink = rules.ink[input.ink ?? 'black'] ?? 0;
   if (ink) lines.push({ label: 'צבע דיו', amount: ink });
@@ -186,10 +192,11 @@ export const VAT_RATE = 0.18;
 
 export function quoteCart(
   lineTotals: number[],
-  opts: { shippingId?: string; couponCode?: string; now?: Date } = {},
+  opts: { shippingId?: string; couponCode?: string; now?: Date; /** Part of the subtotal that coupons may not touch (fixed-price lines). */ couponExempt?: number } = {},
   rules: PricingRules = DEFAULT_RULES,
 ): CartQuote {
   const subtotal = round2(lineTotals.reduce((a, b) => a + b, 0));
+  const couponBase = round2(Math.max(0, subtotal - (opts.couponExempt ?? 0)));
   const shippingMethod = rules.shipping.find((s) => s.id === opts.shippingId) ?? rules.shipping[0];
   let discount = 0;
   let coupon: Coupon | undefined;
@@ -199,10 +206,10 @@ export function quoteCart(
     const now = opts.now ?? new Date();
     if (!c) couponError = 'קוד קופון לא תקין';
     else if (c.expiresAt && new Date(c.expiresAt) < now) couponError = 'תוקף הקופון פג';
-    else if (c.minSubtotal && subtotal < c.minSubtotal) couponError = `הקופון תקף מעל ₪${c.minSubtotal}`;
+    else if (c.minSubtotal && couponBase < c.minSubtotal) couponError = `הקופון תקף מעל ₪${c.minSubtotal}`;
     else {
       coupon = c;
-      discount = round2(c.type === 'percent' ? (subtotal * c.value) / 100 : Math.min(c.value, subtotal));
+      discount = round2(c.type === 'percent' ? (couponBase * c.value) / 100 : Math.min(c.value, couponBase));
     }
   }
   const afterDiscount = subtotal - discount;
@@ -224,12 +231,14 @@ export function lineInputFor(x: {
   ink?: string;
   body?: string;
   addons?: AddonSelection;
+  fixedPrice?: boolean;
 }): LineInput {
   return {
     basePrice: x.basePrice,
     quantity: x.quantity,
     ink: x.ink,
     body: x.body,
+    fixedPrice: x.fixedPrice,
     hasLogo: x.design.elements.some((e) => e.type === 'image'),
     hasFrame: x.design.shape === 'rect' && x.design.border.style !== 'none',
     designedOnline: true,

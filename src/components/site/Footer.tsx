@@ -22,8 +22,7 @@ export function Footer() {
         <div>
           <h2 className="text-sm font-semibold">חותמות</h2>
           <ul className="mt-2 space-y-0.5 text-sm text-muted">
-            {STAMP_MENU.filter((m) => m.featured)
-              .slice(0, 8)
+            {[...STAMP_MENU.filter((m) => m.featured).slice(0, 8), ...STAMP_MENU.filter((m) => m.menu)]
               .map((m) => (
                 <li key={m.href}>
                   <Link href={m.href} className="inline-block py-1 hover:text-ink">

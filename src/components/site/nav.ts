@@ -3,6 +3,7 @@ import { CATEGORIES } from '@/lib/categories';
 export const MAIN_NAV = [
   { label: 'חותמות לעסקים', href: '/stamps/business/' },
   { label: 'חותמות אישיות', href: '/stamps/personal/' },
+  { label: 'חותמות לנוטריון', href: '/stamps/notary/' },
   { label: 'דוגמאות', href: '/examples/' },
   { label: 'איך זה עובד', href: '/how-it-works/' },
   { label: 'שאלות נפוצות', href: '/faq/' },
@@ -10,4 +11,4 @@ export const MAIN_NAV = [
   { label: 'צור קשר', href: '/contact/' },
 ];
 
-export const STAMP_MENU = CATEGORIES.map((c) => ({ label: c.name, href: `/stamps/${c.slug}/`, featured: !!c.featured }));
+export const STAMP_MENU = CATEGORIES.map((c) => ({ label: c.name, href: `/stamps/${c.slug}/`, featured: !!c.featured, menu: !!c.menu }));
