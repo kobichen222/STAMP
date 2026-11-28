@@ -87,7 +87,9 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
                     busy: false,
                     err: '',
                     msgs: [...job.msgs, { role: 'ai', text: reply, form: stamp?.form }],
-                    reply,
+                    // Show the bot's text only when it returned no stamp: then it is a question or a refusal the
+                    // customer must answer. With a stamp the image says it; the full text stays in `msgs`.
+                    reply: stamp ? '' : reply,
                     // No stamp: keep the previous stamp, body and quantity.
                     stamp: stamp ?? c.stamp,
                     body: stamp ? pickBody(stamp, c.body) : c.body,

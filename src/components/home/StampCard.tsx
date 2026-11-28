@@ -81,11 +81,13 @@ export function StampCard({
     onFix(t);
   }
 
-  // Desktop: two columns once the stamp is ready - the stamp, messages and actions on the right (first in RTL),
-  // the options on the left. Phones: one column; the stamp column dissolves (display: contents) so `order`
-  // puts the options under the messages, and the fix form and actions after them.
+  // Desktop: a low, wide card once the stamp is ready - a narrow fixed stamp column (stamp, messages, actions)
+  // on the right (first in RTL), the options filling the rest on the left. Phones: one column; the stamp column
+  // dissolves (display: contents) so `order` puts the options under the messages, and the fix form and actions after them.
   return (
-    <li className={`card flex flex-col p-4 ${stamp && !blocked ? 'sm:grid sm:grid-cols-2 sm:items-start sm:gap-5' : ''}`}>
+    <li
+      className={`card flex flex-col p-4 ${stamp && !blocked ? 'sm:grid sm:grid-cols-[220px_minmax(0,1fr)] sm:items-start sm:gap-5' : ''}`}
+    >
       <div className="contents sm:flex sm:flex-col">
         {(stamp || card.busy) && (
           <div className="grid aspect-[3/2] place-items-center rounded-xl bg-[#fdfcf8] p-4">
@@ -101,10 +103,10 @@ export function StampCard({
           </div>
         )}
 
-        {stamp && blocked && <p className="mt-2 text-sm text-ink">{stamp.why}</p>}
+        {stamp && blocked && <p className="mt-1.5 text-sm text-ink">{stamp.why}</p>}
 
         {stamp && !blocked && (
-          <p className="mt-2 text-sm text-ink">
+          <p className="mt-1.5 text-sm text-ink">
             {body ? (
               <>
                 {body.title} · {sizeLabel(stamp)}
@@ -116,17 +118,17 @@ export function StampCard({
           </p>
         )}
 
-        {card.busy ? (
-          <p className="mt-3 text-sm text-muted">מכינים את החותמת…</p>
-        ) : card.err ? (
-          <p className="mt-3 text-sm font-medium text-bad">{card.err}</p>
-        ) : (
-          reply && <p className="mt-3 text-sm text-muted">{reply}</p>
-        )}
+        {/* While a turn runs the faded image or the pulsing placeholder says the stamp is being made. */}
+        {!card.busy &&
+          (card.err ? (
+            <p className="mt-1.5 text-sm font-medium text-bad">{card.err}</p>
+          ) : (
+            reply && <p className="mt-1.5 text-sm text-muted">{reply}</p>
+          ))}
 
         {fixOpen && (
           <form
-            className="order-2 mt-3"
+            className="order-2 mt-1.5"
             onSubmit={(e) => {
               e.preventDefault();
               send();

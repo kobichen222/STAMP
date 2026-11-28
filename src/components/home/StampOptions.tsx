@@ -15,8 +15,17 @@ export const linePrice = (basePrice: number, quantity: number, ink: string) =>
 
 const INKS = Object.keys(INK_COLORS) as InkColor[];
 const LABEL = 'mb-1.5 text-xs font-bold text-ink';
+const CHIP = 'inline-flex items-center rounded-full border px-3 py-1.5 text-[13px] leading-5';
+const CHIP_ON = 'border-blue bg-blue/10 font-medium text-blue';
 
-/** The card's model, ink and quantity choice, always shown beside a ready, orderable stamp (under it on phones). */
+/** Body titles all start with "חותמת"; the chip drops it so every model fits on a line or two. */
+const shortTitle = (title: string) => title.replace(/^חותמת\s+/, '');
+
+/**
+ * The card's model, ink and quantity choice, always shown beside a ready, orderable stamp (under it on phones).
+ * Low and wide so the card stays short: every model is a chip in one wrapping row, then ink swatches and
+ * quantity share one row.
+ */
 export function StampOptions({
   stamp,
   body,
@@ -39,34 +48,37 @@ export function StampOptions({
   const id = useId(); // names the body radios and labels the ink group
   const { bodies, ink } = stamp;
   const unit = (price: number) => formatPrice(linePrice(price, 1, ink));
+  const inkName = INK_COLORS[ink as InkColor]?.label ?? '';
 
   return (
-    <div className="mt-3 space-y-3 rounded-xl border border-line p-3 sm:mt-0">
+    <div className="mt-3 space-y-3.5 sm:mt-0">
       {bodies.length === 1 ? (
         <div>
           <p className={LABEL}>דגם</p>
-          <p className="flex justify-between gap-2 text-sm">
-            <span>{bodies[0].title}</span>
-            <span className="shrink-0 tabular-nums text-muted">{unit(bodies[0].price)}</span>
-          </p>
+          <span className={`${CHIP} ${CHIP_ON}`}>
+            {shortTitle(bodies[0].title)} · <span className="tabular-nums">{unit(bodies[0].price)}</span>
+          </span>
         </div>
       ) : (
         bodies.length > 1 && (
           <fieldset disabled={busy}>
             <legend className={LABEL}>דגם</legend>
-            <div className="divide-y divide-line rounded-xl border border-line">
+            <div className="flex flex-wrap gap-1.5">
               {bodies.map((b) => (
-                <label key={b.slug} className="flex min-h-10 cursor-pointer items-center gap-2 px-3 text-sm has-[:disabled]:cursor-default has-[:disabled]:opacity-60">
+                <label key={b.slug} className="cursor-pointer has-[:disabled]:cursor-default">
                   <input
                     type="radio"
                     name={`${id}-body`}
                     value={b.slug}
                     checked={b.slug === body}
                     onChange={() => onBody(b.slug)}
-                    className="accent-blue"
+                    className="peer sr-only"
                   />
-                  <span className="min-w-0 flex-1">{b.title}</span>
-                  <span className="shrink-0 tabular-nums text-muted">{unit(b.price)}</span>
+                  <span
+                    className={`${CHIP} border-line text-ink transition peer-checked:border-blue peer-checked:bg-blue/10 peer-checked:font-medium peer-checked:text-blue peer-focus-visible:ring-2 peer-focus-visible:ring-blue peer-focus-visible:ring-offset-2 peer-disabled:opacity-60`}
+                  >
+                    {shortTitle(b.title)} · <span className="tabular-nums">{unit(b.price)}</span>
+                  </span>
                 </label>
               ))}
             </div>
@@ -74,43 +86,52 @@ export function StampOptions({
         )
       )}
 
-      <div>
-        <p id={`${id}-ink`} className={LABEL}>
-          צבע דיו
-        </p>
-        <div role="group" aria-labelledby={`${id}-ink`} className="flex flex-wrap gap-x-3">
-          {INKS.map((k) => {
-            const on = k === ink;
-            const extra = DEFAULT_RULES.ink[k] ?? 0;
-            return (
-              <button
-                key={k}
-                type="button"
-                aria-pressed={on}
-                disabled={busy || inking}
-                onClick={() => {
-                  if (!on) onInk(k);
-                }}
-                className="flex min-h-10 items-center gap-1.5 text-sm disabled:opacity-50"
-              >
-                <span
-                  className={`h-5 w-5 shrink-0 rounded-full ${on ? 'ring-2 ring-ink ring-offset-2' : ''}`}
-                  style={{ backgroundColor: INK_COLORS[k].hex }}
-                />
-                <span className={on ? 'font-semibold text-ink' : 'text-muted'}>{INK_COLORS[k].label}</span>
-                {extra > 0 && <span className="text-xs tabular-nums text-muted">+{formatPrice(extra)}</span>}
-              </button>
-            );
-          })}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p id={`${id}-ink`} className={LABEL}>
+            צבע דיו{inkName && ` · ${inkName}`}
+          </p>
+          <div role="group" aria-labelledby={`${id}-ink`} className="flex gap-1">
+            {INKS.map((k) => {
+              const on = k === ink;
+              const extra = DEFAULT_RULES.ink[k] ?? 0;
+              const add = extra > 0 ? `+${formatPrice(extra)}` : '';
+              const name = add ? `${INK_COLORS[k].label} (${add})` : INK_COLORS[k].label;
+              return (
+                <div key={k} className="flex flex-col items-center">
+                  <button
+                    type="button"
+                    aria-pressed={on}
+                    aria-label={name}
+                    title={name}
+                    disabled={busy || inking}
+                    onClick={() => {
+                      if (!on) onInk(k);
+                    }}
+                    className="grid h-9 w-9 place-items-center rounded-full disabled:opacity-50"
+                  >
+                    <span
+                      className={`h-6 w-6 rounded-full ${on ? 'ring-2 ring-ink ring-offset-2' : ''}`}
+                      style={{ backgroundColor: INK_COLORS[k].hex }}
+                    />
+                  </button>
+                  {/* Same height under every swatch, so the ones without an add-on stay aligned. */}
+                  <span aria-hidden="true" className="h-4 text-[11px] leading-4 tabular-nums text-muted">
+                    {add}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      {bodies.length > 0 && (
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-bold text-ink">כמות</p>
-          <QuantityStepper value={qty} onChange={(n) => onQty(Math.min(MAX_QTY, n))} />
-        </div>
-      )}
+        {bodies.length > 0 && (
+          <div>
+            <p className={LABEL}>כמות</p>
+            <QuantityStepper value={qty} onChange={(n) => onQty(Math.min(MAX_QTY, n))} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
