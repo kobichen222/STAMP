@@ -1,7 +1,7 @@
 'use server'
 
 import type { CardMiss, CartLine, LinesResult, OrderAsk, Stamp } from './card-types'
-import { MAX_FORM, reframed, reinked } from './card'
+import { MAX_FORM, reframed, reinked, unpinned } from './card'
 import { botLine } from './order'
 import { settings, systems, warmAll } from './serve'
 
@@ -23,6 +23,13 @@ export async function inkStamp(form: string, ink: string): Promise<Stamp | null>
 export async function frameStamp(form: string, on: boolean): Promise<Stamp | null> {
   await settings()
   return reframed(form, on)
+}
+
+// a bot stamp from the cart, opened for editing on the home page: the same drawing, with the size and look the line
+// pinned let loose when that draws the same stamp (card.ts unpinned). null = the form or the ink cannot be read
+export async function lineStamp(form: string, ink: string): Promise<Stamp | null> {
+  await settings()
+  return unpinned(form, ink)
 }
 
 const MAX_LINES = 50

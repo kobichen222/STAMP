@@ -24,7 +24,12 @@ export type StampCardData = {
   running: boolean; // that turn is running now (not waiting its turn)
   inking: boolean; // an ink or frame redraw is in flight
   panel: 'fix' | null; // the fix form is open; model, ink and quantity are always shown beside a ready stamp
+  line?: string; // the id of the cart line this card edits: ordering replaces that line
+  restore?: Restore; // the redraw that brings the stamp back (after a refresh, or from a cart line) until it returns
 };
+
+/** A stamp to redraw without the model: its form and ink; unpin = a cart line's form (lineStamp loosens it). */
+export type Restore = { form: string; ink: string; unpin?: boolean };
 
 /** Keep the chosen body when the new stamp still offers it, otherwise the cheapest one. */
 export const pickBody = (stamp: Stamp, prev: string) =>
@@ -98,13 +103,14 @@ export function StampCard({
   // so `order` puts the options under the messages, and the fix form and actions after them.
   // A first stamp still being made has the same shape, in grey (skeleton), so nothing jumps when it arrives.
   const wide = stamp != null && !blocked;
-  const skeleton = stamp == null && card.busy;
+  // a stamp being brought back (inking with no stamp yet) has the same static skeleton
+  const skeleton = stamp == null && (card.busy || card.inking);
   const grid = wide || skeleton;
   const pulse = card.running ? 'motion-safe:animate-pulse' : '';
   return (
     <li
       id={domId}
-      aria-busy={card.busy}
+      aria-busy={card.busy || skeleton}
       className={`card flex flex-col p-4 ${grid ? 'sm:grid sm:grid-cols-[220px_minmax(0,1fr)] sm:items-stretch sm:gap-5' : ''}`}
     >
       <div className="contents sm:flex sm:min-h-0 sm:flex-col">
@@ -126,7 +132,7 @@ export function StampCard({
           </div>
         )}
 
-        {(stamp || card.busy) && (
+        {(stamp || skeleton) && (
           // The image sits absolutely so it never sets the card's height; beside the options the box takes what is left.
           <div
             className={`relative aspect-[3/2] rounded-xl bg-[#fdfcf8] ${grid ? 'sm:aspect-auto sm:min-h-[72px] sm:flex-1' : ''}`}

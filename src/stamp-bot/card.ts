@@ -69,6 +69,22 @@ export function reframed(form: unknown, on: unknown): Stamp | null {
   return toStamp({ ...raw, frame: on ? 'single' : 'none' })
 }
 
+// a cart line's form (pinned to the size and look it was ordered in, order.ts) opened back as a card, no model call.
+// the size and then the look are let loose again ('auto', the default look) when that draws the very same stamp, so a
+// correction can grow or reshape it as on a card the bot drew; otherwise it stays pinned. null = unreadable form or ink
+export function unpinned(form: unknown, ink: unknown): Stamp | null {
+  const raw = rawForm(form)
+  if (!raw || !isInk(ink)) return null
+  const pinned = cleanForm({ ...raw, color: ink })
+  const d = drawForm(pinned)
+  for (const loose of [{ size: 'auto', look: '' }, { size: 'auto' }]) {
+    const f = cleanForm({ ...pinned, ...loose })
+    const l = drawForm(f)
+    if (l.size === d.size && l.look === d.look && l.svg === d.svg) return toStamp(f)
+  }
+  return toStamp(pinned)
+}
+
 // the same stamp in another ink, no model call. null = a form that cannot be read or an ink the site does not sell.
 // a template that locks the colour keeps it: cleanForm decides, and `ink` says what came out
 export function reinked(form: unknown, ink: unknown): Stamp | null {

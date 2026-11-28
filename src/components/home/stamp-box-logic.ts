@@ -41,6 +41,17 @@ export function takeJobs(queue: Job[], running: number, max: number, alive: (id:
 }
 
 /**
+ * The list as drawn while removed items wait for their undo: each removed item back at the index it had, marked
+ * `gone` (its strip is drawn there). The latest removal is put back first, so two removals from the same place
+ * come back in their order.
+ */
+export function withHeld<T>(items: T[], held: { key: string; item: T; at: number }[]): { item: T; gone?: string }[] {
+  const out: { item: T; gone?: string }[] = items.map((item) => ({ item }));
+  for (const h of [...held].reverse()) out.splice(Math.min(Math.max(0, h.at), out.length), 0, { item: h.item, gone: h.key });
+  return out;
+}
+
+/**
  * Whether this key press sends the message. Enter sends and Shift+Enter is a new line; on a touch phone (no hover,
  * coarse pointer) Enter is always a new line and only the arrow sends. Never while an IME is composing a word.
  */

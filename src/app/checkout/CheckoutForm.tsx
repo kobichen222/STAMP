@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PaymentFrame } from '@/components/PaymentFrame';
-import { StampThumb } from '@/components/StampThumb';
+import { StampProof } from '@/components/StampProof';
 import { Icon } from '@/components/ui/Icon';
 import { clearCart, useCart } from '@/lib/cart-store';
 import { CHECKOUT_FIELDS, checkoutFieldErrors, type CheckoutField, type CheckoutFieldErrors } from '@/lib/checkout-rules';
@@ -517,17 +517,19 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
         <h2 className="text-lg font-bold">ההזמנה שלך</h2>
         <ul className="mt-4 space-y-3">
           {items.map((i, n) => (
-            <li key={i.id} className="flex items-center gap-3">
-              <div className="grid h-14 w-20 shrink-0 place-items-center rounded-lg bg-[#fdfcf8] p-1.5">
-                <StampThumb svg={i.previewSvg} ink={i.ink} className="max-h-full max-w-full" />
+            <li key={i.id} className="border-b border-line pb-3 last:border-b-0 last:pb-0">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1 text-sm">
+                  <p className="truncate font-medium">{i.productName}</p>
+                  <p className="text-muted">
+                    {i.size} · ×{i.quantity}
+                  </p>
+                </div>
+                <span className="text-sm font-semibold">{formatPrice(lineTotals[n])}</span>
               </div>
-              <div className="min-w-0 flex-1 text-sm">
-                <p className="truncate font-medium">{i.productName}</p>
-                <p className="text-muted">
-                  {i.size} · ×{i.quantity}
-                </p>
+              <div className="mt-2">
+                <StampProof svg={i.previewSvg} ink={i.ink} design={i.design} name={i.productName} />
               </div>
-              <span className="text-sm font-semibold">{formatPrice(lineTotals[n])}</span>
             </li>
           ))}
         </ul>
