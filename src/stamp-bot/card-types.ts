@@ -3,7 +3,7 @@
 import type { Design } from '@/designer/types'
 
 // one body the customer can order the stamp on: a catalog product whose stamp area is the size the stamp was drawn in
-export type Body = { slug: string; title: string; price: number }
+export type Body = { slug: string; title: string; short: string; price: number } // short = the name on the card's chip
 
 export type Stamp = {
   svg: string
@@ -11,6 +11,7 @@ export type Stamp = {
   kind: string // 'rect' | 'status' | 'round' | 'square'
   size: string // the size it was drawn in, '38x14'
   ink: string // a key of the site's INK_COLORS
+  frame: boolean | null // a rect stamp: drawn with a frame or not. null = not the customer's choice (always framed)
   bodies: Body[] // visible products of that size with a price, cheapest first. empty = nothing to order at this size right now
   orderable: boolean // false = this drawing must not be ordered yet (text too crowded, a detail still missing, a number to confirm)
   why: string // when not orderable: one short Hebrew sentence for the customer saying what to fix. '' otherwise

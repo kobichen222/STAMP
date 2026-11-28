@@ -17,7 +17,7 @@ export type StampCardData = {
   reply: string;
   err: string;
   busy: boolean; // a bot turn is waiting in the queue or running
-  inking: boolean; // an ink redraw is in flight
+  inking: boolean; // an ink or frame redraw is in flight
   panel: 'fix' | null; // the fix form is open; model, ink and quantity are always shown beside a ready stamp
 };
 
@@ -42,6 +42,7 @@ export function StampCard({
   onChange,
   onFix,
   onInk,
+  onFrame,
   onRemove,
 }: {
   card: StampCardData;
@@ -49,6 +50,7 @@ export function StampCard({
   onChange: (p: Partial<StampCardData>) => void;
   onFix: (text: string) => void;
   onInk: (ink: string) => void;
+  onFrame: (on: boolean) => void;
   onRemove: () => void;
 }) {
   const [text, setText] = useState('');
@@ -81,35 +83,19 @@ export function StampCard({
     onFix(t);
   }
 
-  // Desktop: a low, wide card once the stamp is ready - a narrow fixed stamp column (stamp, messages, actions)
-  // on the right (first in RTL), the options filling the rest on the left. Phones: one column; the stamp column
-  // dissolves (display: contents) so `order` puts the options under the messages, and the fix form and actions after them.
+  // Desktop: a low, wide card once the stamp is ready - a narrow fixed stamp column (line, stamp, messages, actions)
+  // on the right (first in RTL), the options filling the rest on the left. Both columns stretch to one height, set by
+  // the options; the stamp takes what is left. Phones: one column; the stamp column dissolves (display: contents)
+  // so `order` puts the options under the messages, and the fix form and actions after them.
+  const wide = stamp != null && !blocked;
   return (
-    <li
-      className={`card flex flex-col p-4 ${stamp && !blocked ? 'sm:grid sm:grid-cols-[220px_minmax(0,1fr)] sm:items-start sm:gap-5' : ''}`}
-    >
-      <div className="contents sm:flex sm:flex-col">
-        {(stamp || card.busy) && (
-          <div className="grid aspect-[3/2] place-items-center rounded-xl bg-[#fdfcf8] p-4">
-            {stamp ? (
-              <img
-                src={'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(stamp.svg)}
-                alt="החותמת שלכם"
-                className={`h-full w-full object-contain transition ${card.busy || card.inking ? 'opacity-40' : ''}`}
-              />
-            ) : (
-              <div className="h-full w-full animate-pulse rounded-lg bg-line/40" />
-            )}
-          </div>
-        )}
-
-        {stamp && blocked && <p className="mt-1.5 text-sm text-ink">{stamp.why}</p>}
-
-        {stamp && !blocked && (
-          <p className="mt-1.5 text-sm text-ink">
+    <li className={`card flex flex-col p-4 ${wide ? 'sm:grid sm:grid-cols-[220px_minmax(0,1fr)] sm:items-stretch sm:gap-5' : ''}`}>
+      <div className="contents sm:flex sm:min-h-0 sm:flex-col">
+        {wide && (
+          <p className="mb-1.5 text-xs leading-[18px] text-ink">
             {body ? (
               <>
-                {body.title} · {sizeLabel(stamp)}
+                {body.short} · {sizeLabel(stamp)}
                 {card.qty > 1 && ` · ${card.qty} יח׳`} · <span className="font-semibold tabular-nums">{formatPrice(total)}</span>
               </>
             ) : (
@@ -117,6 +103,25 @@ export function StampCard({
             )}
           </p>
         )}
+
+        {(stamp || card.busy) && (
+          // The image sits absolutely so it never sets the card's height; beside the options the box takes what is left.
+          <div
+            className={`relative aspect-[3/2] rounded-xl bg-[#fdfcf8] ${wide ? 'sm:aspect-auto sm:min-h-[72px] sm:flex-1' : ''}`}
+          >
+            {stamp ? (
+              <img
+                src={'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(stamp.svg)}
+                alt="החותמת שלכם"
+                className={`absolute inset-0 h-full w-full object-contain p-4 transition ${wide ? 'sm:p-3' : ''} ${card.busy || card.inking ? 'opacity-40' : ''}`}
+              />
+            ) : (
+              <div className="absolute inset-4 animate-pulse rounded-lg bg-line/40" />
+            )}
+          </div>
+        )}
+
+        {stamp && blocked && <p className="mt-1.5 text-sm text-ink">{stamp.why}</p>}
 
         {/* While a turn runs the faded image or the pulsing placeholder says the stamp is being made. */}
         {!card.busy &&
@@ -164,7 +169,8 @@ export function StampCard({
           </form>
         )}
 
-        <div className="order-2 mt-auto flex gap-4 pt-1 text-sm font-medium">
+        {/* Pinned to the column's bottom, so on desktop it ends level with the last options row. */}
+        <div className={`order-2 mt-auto flex gap-4 text-[13px] leading-4 font-medium ${wide ? 'pt-1.5' : 'pt-1'}`}>
           <button
             type="button"
             aria-expanded={fixOpen}
@@ -173,17 +179,17 @@ export function StampCard({
               wantFocus.current = !fixOpen;
               onChange({ panel: fixOpen ? null : 'fix' });
             }}
-            className="min-h-10 text-blue hover:underline"
+            className={`min-h-10 text-blue hover:underline ${wide ? 'sm:min-h-0' : ''}`}
           >
             תיקון
           </button>
-          <button type="button" onClick={onRemove} className="min-h-10 text-muted hover:text-ink hover:underline">
+          <button type="button" onClick={onRemove} className={`min-h-10 text-muted hover:text-ink hover:underline ${wide ? 'sm:min-h-0' : ''}`}>
             הסרה
           </button>
         </div>
       </div>
 
-      {stamp && !blocked && (
+      {wide && (
         <StampOptions
           stamp={stamp}
           body={card.body}
@@ -193,6 +199,7 @@ export function StampCard({
           onBody={(slug) => onChange({ body: slug })}
           onQty={(qty) => onChange({ qty })}
           onInk={onInk}
+          onFrame={onFrame}
         />
       )}
     </li>

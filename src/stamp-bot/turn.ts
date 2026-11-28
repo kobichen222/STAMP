@@ -133,8 +133,10 @@ function withLook(prev: Form | null, form: Form, look: Extracted['look']): Form 
   if (typeof r.color === 'string' && r.color in INKS) raw.color = r.color as Ink
   if (r.font === 'sans' || r.font === 'serif') raw.font = r.font
   if (r.size === 'auto' || def.sizes.some((s) => sizeName(s) === r.size)) raw.size = r.size as string
-  if (typeof r.look === 'string') raw.look = r.look
-  else if (prev && kind !== prev.kind) raw.look = '' // a look id belongs to its kind
+  if (typeof r.look === 'string') {
+    raw.look = r.look
+    raw.frame = '' // a look the customer asked the bot for brings its own frame back
+  } else if (prev && kind !== prev.kind) raw.look = '' // a look id belongs to its kind
   // an icon only from the list
   if (r.icon === '' || isIcon(r.icon)) raw.icon = r.icon as string
   if (def.iconPos.includes(r.iconPos as IconPos)) raw.iconPos = r.iconPos as IconPos
@@ -227,7 +229,7 @@ export async function runTurn(msgs: Msg[], st: Stations): Promise<Turned | { err
     // the id is checked BEFORE cleanForm, which would turn an unknown one into the first template
     const tpl = templatesFor(null).find((t) => t.id === p.tmpl)
     if (!tpl) return refuse('none', !p.tmpl || p.tmpl === 'none' ? 'place: none' : `place: not a template "${p.tmpl}"`, p.tmpl)
-    const next = cleanForm({ ...lookOf(prev), confirmed: prev?.confirmed ?? [], tmpl: tpl.id, slots: p.slots, tail: { ...p.tail, extra: carried }, fields })
+    const next = cleanForm({ ...lookOf(prev), frame: prev?.frame ?? '', confirmed: prev?.confirmed ?? [], tmpl: tpl.id, slots: p.slots, tail: { ...p.tail, extra: carried }, fields })
 
     // the sign proves a template on the turn it is chosen. a stamp that stays in its template is not asked again: the
     // customer may have picked it in the editor, or its sign sat only in a placeholder line ('שם, עו"ד')
@@ -248,7 +250,7 @@ export async function runTurn(msgs: Msg[], st: Stations): Promise<Turned | { err
   const add = ex.confirm && prev ? badIds(prev).filter((d) => numbersIn(asked).includes(d) && !next.confirmed.includes(d)) : []
   if (add.length) next = { ...next, confirmed: [...next.confirmed, ...add].slice(-LIMITS.confirmed) }
 
-  const looked = !!prev && LOOK_KEYS.some((k) => next[k] !== prev[k])
+  const looked = !!prev && (LOOK_KEYS.some((k) => next[k] !== prev[k]) || next.frame !== prev.frame)
   if (!changed && !looked && !add.length) {
     // nothing on the stamp changed: the model's answer, or - when it has none - the customer said nothing usable
     return ex.say ? done('chat', prev, ex.say) : refuse('unread', 'extract: nothing changed and nothing to say')

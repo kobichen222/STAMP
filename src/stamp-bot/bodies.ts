@@ -8,35 +8,57 @@ import { designerModelForProduct } from '@/designer/models'
 import type { Body } from './card-types'
 import type { Kind, StampSize } from './kinds' // type-only: kinds.ts imports this file
 
-type Entry = { lines: number; slugs: string[] }
+// short = the model's name on the card's chips, without "חותמת", "אישית" or "דגם"
+type Model = { slug: string; short: string }
+type Entry = { lines: number; models: Model[] }
 
 const RECT: Entry[] = [
-  { lines: 4, slugs: ['חותמת-פרינט-20', 'חותמת-כיס-20', 'חותמת-דגם-עכבר', 'חותמת-אישית-דגם-סליידר'] },
-  { lines: 5, slugs: ['חותמת-פרינט-30', 'חותמת-כיס-30'] },
-  { lines: 6, slugs: ['חותמת-פרינט-40'] },
-  { lines: 7, slugs: ['חותמת-פרינט-50'] },
-  { lines: 10, slugs: ['חותמת-פרינט-60'] },
+  {
+    lines: 4,
+    models: [
+      { slug: 'חותמת-פרינט-20', short: 'פרינט 20' },
+      { slug: 'חותמת-כיס-20', short: 'כיס 20' },
+      { slug: 'חותמת-דגם-עכבר', short: 'עכבר' },
+      { slug: 'חותמת-אישית-דגם-סליידר', short: 'סליידר' },
+    ],
+  },
+  {
+    lines: 5,
+    models: [
+      { slug: 'חותמת-פרינט-30', short: 'פרינט 30' },
+      { slug: 'חותמת-כיס-30', short: 'כיס 30' },
+    ],
+  },
+  { lines: 6, models: [{ slug: 'חותמת-פרינט-40', short: 'פרינט 40' }] },
+  { lines: 7, models: [{ slug: 'חותמת-פרינט-50', short: 'פרינט 50' }] },
+  { lines: 10, models: [{ slug: 'חותמת-פרינט-60', short: 'פרינט 60' }] },
 ]
 
 const LIST: Record<Kind, Entry[]> = {
   rect: RECT,
   // one big word: the first four rect bodies, a line per size
-  status: RECT.slice(0, 4).map((e, i) => ({ lines: i + 1, slugs: e.slugs })),
+  status: RECT.slice(0, 4).map((e, i) => ({ lines: i + 1, models: e.models })),
   round: [
-    { lines: 3, slugs: ['print-r-530'] },
-    { lines: 5, slugs: ['print-r-540', 'חותמת-כיס-עגולה-קוטר-עד-40-ממ'] },
-    { lines: 7, slugs: ['print-r-550'] },
+    { lines: 3, models: [{ slug: 'print-r-530', short: 'PRINT R 530' }] },
+    {
+      lines: 5,
+      models: [
+        { slug: 'print-r-540', short: 'PRINT R 540' },
+        { slug: 'חותמת-כיס-עגולה-קוטר-עד-40-ממ', short: 'כיס עגולה' },
+      ],
+    },
+    { lines: 7, models: [{ slug: 'print-r-550', short: 'PRINT R 550' }] },
   ],
   square: [
-    { lines: 4, slugs: ['print-q-530'] },
-    { lines: 6, slugs: ['print-q-540'] },
+    { lines: 4, models: [{ slug: 'print-q-530', short: 'PRINT Q 530' }] },
+    { lines: 6, models: [{ slug: 'print-q-540', short: 'PRINT Q 540' }] },
   ],
 }
 
 // the w x h every slug of an entry has in the catalog - they must all agree
 function sizeOf(e: Entry): StampSize {
   let wh: { w: number; h: number } | null = null
-  for (const slug of e.slugs) {
+  for (const { slug } of e.models) {
     const p = getProduct(slug)
     if (!p) throw new Error(`stamp-bot bodies: product "${slug}" is not in the catalog`)
     const m = designerModelForProduct(p)
@@ -49,8 +71,8 @@ function sizeOf(e: Entry): StampSize {
 }
 
 const TABLE = Object.fromEntries(
-  (Object.keys(LIST) as Kind[]).map((k) => [k, LIST[k].map((e) => ({ size: sizeOf(e), slugs: e.slugs }))]),
-) as Record<Kind, { size: StampSize; slugs: string[] }[]>
+  (Object.keys(LIST) as Kind[]).map((k) => [k, LIST[k].map((e) => ({ size: sizeOf(e), models: e.models }))]),
+) as Record<Kind, { size: StampSize; models: Model[] }[]>
 
 // the sizes of every kind, small to big - KINDS takes them from here
 export const KIND_SIZES = Object.fromEntries((Object.keys(TABLE) as Kind[]).map((k) => [k, TABLE[k].map((t) => t.size)])) as Record<Kind, StampSize[]>
@@ -61,10 +83,10 @@ export function bodiesFor(kind: string, size: string): Body[] {
   const row = TABLE[kind as Kind].find((t) => `${t.size.w}x${t.size.h}` === size)
   if (!row) return []
   const out: Body[] = []
-  for (const slug of row.slugs) {
+  for (const { slug, short } of row.models) {
     const p = getProduct(slug)
     if (!p || p.hidden || typeof p.price !== 'number' || !(p.price > 0)) continue
-    out.push({ slug: p.slug, title: p.title, price: p.price })
+    out.push({ slug: p.slug, title: p.title, short, price: p.price })
   }
   return out.sort((a, b) => a.price - b.price) // stable: equal prices keep the list's order
 }

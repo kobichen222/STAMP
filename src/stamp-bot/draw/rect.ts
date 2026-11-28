@@ -343,10 +343,21 @@ function fits(laid: Laid, size: StampSize) {
   return laid.rows <= size.lines && laid.cap >= MIN_CAP - 0.01
 }
 
+// the look with the card's frame toggle laid over its own frame
+function designOf(form: Form, look: string): Design {
+  const d = DESIGNS[look] ?? DESIGNS.classic
+  return form.frame ? { ...d, frame: form.frame } : d
+}
+
+// whether a rect stamp drawn in this look has a frame
+export function rectFramed(form: Form, look: string) {
+  return designOf(form, look).frame !== 'none'
+}
+
 export const RECT: Shape = {
   looks: Object.entries(DESIGNS).map(([id, d]) => ({ id, label: d.label })),
   lay(form, blocks, size, look) {
-    const d = DESIGNS[look] ?? DESIGNS.classic
+    const d = designOf(form, look)
     const count = blocks.length + form.fields.length
     // a design made of two parts needs two parts: a head alone has nothing to set apart from
     if (count < 2 && (d.head === 'rule' || d.layout === 'split')) return null

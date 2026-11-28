@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { addToCart } from '@/lib/cart-store';
 import { formatPrice } from '@/lib/format';
-import { inkStamp, orderLines, splitStamps, stampTurn, warmStamps } from '@/stamp-bot/api';
+import { frameStamp, inkStamp, orderLines, splitStamps, stampTurn, warmStamps } from '@/stamp-bot/api';
 import type { LineAsk, Stamp } from '@/stamp-bot/card-types';
 import type { Msg } from '@/stamp-bot/form';
 import { cardTotal, pickBody, StampCard, type StampCardData } from './StampCard';
@@ -14,6 +14,7 @@ const PLACEHOLDER = 'לדוגמה: ישראל ישראלי, עורך דין, מ.
 const PLACEHOLDER_MORE = 'להוסיף עוד חותמת…';
 const UNAVAILABLE = 'הבוט לא זמין כרגע';
 const INK_FAILED = 'לא הצלחנו להחליף צבע, נסו שוב';
+const FRAME_FAILED = 'לא הצלחנו לשנות את המסגרת, נסו שוב';
 const ORDER_FAILED = 'לא הצלחנו להעביר לסל, נסו שוב';
 const MAX_RUNNING = 3;
 
@@ -189,13 +190,13 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
     enqueue(card.id, next);
   }
 
-  // Redraw the same stamp in another ink, without the model.
-  async function changeInk(card: StampCardData, ink: string) {
+  // Redraw the same stamp in another ink or frame, without the model.
+  async function redraw(card: StampCardData, draw: (form: string) => Promise<Stamp | null>, failed: string) {
     const cur = card.stamp;
-    if (!cur || card.busy || ink === cur.ink || inking.current.has(card.id)) return;
+    if (!cur || card.busy || inking.current.has(card.id)) return;
     inking.current.add(card.id);
     patch(card.id, { inking: true, err: '' });
-    const next: Stamp | null = await inkStamp(cur.form, ink).catch(() => null);
+    const next: Stamp | null = await draw(cur.form).catch(() => null);
     inking.current.delete(card.id);
     if (!alive.current.has(card.id)) return;
     setCards((cs) =>
@@ -204,9 +205,17 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
           ? c
           : next
             ? { ...c, inking: false, stamp: next, body: pickBody(next, c.body) }
-            : { ...c, inking: false, err: INK_FAILED },
+            : { ...c, inking: false, err: failed },
       ),
     );
+  }
+
+  function changeInk(card: StampCardData, ink: string) {
+    if (ink !== card.stamp?.ink) void redraw(card, (form) => inkStamp(form, ink), INK_FAILED);
+  }
+
+  function changeFrame(card: StampCardData, on: boolean) {
+    if (card.stamp?.frame != null && on !== card.stamp.frame) void redraw(card, (form) => frameStamp(form, on), FRAME_FAILED);
   }
 
   function remove(id: string) {
@@ -300,7 +309,8 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
                 inputId={`${idPrefix}-fix-${c.id}`}
                 onChange={(p) => patch(c.id, p)}
                 onFix={(t) => fix(c, t)}
-                onInk={(ink) => void changeInk(c, ink)}
+                onInk={(ink) => changeInk(c, ink)}
+                onFrame={(on) => changeFrame(c, on)}
                 onRemove={() => remove(c.id)}
               />
             ))}

@@ -78,6 +78,7 @@ export type Form = {
   font: Family
   size: string // 'auto' or one of the kind's sizes: '47x18'
   look: string // a look id of the kind (draw/), '' = the default one
+  frame: '' | 'none' | 'single' // rect only: the card's frame toggle over the look's own frame. '' = the look decides
   icon: string // '' = none, else a name of the icon library
   iconPos: IconPos
   iconSize: IconSize
@@ -177,6 +178,7 @@ export function cleanForm(raw: unknown): Form {
     font: pick(d.font ?? r.font, ['sans', 'serif'] as const, 'sans'),
     size: pick(d.size ?? r.size, ['auto', ...def.sizes.map(sizeName)], 'auto'),
     look: str(d.look ?? r.look, 20),
+    frame: kind === 'rect' ? pick(r.frame, ['', 'none', 'single'] as const, '') : '',
     icon,
     iconPos: pick(d.iconPos ?? r.iconPos, def.iconPos, def.iconPos[0]),
     iconSize: pick(d.iconSize ?? r.iconSize, ['s', 'm', 'l'] as const, 'm'),

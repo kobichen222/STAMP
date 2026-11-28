@@ -3,6 +3,7 @@
 import type { Stamp } from './card-types'
 import { bodiesFor } from './bodies'
 import { drawForm, type Drawn } from './draw'
+import { rectFramed } from './draw/rect'
 import { asks, badIds, cleanForm, getTemplate, slotValue, structure, type Block, type Form } from './form'
 import { INK_NAMES, type Ink } from './kinds'
 
@@ -57,7 +58,15 @@ export function toStamp(raw: unknown): Stamp {
   const form = cleanForm(raw)
   const d = drawForm(form)
   const why = whyNot(form, d)
-  return { svg: d.svg, form: JSON.stringify(form), kind: form.kind, size: d.size, ink: form.color, bodies: bodiesFor(form.kind, d.size), orderable: !why, why }
+  const frame = form.kind === 'rect' ? rectFramed(form, d.look) : null
+  return { svg: d.svg, form: JSON.stringify(form), kind: form.kind, size: d.size, ink: form.color, frame, bodies: bodiesFor(form.kind, d.size), orderable: !why, why }
+}
+
+// the same stamp with or without a single frame, no model call. rect only; null = a form that cannot be read
+export function reframed(form: unknown, on: unknown): Stamp | null {
+  const raw = rawForm(form)
+  if (!raw || typeof on !== 'boolean') return null
+  return toStamp({ ...raw, frame: on ? 'single' : 'none' })
 }
 
 // the same stamp in another ink, no model call. null = a form that cannot be read or an ink the site does not sell.

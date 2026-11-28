@@ -2,7 +2,7 @@
 
 import { ensureSettings } from '@/server/settings'
 import type { CardResult, CartLine, LineAsk, LinesResult, Stamp } from './card-types'
-import { MAX_FORM, reinked, toStamp } from './card'
+import { MAX_FORM, reframed, reinked, toStamp } from './card'
 import { botLine } from './order'
 import { SHAPES } from './draw'
 import { KIND_NAMES } from './kinds'
@@ -80,6 +80,12 @@ export async function stampTurn(msgs: Msg[]): Promise<CardResult> {
 export async function inkStamp(form: string, ink: string): Promise<Stamp | null> {
   await settings() // first, so the bodies carry the live prices
   return reinked(form, ink)
+}
+
+// the same stamp with (a single frame) or without a frame: no model call. null = the form cannot be read
+export async function frameStamp(form: string, on: boolean): Promise<Stamp | null> {
+  await settings()
+  return reframed(form, on)
 }
 
 const MAX_LINES = 50
