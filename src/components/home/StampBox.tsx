@@ -290,13 +290,12 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
           splitErr && <p className="mt-4 text-center text-sm font-medium text-ink">{splitErr}</p>
         )}
         {cards.length > 0 && (
-          <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+          <ul className="mt-4 grid gap-4">
             {cards.map((c) => (
               <StampCard
                 key={c.id}
                 card={c}
                 inputId={`${idPrefix}-fix-${c.id}`}
-                optsId={`${idPrefix}-opts-${c.id}`}
                 onChange={(p) => patch(c.id, p)}
                 onFix={(t) => fix(c, t)}
                 onInk={(ink) => void changeInk(c, ink)}

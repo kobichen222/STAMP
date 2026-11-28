@@ -1,5 +1,6 @@
 'use client';
 
+import { useId } from 'react';
 import { QuantityStepper } from '@/components/catalog/ProductConfigurator';
 import { INK_COLORS, type InkColor } from '@/designer/types';
 import { formatPrice } from '@/lib/format';
@@ -15,9 +16,8 @@ export const linePrice = (basePrice: number, quantity: number, ink: string) =>
 const INKS = Object.keys(INK_COLORS) as InkColor[];
 const LABEL = 'mb-1.5 text-xs font-bold text-ink';
 
-/** The card's "model and colour" panel: body, ink and quantity. */
+/** The card's model, ink and quantity choice, always shown beside a ready, orderable stamp (under it on phones). */
 export function StampOptions({
-  id,
   stamp,
   body,
   qty,
@@ -27,7 +27,6 @@ export function StampOptions({
   onQty,
   onInk,
 }: {
-  id: string;
   stamp: Stamp;
   body: string;
   qty: number;
@@ -37,11 +36,12 @@ export function StampOptions({
   onQty: (n: number) => void;
   onInk: (ink: string) => void;
 }) {
+  const id = useId(); // names the body radios and labels the ink group
   const { bodies, ink } = stamp;
   const unit = (price: number) => formatPrice(linePrice(price, 1, ink));
 
   return (
-    <div id={id} className="mt-3 space-y-3 rounded-xl border border-line p-3">
+    <div className="mt-3 space-y-3 rounded-xl border border-line p-3 sm:mt-0">
       {bodies.length === 1 ? (
         <div>
           <p className={LABEL}>דגם</p>

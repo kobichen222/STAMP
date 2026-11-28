@@ -18,7 +18,7 @@ export type StampCardData = {
   err: string;
   busy: boolean; // a bot turn is waiting in the queue or running
   inking: boolean; // an ink redraw is in flight
-  panel: 'fix' | 'opts' | null; // at most one panel open
+  panel: 'fix' | null; // the fix form is open; model, ink and quantity are always shown beside a ready stamp
 };
 
 /** Keep the chosen body when the new stamp still offers it, otherwise the cheapest one. */
@@ -39,7 +39,6 @@ function sizeLabel(s: Stamp) {
 export function StampCard({
   card,
   inputId,
-  optsId,
   onChange,
   onFix,
   onInk,
@@ -47,7 +46,6 @@ export function StampCard({
 }: {
   card: StampCardData;
   inputId: string;
-  optsId: string;
   onChange: (p: Partial<StampCardData>) => void;
   onFix: (text: string) => void;
   onInk: (ink: string) => void;
@@ -58,7 +56,6 @@ export function StampCard({
   // Focus only when the customer opened the row, not when it opened by itself after a question.
   const wantFocus = useRef(false);
   const fixOpen = card.panel === 'fix';
-  const optsOpen = card.panel === 'opts';
   const { stamp } = card;
   const body = stamp?.bodies.find((b) => b.slug === card.body);
   const total = cardTotal(card);
@@ -84,86 +81,108 @@ export function StampCard({
     onFix(t);
   }
 
+  // Desktop: two columns once the stamp is ready - the stamp, messages and actions on the right (first in RTL),
+  // the options on the left. Phones: one column; the stamp column dissolves (display: contents) so `order`
+  // puts the options under the messages, and the fix form and actions after them.
   return (
-    <li className="card flex flex-col p-4">
-      {(stamp || card.busy) && (
-        <div className="grid aspect-[3/2] place-items-center rounded-xl bg-[#fdfcf8] p-4">
-          {stamp ? (
-            <img
-              src={'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(stamp.svg)}
-              alt="החותמת שלכם"
-              className={`h-full w-full object-contain transition ${card.busy || card.inking ? 'opacity-40' : ''}`}
-            />
-          ) : (
-            <div className="h-full w-full animate-pulse rounded-lg bg-line/40" />
-          )}
-        </div>
-      )}
+    <li className={`card flex flex-col p-4 ${stamp && !blocked ? 'sm:grid sm:grid-cols-2 sm:items-start sm:gap-5' : ''}`}>
+      <div className="contents sm:flex sm:flex-col">
+        {(stamp || card.busy) && (
+          <div className="grid aspect-[3/2] place-items-center rounded-xl bg-[#fdfcf8] p-4">
+            {stamp ? (
+              <img
+                src={'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(stamp.svg)}
+                alt="החותמת שלכם"
+                className={`h-full w-full object-contain transition ${card.busy || card.inking ? 'opacity-40' : ''}`}
+              />
+            ) : (
+              <div className="h-full w-full animate-pulse rounded-lg bg-line/40" />
+            )}
+          </div>
+        )}
 
-      {stamp && blocked && <p className="mt-2 text-sm text-ink">{stamp.why}</p>}
+        {stamp && blocked && <p className="mt-2 text-sm text-ink">{stamp.why}</p>}
+
+        {stamp && !blocked && (
+          <p className="mt-2 text-sm text-ink">
+            {body ? (
+              <>
+                {body.title} · {sizeLabel(stamp)}
+                {card.qty > 1 && ` · ${card.qty} יח׳`} · <span className="font-semibold tabular-nums">{formatPrice(total)}</span>
+              </>
+            ) : (
+              <span className="text-muted">המידה הזו לא זמינה כרגע</span>
+            )}
+          </p>
+        )}
+
+        {card.busy ? (
+          <p className="mt-3 text-sm text-muted">מכינים את החותמת…</p>
+        ) : card.err ? (
+          <p className="mt-3 text-sm font-medium text-bad">{card.err}</p>
+        ) : (
+          reply && <p className="mt-3 text-sm text-muted">{reply}</p>
+        )}
+
+        {fixOpen && (
+          <form
+            className="order-2 mt-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              send();
+            }}
+          >
+            <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium text-ink">
+              מה לשנות בחותמת הזו?
+            </label>
+            <div className="flex items-end gap-2 rounded-xl border border-line bg-white p-1.5 ps-3 transition focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/10">
+              <textarea
+                ref={area}
+                id={inputId}
+                rows={1}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    e.currentTarget.form?.requestSubmit();
+                  }
+                }}
+                className="max-h-28 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-1 text-[15px] leading-6 outline-none focus-visible:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={card.busy || card.inking}
+                aria-label="שליחת התיקון"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue text-white transition hover:bg-blue-600 active:scale-[0.96] disabled:opacity-60"
+              >
+                <Icon name="arrowLeft" size={16} strokeWidth={2.25} />
+              </button>
+            </div>
+          </form>
+        )}
+
+        <div className="order-2 mt-auto flex gap-4 pt-1 text-sm font-medium">
+          <button
+            type="button"
+            aria-expanded={fixOpen}
+            aria-controls={fixOpen ? inputId : undefined}
+            onClick={() => {
+              wantFocus.current = !fixOpen;
+              onChange({ panel: fixOpen ? null : 'fix' });
+            }}
+            className="min-h-10 text-blue hover:underline"
+          >
+            תיקון
+          </button>
+          <button type="button" onClick={onRemove} className="min-h-10 text-muted hover:text-ink hover:underline">
+            הסרה
+          </button>
+        </div>
+      </div>
 
       {stamp && !blocked && (
-        <p className="mt-2 text-sm text-ink">
-          {body ? (
-            <>
-              {body.title} · {sizeLabel(stamp)}
-              {card.qty > 1 && ` · ${card.qty} יח׳`} · <span className="font-semibold tabular-nums">{formatPrice(total)}</span>
-            </>
-          ) : (
-            <span className="text-muted">המידה הזו לא זמינה כרגע</span>
-          )}
-        </p>
-      )}
-
-      {card.busy ? (
-        <p className="mt-3 text-sm text-muted">מכינים את החותמת…</p>
-      ) : card.err ? (
-        <p className="mt-3 text-sm font-medium text-bad">{card.err}</p>
-      ) : (
-        reply && <p className="mt-3 text-sm text-muted">{reply}</p>
-      )}
-
-      {fixOpen && (
-        <form
-          className="mt-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            send();
-          }}
-        >
-          <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium text-ink">
-            מה לשנות בחותמת הזו?
-          </label>
-          <div className="flex items-end gap-2 rounded-xl border border-line bg-white p-1.5 ps-3 transition focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/10">
-            <textarea
-              ref={area}
-              id={inputId}
-              rows={1}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  e.currentTarget.form?.requestSubmit();
-                }
-              }}
-              className="max-h-28 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-1 text-[15px] leading-6 outline-none focus-visible:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={card.busy || card.inking}
-              aria-label="שליחת התיקון"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue text-white transition hover:bg-blue-600 active:scale-[0.96] disabled:opacity-60"
-            >
-              <Icon name="arrowLeft" size={16} strokeWidth={2.25} />
-            </button>
-          </div>
-        </form>
-      )}
-
-      {optsOpen && stamp && !blocked && (
         <StampOptions
-          id={optsId}
           stamp={stamp}
           body={card.body}
           qty={card.qty}
@@ -174,36 +193,6 @@ export function StampCard({
           onInk={onInk}
         />
       )}
-
-      <div className="mt-auto flex gap-4 pt-1 text-sm font-medium">
-        <button
-          type="button"
-          aria-expanded={fixOpen}
-          aria-controls={fixOpen ? inputId : undefined}
-          onClick={() => {
-            wantFocus.current = !fixOpen;
-            onChange({ panel: fixOpen ? null : 'fix' });
-          }}
-          className="min-h-10 text-blue hover:underline"
-        >
-          תיקון
-        </button>
-        {stamp && !blocked && (
-          <button
-            type="button"
-            aria-expanded={optsOpen}
-            aria-controls={optsOpen ? optsId : undefined}
-            disabled={card.busy}
-            onClick={() => onChange({ panel: optsOpen ? null : 'opts' })}
-            className="min-h-10 text-blue hover:underline disabled:text-muted disabled:no-underline disabled:opacity-60"
-          >
-            דגם וצבע
-          </button>
-        )}
-        <button type="button" onClick={onRemove} className="min-h-10 text-muted hover:text-ink hover:underline">
-          הסרה
-        </button>
-      </div>
     </li>
   );
 }
