@@ -27,6 +27,8 @@ const NO_TOOLS = WIN ? '""' : ''
 
 // a timeout is not retried: the customer already waited the whole of it
 export class AskTimeout extends Error {}
+// the caller stopped waiting (the browser aborted the request): the process was killed, its replacement already boots
+export class AskAborted extends Error {}
 
 // the idle processes of every prompt in use. on globalThis so Next dev hot-reloads reuse the pools instead of leaking live processes
 const pools = ((globalThis as { __stampPools?: Map<string, Proc[]> }).__stampPools ??= new Map<string, Proc[]>())
@@ -141,14 +143,29 @@ export function warmPool(...systems: string[]) {
 }
 
 // one message to a process of its own, from that prompt's pool. never touches the other prompts' pools.
-// rejects on timeout (AskTimeout) or when the process dies
-export function ask(sys: string, text: string): Promise<string> {
+// rejects on timeout (AskTimeout), on `signal` (AskAborted) or when the process dies. a process is single use, so an
+// aborted call simply kills its own process - like a timeout - and the pool keeps only fresh ones
+export function ask(sys: string, text: string, signal?: AbortSignal): Promise<string> {
+  if (signal?.aborted) return Promise.reject(new AskAborted('aborted')) // no process is taken for a call already given up
   const proc = idleOf(sys).shift() ?? spawnProc(sys)
   fill(sys) // its replacement boots while this one answers
   clearTimeout(proc.idle)
   return new Promise((resolve, reject) => {
+    const onAbort = () => settle(proc, new AskAborted('aborted'))
+    const off = () => signal?.removeEventListener('abort', onAbort)
     const timer = setTimeout(() => settle(proc, new AskTimeout('timeout')), ASK_TIMEOUT)
-    proc.pending = { resolve, reject, timer }
+    proc.pending = {
+      resolve: (s) => {
+        off()
+        resolve(s)
+      },
+      reject: (e) => {
+        off()
+        reject(e)
+      },
+      timer,
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
     proc.child.stdin!.write(JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'text', text }] } }) + '\n')
     proc.child.stdin!.end() // one message and no more: the process answers it and exits
   })

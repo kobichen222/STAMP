@@ -23,6 +23,9 @@ export type CardResult = { err: true; msg: string } | { err: false; text: string
 // "continue to order": what the browser asks for per card, and the cart line the server builds for it.
 // the line is built on the server because only it can redraw the form and read the catalog
 export type LineAsk = { form: string; slug: string; ink: string; quantity: number }
+// the same ask with the id of the card it came from, so a stamp that cannot be ordered is marked on its own card
+export type OrderAsk = LineAsk & { id: string }
+export type CardMiss = { id: string; msg: string } // msg = why that card's stamp cannot be ordered
 
 export type CartLine = {
   productSlug: string
@@ -36,4 +39,5 @@ export type CartLine = {
   unitPrice: number // the product's list price; the cart prices the line through the site's engine
 }
 
-export type LinesResult = { err: true; msg: string } | { err: false; lines: CartLine[] }
+// cards: the stamps that did not go through, by card. msg: the line under the summary bar
+export type LinesResult = { err: true; msg: string; cards?: CardMiss[] } | { err: false; lines: CartLine[] }

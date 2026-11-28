@@ -19,6 +19,38 @@ const CHIP = 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 t
 const CHIP_ON = 'border-blue bg-blue/10 font-medium text-blue';
 const CHIP_OFF = 'border-line text-muted';
 
+const BONE = 'rounded-full bg-line/40';
+
+/**
+ * The options' place while the stamp is being made: the same rows at the same heights as one row of model chips,
+ * so the card does not jump when the stamp arrives. Pulses while the card's turn runs, still while it waits its turn.
+ */
+export function StampOptionsSkeleton({ pulse }: { pulse: boolean }) {
+  return (
+    <div aria-hidden="true" className={`mt-3 sm:mt-0 ${pulse ? 'motion-safe:animate-pulse' : ''}`}>
+      <div className="mb-1.5 flex h-[18px] items-center">
+        <div className={`h-2.5 w-8 ${BONE}`} />
+      </div>
+      <div className="flex gap-1.5">
+        {[64, 56, 72].map((w) => (
+          <div key={w} className={`h-[34px] ${BONE}`} style={{ width: w }} />
+        ))}
+      </div>
+      <div className="mt-3.5 mb-1.5 flex h-[18px] items-center">
+        <div className={`h-2.5 w-14 ${BONE}`} />
+      </div>
+      <div className="flex items-center">
+        <div className="flex gap-2.5">
+          {INKS.map((k) => (
+            <div key={k} className={`h-[26px] w-[26px] ${BONE}`} />
+          ))}
+        </div>
+        <div className={`ms-auto h-[42px] w-[122px] ${BONE}`} />
+      </div>
+    </div>
+  );
+}
+
 /** "+₪19" / "−₪19" against the selected model, '' when equal. */
 function diffText(d: number) {
   const r = Math.round(d * 100) / 100;

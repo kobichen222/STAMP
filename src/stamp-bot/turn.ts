@@ -27,7 +27,7 @@ const MAX_SAY = 600
 
 // what the customer is told. composed by code, the same words every time - only a 'chat' answer is the model's
 const SAY = {
-  none: 'אין לנו עדיין תבנית לסוג החותמת הזה, ולכן לא הכנתי אותה. הבקשה נרשמה אצלנו.',
+  none: 'אין לנו עדיין תבנית לסוג החותמת הזה, ולכן לא הכנתי אותה.',
   unread: 'לא הצלחתי להבין מה צריך להיות כתוב על החותמת. אפשר לכתוב שוב רק את מה שמופיע עליה?',
   change: 'עדכנתי את החותמת.',
   look: 'עדכנתי את המראה.',
