@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     });
     if (r === 'amount_mismatch') await alertPaymentFailed(o, f.Response, 'סכום שונה מההזמנה');
   } else {
-    await failPayment(o, 'tranzila', `Response ${f.Response ?? '?'}`);
+    await failPayment(o, 'tranzila', `Response ${f.Response ?? '?'}`, f.Response);
     await logPayment({ orderId: o.id, kind: 'notify', ok: false, code: f.Response, sum: Number(f.sum) || null, message: codeText(f.Response), fields: f });
     if (!o.notificationsSent.includes('payment.failed:staff')) {
       o.notificationsSent.push('payment.failed:staff');

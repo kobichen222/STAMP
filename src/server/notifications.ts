@@ -44,6 +44,32 @@ export function orderConfirmationSent(o: Pick<Order, 'notificationsSent' | 'cust
   return null;
 }
 
+/**
+ * First line of the studio's "new order" e-mail: how and when the customer gets the order (the time text
+ * stored on the order when it was placed), and the address on the next line for methods that have one.
+ */
+export function staffShippingHead(o: Pick<Order, 'shipping'>): string {
+  const a = o.shipping.address;
+  const address = a ? [a.street, a.city].filter(Boolean).join(', ') : '';
+  const how = [o.shipping.label, o.shipping.eta].filter(Boolean).join(' · ');
+  return `<p style="margin:0 0 4px;font-size:18px;font-weight:800;color:#0b1426">${escapeHtml(how)}</p>${address ? `<p style="margin:0 0 12px;font-size:15px;color:#1c2a44">${escapeHtml(address)}</p>` : ''}`;
+}
+
+/**
+ * A picture of each stamp for the studio (PNG from the order preview route – e-mail clients do not show SVG).
+ * Only items that already have their production files, and only with an absolute site address.
+ */
+function stampPictures(o: Order): string {
+  if (!/^https?:\/\//.test(SITE.url)) return '';
+  return o.items
+    .map((it, i) =>
+      it.files.some((f) => f.kind === 'master-svg')
+        ? `<p style="margin:12px 0;text-align:center"><img src="${SITE.url}/api/orders/${o.id}/preview/?t=${o.token}&amp;i=${i + 1}&amp;format=png" width="320" alt="${escapeHtml(`${it.productName} · ${it.size}`)}" style="max-width:100%;height:auto;border:1px solid #e3e8ef;border-radius:10px;background:#ffffff"></p>`
+        : '',
+    )
+    .join('');
+}
+
 /** Items + totals, for the order e-mails. */
 function orderSummary(o: Order): string {
   const items = emailDetails(o.items.map((i) => [`${i.productName} · ${i.size}${i.quantity > 1 ? ` × ${i.quantity}` : ''}`, money(i.total)]));
@@ -60,18 +86,21 @@ function build(event: NotifyEvent, o: Order): Built {
   const link = trackingLink(o);
   const name = first(o.customer.name);
   const admin = `${SITE.url}/admin/orders/${o.id}/`;
-  const staffSummary = (title: string, badge: string, tone: EmailParts['tone'] = 'blue'): EmailParts => ({
+  const staffSummary = (title: string, badge: string, tone: EmailParts['tone'] = 'blue', lead = '', pictures = ''): EmailParts => ({
     staff: true,
     badge,
     tone,
     title,
     body:
+      lead +
       emailDetails([
         ['לקוח', o.customer.name],
         ['טלפון', o.customer.phone],
         ['מייל', o.customer.email],
         ['חברה', o.customer.company],
-      ]) + orderSummary(o),
+      ]) +
+      pictures +
+      orderSummary(o),
     cta: { label: 'פתיחת ההזמנה בניהול', url: admin },
   });
   switch (event) {
@@ -94,7 +123,7 @@ function build(event: NotifyEvent, o: Order): Built {
           cta: { label: 'מעקב אחר ההזמנה', url: link },
           note: 'שאלה? פשוט השיבו למייל הזה או כתבו לנו בוואטסאפ.',
         },
-        staff: staffSummary(`הזמנה חדשה – ${o.customer.name}`, `🛒 הזמנה חדשה · ${money(o.total)}`, 'green'),
+        staff: staffSummary(`הזמנה חדשה – ${o.customer.name}`, `🛒 הזמנה חדשה · ${money(o.total)}`, 'green', staffShippingHead(o), stampPictures(o)),
       };
     case 'order.awaiting_approval':
       return {

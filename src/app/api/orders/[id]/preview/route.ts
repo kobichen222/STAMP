@@ -2,6 +2,9 @@ import { loadOrder, verifyToken } from '@/server/orders/service';
 import { getStore } from '@/server/store';
 import { INK_COLORS } from '@/designer/types';
 
+/** Width of the PNG proof (?format=png), sized for e-mail: clients there do not render SVG. */
+const PNG_WIDTH = 320;
+
 /** Customer proof image for an order item (?t=token&i=1), shown in the ink colour, never mirrored. */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,5 +19,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     .decode(file.data)
     .replace(/<metadata[\s\S]*?<\/metadata>/, '')
     .replace('fill="#000000"', `fill="${INK_COLORS[item.ink]?.hex ?? '#000'}"`);
+  if (url.searchParams.get('format') === 'png') {
+    // Loaded only here (native module), so the SVG proof never depends on it.
+    const { Resvg } = await import('@resvg/resvg-js');
+    const png = new Resvg(svg, { fitTo: { mode: 'width', value: PNG_WIDTH }, background: 'white' }).render().asPng();
+    return new Response(new Uint8Array(png), { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=300' } });
+  }
   return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'private, max-age=300', 'Content-Security-Policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'" } });
 }

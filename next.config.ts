@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   poweredByHeader: false,
   images: { unoptimized: true },
+  // resvg (PNG proof for the studio's e-mail, /api/orders/[id]/preview?format=png) loads a native binary: not bundled.
+  serverExternalPackages: ['@resvg/resvg-js'],
   // The server-side production engine reads the stamp fonts from disk: the designer's (public/fonts/stamp) and,
   // for a stamp-bot line, the bot's drawer (src/stamp-bot/fonts, read through process.cwd()). Every route that
   // renders a stamp needs them: order creation, payment confirmation, file export / print / regeneration in the

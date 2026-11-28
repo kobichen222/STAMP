@@ -30,7 +30,7 @@ async function handle(req: Request) {
   const failed = url.searchParams.get('result') === 'fail' || (f.Response !== undefined && f.Response !== '000');
   await logPayment({ orderId: o.id, kind: 'return', ok: !failed, code: f.Response, sum: Number(f.sum) || null, message: failed ? `הלקוח חזר מדף התשלום בלי תשלום · ${codeText(f.Response)}` : 'הלקוח חזר מדף התשלום אחרי תשלום', fields: f });
   if (failed) {
-    await failPayment(o, 'customer', `חזרה מדף התשלום${f.Response ? ` (Response ${f.Response})` : ''}`);
+    await failPayment(o, 'customer', `חזרה מדף התשלום${f.Response ? ` (Response ${f.Response})` : ''}`, f.Response);
     if (o.paymentStatus !== 'paid' && !o.notificationsSent.includes('payment.failed:staff')) {
       o.notificationsSent.push('payment.failed:staff');
       await saveOrder(o);

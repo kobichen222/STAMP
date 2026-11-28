@@ -6,12 +6,13 @@ import { INK_COLORS } from '@/designer/types';
 import { SITE } from '@/lib/config';
 import { formatDate, formatPrice } from '@/lib/format';
 import { loadOrder, verifyToken } from '@/server/orders/service';
-import { statusLabel, STATUS_LABEL, TIMELINE } from '@/server/orders/types';
+import { orderSteps, statusLabel, STATUS_LABEL, STOPPED_STATUSES } from '@/server/orders/types';
 import { headers } from 'next/headers';
 import { getPaymentProvider } from '@/server/payments';
 import { orderConfirmationSent, trackingLink } from '@/server/notifications';
+import { declineReason } from '@/server/payment-log';
 import { toChatId } from '@/server/whatsapp';
-import { ApprovalBox, OrderConfirmation, PaymentWatcher, PayNow, PrintButton } from './OrderActions';
+import { ApprovalBox, CopyOrderId, OrderConfirmation, PaymentWatcher, PayNow, PrintButton } from './OrderActions';
 import { PurchaseEvent } from '@/components/analytics/PurchaseEvent';
 
 export const metadata: Metadata = { title: 'ההזמנה שלי', robots: { index: false } };
@@ -26,12 +27,17 @@ export default async function OrderPage({ params, searchParams }: Props) {
   if (!verifyToken(o, t ?? null)) notFound();
   const order = o!;
   const ready = order.items.every((i) => i.preflight.ready);
-  const failed = ['PAYMENT_FAILED', 'PRODUCTION_FILE_ERROR', 'CANCELLED'].includes(order.status);
+  const failed = STOPPED_STATUSES.includes(order.status);
   const card = order.paymentMethod !== 'manual';
   const unpaid = card && order.paymentStatus !== 'paid' && ['PAYMENT_PENDING', 'PAYMENT_FAILED'].includes(order.status);
   // Back from a successful payment (new=1) while the bank's confirmation is still on its way: no "pay" button,
   // for as long as it takes (PaymentWatcher tells the customer not to pay again when it is slow).
   const verifying = unpaid && isNew && order.status === 'PAYMENT_PENDING';
+  // Why the last card was declined: from the code stored on the order (not the ?pay=failed parameter), so a reload says the same.
+  const reason = order.status === 'PAYMENT_FAILED' ? declineReason(order.lastPaymentCode) : null;
+  const steps = orderSteps(order);
+  // Pickup details while there is still something to pick up (not stopped, refunded, unpaid by card or already collected).
+  const pickup = order.shipping.method === 'pickup' && !failed && !unpaid && !['REFUNDED', 'PARTIALLY_REFUNDED'].includes(order.status) && !steps[steps.length - 1].reached;
   const link = trackingLink(order);
   const mobile = toChatId(order.customer.phone)?.replace(/@c\.us$/, '');
   const selfWa = mobile?.startsWith('9725') ? `https://wa.me/${mobile}?text=${encodeURIComponent(`ההזמנה שלי ב-${SITE.name}: ${order.id}\n${link}`)}` : undefined;
@@ -57,7 +63,8 @@ export default async function OrderPage({ params, searchParams }: Props) {
       )}
       {unpaid && !verifying && (
         <div role={pay === 'failed' ? 'alert' : undefined} className={`mb-6 rounded-2xl border p-5 text-center ${pay === 'failed' || order.status === 'PAYMENT_FAILED' ? 'border-bad/30 bg-bad/5' : 'border-blue/30 bg-blue-50'}`}>
-          <p className="font-bold">{pay === 'failed' || order.status === 'PAYMENT_FAILED' ? 'התשלום לא הושלם' : 'ההזמנה ממתינה לתשלום'}</p>
+          <p className="font-bold">{reason ? 'התשלום לא עבר. לא חויבתם.' : pay === 'failed' || order.status === 'PAYMENT_FAILED' ? 'התשלום לא הושלם' : 'ההזמנה ממתינה לתשלום'}</p>
+          {reason && <p className="mt-1 text-sm">{reason}</p>}
           <p className="mt-1 text-sm text-muted">ההזמנה והעיצוב שמורים. אפשר לנסות שוב בכרטיס אחר, או להתקשר אלינו {SITE.phone}.</p>
           {payUrl && <PayNow url={payUrl} />}
         </div>
@@ -83,22 +90,45 @@ export default async function OrderPage({ params, searchParams }: Props) {
           </div>
           <span className={`rounded-full px-3 py-1.5 text-sm font-semibold ${failed ? 'bg-bad/10 text-bad' : 'bg-blue-50 text-blue'}`}>{statusLabel(order.status, order.shipping.method)}</span>
         </div>
+        {pickup && (
+          <div className="mt-4 rounded-xl border border-blue/30 bg-blue-50 p-4 text-sm">
+            <p className="font-semibold">איסוף עצמי</p>
+            <p className="mt-1 flex items-center gap-2">
+              <Icon name="pin" size={16} className="shrink-0" /> {SITE.address}
+            </p>
+            <p className="mt-1 flex items-center gap-2">
+              <Icon name="clock" size={16} className="shrink-0" /> {SITE.hours}
+            </p>
+            <a href={SITE.waze} target="_blank" rel="noopener" className="mt-2 inline-block text-blue underline">
+              ניווט בווייז
+            </a>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <strong className="text-base tracking-wide" dir="ltr">
+                {order.id}
+              </strong>
+              <CopyOrderId id={order.id} />
+            </div>
+            <p className="mt-2 text-muted">באיסוף אמרו את מספר ההזמנה. אפשר גם להראות את הדף הזה.</p>
+          </div>
+        )}
         {ready && !failed && (
           <p className="mt-4 flex items-center gap-2 rounded-xl bg-ok/10 px-4 py-3 text-sm font-medium text-ok">
             <Icon name="check" size={18} /> הקובץ עבר בדיקה ומוכן לייצור
           </p>
         )}
 
-        <ol className="mt-6 grid grid-cols-6 gap-1 print:hidden" aria-label="סטטוס ההזמנה">
-          {TIMELINE.map((s) => {
-            const done = s.reached.includes(order.status) && !failed;
-            return (
-              <li key={s.key} className="text-center">
-                <span className={`mx-auto block h-1.5 rounded-full ${done ? 'bg-blue' : 'bg-line'}`} />
-                <span className={`mt-2 block text-[11px] leading-4 ${done ? 'font-medium text-ink' : 'text-muted'}`}>{s.label}</span>
-              </li>
-            );
-          })}
+        <ol className="mt-6 grid grid-cols-4 gap-1 print:hidden" aria-label="סטטוס ההזמנה">
+          {steps.map((s) => (
+            <li key={s.key} className="text-center">
+              <span className={`mx-auto block h-1.5 rounded-full ${s.reached ? 'bg-blue' : 'bg-line'}`} />
+              <span className={`mt-2 block text-[11px] leading-4 ${s.reached ? 'font-medium text-ink' : 'text-muted'}`}>{s.label}</span>
+              {s.time && (
+                <span className="block text-[11px] leading-4 text-muted" dir="ltr">
+                  {s.time}
+                </span>
+              )}
+            </li>
+          ))}
         </ol>
 
         {order.status === 'AWAITING_APPROVAL' && <ApprovalBox id={order.id} token={order.token} />}

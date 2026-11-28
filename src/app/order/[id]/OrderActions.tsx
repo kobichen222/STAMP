@@ -173,6 +173,29 @@ function SaveLink({ link, selfWa }: { link: string; selfWa?: string }) {
   );
 }
 
+/** Copies the order number for a pickup customer (same clipboard pattern as SaveLink). */
+export function CopyOrderId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopied(true);
+    } catch {
+      /* no clipboard: the number is shown right next to the button */
+    }
+  };
+  return (
+    <button type="button" className="btn-outline btn-sm" onClick={copy}>
+      {copied ? 'הועתק' : 'העתקת מספר ההזמנה'}
+    </button>
+  );
+}
+
 /** "Pay now" on the order page – opens the secure card form in place. */
 export function PayNow({ url }: { url: string }) {
   const [open, setOpen] = useState(false);

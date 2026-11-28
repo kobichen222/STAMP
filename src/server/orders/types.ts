@@ -65,7 +65,7 @@ export const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 export const canTransition = (from: OrderStatus, to: OrderStatus) => TRANSITIONS[from].includes(to);
 
-/** Customer-facing timeline (spec §156). */
+/** Staff timeline (admin order page). The customer's order page uses orderSteps() below. */
 export const TIMELINE: { key: string; label: string; reached: OrderStatus[] }[] = [
   { key: 'received', label: 'הזמנה התקבלה', reached: [...ORDER_STATUSES] },
   { key: 'approved', label: 'העיצוב אושר', reached: ['READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'QUALITY_CHECK', 'READY_FOR_SHIPPING', 'SHIPPED', 'DELIVERED'] },
@@ -74,6 +74,70 @@ export const TIMELINE: { key: string; label: string; reached: OrderStatus[] }[] 
   { key: 'shipped', label: 'נשלח', reached: ['SHIPPED', 'DELIVERED'] },
   { key: 'delivered', label: 'נמסר', reached: ['DELIVERED'] },
 ];
+
+/** Statuses where the order does not move forward: the customer's progress line shows no step reached. */
+export const STOPPED_STATUSES: OrderStatus[] = ['PAYMENT_FAILED', 'PRODUCTION_FILE_ERROR', 'CANCELLED'];
+
+// The statuses that count as having reached each stage (the same sets the six-step TIMELINE uses).
+const PRODUCTION_ON: OrderStatus[] = ['IN_PRODUCTION', 'QUALITY_CHECK', 'READY_FOR_SHIPPING', 'SHIPPED', 'DELIVERED'];
+const READY_ON: OrderStatus[] = ['READY_FOR_SHIPPING', 'SHIPPED', 'DELIVERED'];
+const SHIPPED_ON: OrderStatus[] = ['SHIPPED', 'DELIVERED'];
+const DELIVERED_ON: OrderStatus[] = ['DELIVERED'];
+
+/** `reached: null` = reached by every status (the order exists). */
+type StepPlan = { key: string; label: string; reached: OrderStatus[] | null };
+const RECEIVED: StepPlan = { key: 'received', label: 'התקבלה', reached: null };
+const PRODUCTION: StepPlan = { key: 'production', label: 'בייצור', reached: PRODUCTION_ON };
+
+const STEP_PLANS: Record<'pickup' | 'locker' | 'courier', StepPlan[]> = {
+  pickup: [RECEIVED, PRODUCTION, { key: 'ready', label: 'מוכנה לאיסוף', reached: READY_ON }, { key: 'done', label: 'נאספה', reached: DELIVERED_ON }],
+  locker: [RECEIVED, PRODUCTION, { key: 'shipped', label: 'נשלחה לנקודת המסירה', reached: SHIPPED_ON }, { key: 'done', label: 'נאספה', reached: DELIVERED_ON }],
+  courier: [RECEIVED, PRODUCTION, { key: 'shipped', label: 'יצאה אליכם', reached: SHIPPED_ON }, { key: 'done', label: 'נמסרה', reached: DELIVERED_ON }],
+};
+
+/** Which progress line a shipping method gets: every method that is not pickup or a locker is a courier. */
+const stepFamily = (method?: string): keyof typeof STEP_PLANS => (method === 'pickup' ? 'pickup' : method === 'locker' ? 'locker' : 'courier');
+
+export interface OrderStep {
+  key: string;
+  label: string;
+  reached: boolean;
+  /** When the step was reached: "HH:MM" today (Israel time), else "D.M HH:MM". Absent when not reached or not recorded. */
+  time?: string;
+}
+
+/**
+ * The customer's progress line: four steps that fit the delivery method, which of them the order reached
+ * (from its status) and when (creation time for the first step, the status history for the rest).
+ */
+export function orderSteps(o: { status: OrderStatus; shipping: { method?: string }; createdAt?: string; audit?: AuditEntry[] }, now = new Date()): OrderStep[] {
+  const stopped = STOPPED_STATUSES.includes(o.status);
+  return STEP_PLANS[stepFamily(o.shipping.method)].map((s) => {
+    const reached = !stopped && (!s.reached || s.reached.includes(o.status));
+    const at = !reached ? undefined : s.reached ? enteredAt(o.audit ?? [], s.reached) : o.createdAt;
+    return { key: s.key, label: s.label, reached, time: at ? stepTime(at, now) : undefined };
+  });
+}
+
+/** The last time the status history moved the order into `set` from a status outside it. */
+function enteredAt(audit: AuditEntry[], set: OrderStatus[]): string | undefined {
+  let at: string | undefined;
+  for (const e of audit) if (e.action === 'status' && e.to && set.includes(e.to) && !(e.from && set.includes(e.from))) at = e.at;
+  return at;
+}
+
+const IL_TIME = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const ilParts = (d: Date) => Object.fromEntries(IL_TIME.formatToParts(d).map((p) => [p.type, p.value]));
+
+/** "HH:MM" when `iso` is today in Israel, otherwise "D.M HH:MM". */
+export function stepTime(iso: string, now = new Date()): string | undefined {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return undefined;
+  const a = ilParts(d);
+  const b = ilParts(now);
+  const hm = `${a.hour}:${a.minute}`;
+  return a.year === b.year && a.month === b.month && a.day === b.day ? hm : `${Number(a.day)}.${Number(a.month)} ${hm}`;
+}
 
 export interface Customer {
   name: string;
@@ -88,6 +152,8 @@ export interface Shipping {
   method: string; // pickup | courier | express | rush | locker
   label: string;
   price: number;
+  /** The method's time text (its `eta`) as promised when the order was placed; later rule edits do not change it. */
+  eta?: string;
   address?: { street: string; city: string; zip?: string; notes?: string };
   carrier?: string;
   /** ZigZag customer card to send the shipment under. */
@@ -155,6 +221,8 @@ export interface Order {
   paymentStatus: 'unpaid' | 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
   paymentMethod: string; // manual | provider id
   paymentRef?: string;
+  /** Tranzila response code of the last declined card payment (never set for an approved payment with a wrong amount). */
+  lastPaymentCode?: string;
   customer: Customer;
   shipping: Shipping;
   items: OrderItem[];

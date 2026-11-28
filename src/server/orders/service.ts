@@ -262,6 +262,7 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
       method: method.id,
       label: method.label,
       price: cart.shipping,
+      eta: method.eta || undefined,
       address: need === 'none' ? undefined : input.shipping.address,
       carrier: method.carrierAccount ? 'זיג זג' : undefined,
       carrierAccount: method.carrierAccount,
@@ -327,6 +328,9 @@ export async function announce(order: Order) {
 export async function confirmPayment(o: Order, payment: { ref?: string; amount: number; actor: string }): Promise<'paid' | 'already' | 'amount_mismatch'> {
   if (o.paymentStatus === 'paid') return 'already';
   if (Math.abs(payment.amount - o.total) > 0.009) {
+    // Approved by the card company with another amount: the customer may have been charged, so no earlier
+    // decline reason ("not charged") may stay on the order page.
+    delete o.lastPaymentCode;
     audit(o, payment.actor, 'payment_rejected', { note: `סכום ${payment.amount} במקום ${o.total}` });
     await saveOrder(o);
     return 'amount_mismatch';
@@ -365,9 +369,16 @@ export async function autoShip(o: Order, actor: string) {
   }
 }
 
-/** A declined / cancelled card payment – the customer can try again from the order page. */
-export async function failPayment(o: Order, actor: string, note?: string) {
+/**
+ * A declined / cancelled card payment – the customer can try again from the order page. `code` = Tranzila's
+ * response code, kept on the order so the page can say why. The same decline can be reported twice (server
+ * notification and the customer's return), sometimes once without a code: a report without a code keeps the
+ * code of the same failure, and only clears a code left from an earlier attempt.
+ */
+export async function failPayment(o: Order, actor: string, note?: string, code?: string) {
   if (o.paymentStatus === 'paid') return;
+  if (code) o.lastPaymentCode = code;
+  else if (o.status !== 'PAYMENT_FAILED') delete o.lastPaymentCode;
   o.paymentStatus = 'failed';
   transition(o, 'PAYMENT_FAILED', actor, note);
   await saveOrder(o);
@@ -516,7 +527,8 @@ export async function applyOrderEdit(o: Order, input: EditOrderInput, actor: str
   const nextAddress = need === 'none' || !addr ? undefined : { street: addr.street, city: addr.city, zip: opt(addr.zip), notes: opt(addr.notes) };
   if (method.id !== o.shipping.method) changes.push(`משלוח: ${o.shipping.label} → ${method.label}`);
   else if (JSON.stringify(nextAddress ?? null) !== JSON.stringify(o.shipping.address ?? null)) changes.push('כתובת');
-  o.shipping = { ...o.shipping, method: method.id, label: method.label, address: nextAddress, carrierAccount: method.carrierAccount, carrier: method.carrierAccount ? 'זיג זג' : o.shipping.carrier };
+  // The time text follows the method, so a changed method never keeps the old method's promise.
+  o.shipping = { ...o.shipping, method: method.id, label: method.label, eta: method.eta, address: nextAddress, carrierAccount: method.carrierAccount, carrier: method.carrierAccount ? 'זיג זג' : o.shipping.carrier };
 
   // Items: keep / remove / update quantity, ink and extras.
   const kept: OrderItem[] = [];

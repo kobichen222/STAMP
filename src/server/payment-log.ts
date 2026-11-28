@@ -34,6 +34,39 @@ const CODES: Record<string, string> = {
 };
 export const codeText = (code?: string | null) => (!code ? 'ללא קוד' : (CODES[code] ?? `קוד ${code}`));
 
+/**
+ * Why a declined card did not go through, in the customer's words – only for codes whose meaning the
+ * table above states (refused / expired / wrong details). Any other code: null, and the page says nothing about why.
+ */
+const DECLINE_REASON: Record<string, 'refused' | 'expired' | 'details'> = {
+  '001': 'refused', // blocked card
+  '002': 'refused', // stolen card
+  '003': 'refused', // call the card company
+  '004': 'refused', // refused by the card company
+  '005': 'refused', // forged card
+  '107': 'refused', // amount above the card's limit
+  // 111 (no authorisation for the transaction) can be the terminal's side, not the card's: no reason is shown.
+  '036': 'expired',
+  '006': 'details', // CVV or ID number wrong
+  '039': 'details', // wrong card number
+  '057': 'details', // ID number missing
+  '058': 'details', // CVV missing
+  '061': 'details', // card number missing
+};
+
+export function declineReason(code?: string | null): string | null {
+  switch (code ? DECLINE_REASON[code] : undefined) {
+    case 'refused':
+      return `הכרטיס סורב על ידי חברת האשראי. נסו כרטיס אחר, או התקשרו אלינו: ${SITE.phone}`;
+    case 'expired':
+      return 'פג תוקף הכרטיס. בדקו את התאריך, או נסו כרטיס אחר.';
+    case 'details':
+      return 'פרטי הכרטיס לא נקלטו כראוי. בדקו מספר כרטיס, תוקף וקוד אבטחה.';
+    default:
+      return null;
+  }
+}
+
 export interface PaymentLogRow {
   id: number;
   at: string;
