@@ -305,17 +305,19 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
           </ul>
         )}
         {priced.length > 0 && (
-          <div className="mt-4 flex flex-col items-center gap-3 text-center">
-            <p className="text-sm text-ink">
-              {count === 1 ? 'חותמת אחת' : `${count} חותמות`} · סה״כ <span className="font-semibold tabular-nums">{formatPrice(sum)}</span>
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-              <button type="button" disabled={ordering || settling} onClick={() => void order()} className="btn-primary">
+          <div className="mt-4">
+            {/* One bar: the count and sum on the right, the order button on the left. */}
+            <div className="card flex items-center justify-between gap-3 py-3 ps-5 pe-3 shadow-[0_8px_24px_-12px_rgba(11,20,38,.18)]">
+              <p className="text-[15px] text-ink">
+                <span className="font-bold">{count === 1 ? 'חותמת אחת' : `${count} חותמות`}</span> ·{' '}
+                <span className="tabular-nums">{formatPrice(sum)}</span>
+              </p>
+              <button type="button" disabled={ordering || settling} onClick={() => void order()} className="btn-primary shrink-0">
                 {ordering ? 'מעבירים לסל…' : 'המשך להזמנה'}
               </button>
-              {left > 0 && <p className="text-sm text-muted">{left === 1 ? 'חותמת אחת לא נכנסת להזמנה' : `${left} חותמות לא נכנסות להזמנה`}</p>}
             </div>
-            {orderErr && <p className="text-sm font-medium text-bad">{orderErr}</p>}
+            {left > 0 && <p className="mt-2 text-center text-sm text-muted">{left === 1 ? 'חותמת אחת לא נכנסת להזמנה' : `${left} חותמות לא נכנסות להזמנה`}</p>}
+            {orderErr && <p className="mt-2 text-center text-sm font-medium text-bad">{orderErr}</p>}
           </div>
         )}
       </div>
