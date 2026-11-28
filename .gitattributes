@@ -1,0 +1,4 @@
+# The golden production files are compared byte for byte with what the designer
+# engine writes (tests/golden.test.ts), and the engine writes LF. Without this
+# rule Git for Windows checks them out with CRLF and all six cases fail.
+tests/golden/*.svg text eol=lf
