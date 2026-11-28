@@ -1,8 +1,9 @@
 import { sampleBox } from '@/stamp-bot/samples';
 
-// The zone the imprint may take beside the 84px body photo: 140 + 22 gap + 84 = 246, the card's inner width.
-const ZONE_W = 140;
-const ZONE_H = 118;
+// The zone the imprint may take beside the 96px body photo: 160 + 26 gap + 96 = 282, inside the 320px card's inner
+// width (286). ZONE_H is the whole height of the card's top row, so the tallest imprint fills it. Exported for the test.
+export const ZONE_W = 160;
+export const ZONE_H = 134;
 const POWER = 0.24;
 
 /**

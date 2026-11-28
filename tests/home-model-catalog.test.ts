@@ -7,7 +7,7 @@ import { BODY_IDS, bodyById, catalogRows } from '@/stamp-bot/bodies';
 import { cleanForm } from '@/stamp-bot/form';
 import { drawForm } from '@/stamp-bot/draw';
 import { SAMPLES } from '@/stamp-bot/samples';
-import { imprintSize } from '@/components/home/imprint-size';
+import { imprintSize, ZONE_H, ZONE_W } from '@/components/home/imprint-size';
 
 describe('home model catalog', () => {
   it('lists the 12 bodies with unique ids, and a sample for exactly those', () => {
@@ -49,8 +49,8 @@ describe('home model catalog', () => {
         expect(sized[i].s.height).toBeGreaterThanOrEqual(sized[i - 1].s.height);
       }
       for (const { s } of sized) {
-        expect(s.width).toBeLessThanOrEqual(140);
-        expect(s.height).toBeLessThanOrEqual(118);
+        expect(s.width).toBeLessThanOrEqual(ZONE_W);
+        expect(s.height).toBeLessThanOrEqual(ZONE_H);
       }
     }
   });

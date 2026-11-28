@@ -70,7 +70,7 @@ export default async function HomePage() {
             </Link>
           </div>
           {models.length > 0 && (
-            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-[repeat(auto-fill,280px)] sm:justify-center">
+            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-[repeat(auto-fill,320px)] sm:justify-center">
               {models.map((m) => (
                 <ModelCard key={m.id} m={m} maxW={maxW} maxH={maxH} />
               ))}
