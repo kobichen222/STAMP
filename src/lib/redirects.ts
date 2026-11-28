@@ -10,6 +10,19 @@ interface LegacyIndex {
 }
 const index = legacy as LegacyIndex;
 
+/**
+ * Products no longer sold (the pocket stamp line). Every URL they had, on the WordPress site and on this one, goes
+ * to the catalogue instead of a 404; scripts/import-wordpress.mjs skips them so a re-import does not bring them back.
+ */
+export const RETIRED_PRODUCTS = ['חותמת-כיס-20', 'חותמת-כיס-30', 'חותמת-כיס-עגולה-קוטר-עד-40-ממ', 'חותמת-לעורך-דין-כיס-20', 'חותמת-לעורך-דין-כיס-30'];
+const RETIRED_PATHS = [
+  // the pocket category: WordPress page, WooCommerce category, landing page on this site
+  '/חותמת-כיס/',
+  '/product-category/חותמת-כיס/',
+  '/stamps/pocket/',
+  ...RETIRED_PRODUCTS.flatMap((s) => [`/product/${s}/`, `/stamp/${s}/`, `/designer/${s}/`]),
+];
+
 /** Legacy WordPress path → new path, for 301 redirects. */
 export function legacyRedirects(): { from: string; to: string }[] {
   const out: { from: string; to: string }[] = [];
@@ -39,7 +52,9 @@ export function legacyRedirects(): { from: string; to: string }[] {
     { from: '/thank-you-lead/', to: '/contact/' },
   );
   for (const r of index.redirects) if (r.source) out.push({ from: r.source, to: r.destination.replace(/^\/product\//, '/stamp/') });
-  return out.filter((r) => r.from !== r.to);
+  // Retired paths win over any rule above (the WooCommerce category would otherwise land on another category).
+  const retired = new Set(RETIRED_PATHS);
+  return [...out.filter((r) => !retired.has(r.from)), ...RETIRED_PATHS.map((from) => ({ from, to: '/stamps/' }))].filter((r) => r.from !== r.to);
 }
 
 const pathMap = new Map<string, string>();

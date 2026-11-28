@@ -10,9 +10,9 @@ import { SAMPLES } from '@/stamp-bot/samples';
 import { imprintSize } from '@/components/home/imprint-size';
 
 describe('home model catalog', () => {
-  it('lists the 15 bodies with unique ids, and a sample for exactly those', () => {
-    expect(BODY_IDS).toHaveLength(15);
-    expect(new Set(BODY_IDS).size).toBe(15);
+  it('lists the 12 bodies with unique ids, and a sample for exactly those', () => {
+    expect(BODY_IDS).toHaveLength(12);
+    expect(new Set(BODY_IDS).size).toBe(12);
     expect(Object.keys(SAMPLES).sort()).toEqual([...BODY_IDS].sort());
   });
 

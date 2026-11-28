@@ -27,7 +27,7 @@ describe('models', () => {
   });
   it('derives a model for every product with a size', () => {
     const models = site.products.map((p) => designerModelForProduct(p as never)).filter(Boolean);
-    expect(models.length).toBeGreaterThan(50);
+    expect(models.length).toBeGreaterThan(45);
     const r540 = designerModelForProduct(site.products.find((p) => p.slug === 'print-r-540') as never)!;
     expect(r540).toMatchObject({ shape: 'round', width: 40, height: 40 });
     const pen = designerModelForProduct(site.products.find((p) => p.title === 'חותמת עט כסף קלאסי') as never)!;

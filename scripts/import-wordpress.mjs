@@ -231,6 +231,10 @@ function seoOf(it, fallbackTitle) {
 }
 
 const HIDDEN_PAGE_SLUGS = new Set(['cart', 'checkout', 'my-account', 'shop']);
+// No longer sold (the pocket stamp line, its category page 21 and the menu links to it): not imported, so a re-import
+// does not bring them back. Their ?p= links are still recorded; src/lib/redirects.ts sends every such URL to /stamps/.
+const SKIP_IDS = new Set([21, 911, 914, 1780, 1961, 1971]);
+const skippedPaths = new Set();
 
 const pages = [];
 const products = [];
@@ -249,6 +253,12 @@ for (const it of items) {
     const isHome = id === 13;
     if (HIDDEN_PAGE_SLUGS.has(slug)) continue;
     const pathName = isHome ? '/' : `/${slug}/`;
+    redirects.push({ query: { page_id: String(id) }, destination: pathName });
+    redirects.push({ query: { p: String(id) }, destination: pathName });
+    if (SKIP_IDS.has(id)) {
+      skippedPaths.add(pathName);
+      continue;
+    }
     pages.push({
       id,
       slug: isHome ? '' : slug,
@@ -260,8 +270,6 @@ for (const it of items) {
       modified: text(it['wp:post_modified_gmt']),
       noindex: ['thank-you', 'thank-you-lead'].includes(slug),
     });
-    redirects.push({ query: { page_id: String(id) }, destination: pathName });
-    redirects.push({ query: { p: String(id) }, destination: pathName });
   } else {
     const cats = (it.category || [])
       .filter((c) => c['@domain'] === 'product_cat')
@@ -272,6 +280,10 @@ for (const it of items) {
       .filter((c) => c['@domain'] === 'product_tag')
       .map((c) => decode(c['@nicename']));
     const pathName = `/product/${slug}/`;
+    redirects.push({ query: { p: String(id) }, destination: pathName });
+    redirects.push({ query: { post_type: 'product', p: String(id) }, destination: pathName });
+    if (m._wp_old_slug) redirects.push({ source: `/product/${decode(m._wp_old_slug)}/`, destination: pathName });
+    if (SKIP_IDS.has(id)) continue;
     const shortDescription = cleanHtml(text(it['excerpt:encoded']).replace(/\n/g, '<br>'));
     let blocks = [];
     if (m._elementor_edit_mode === 'builder' && m._elementor_data) blocks = elementsToBlocks(JSON.parse(m._elementor_data));
@@ -301,9 +313,6 @@ for (const it of items) {
       menuOrder: Number(text(it['wp:menu_order']) || 0),
       modified: text(it['wp:post_modified_gmt']),
     });
-    redirects.push({ query: { p: String(id) }, destination: pathName });
-    redirects.push({ query: { post_type: 'product', p: String(id) }, destination: pathName });
-    if (m._wp_old_slug) redirects.push({ source: `/product/${decode(m._wp_old_slug)}/`, destination: pathName });
   }
 }
 
@@ -336,6 +345,7 @@ for (const it of items) {
     href = `/product-category/${t.slug}/`;
     label = label || t.name;
   }
+  if (skippedPaths.has(href)) continue;
   (menus[key] ||= []).push({ label, href, order: Number(text(it['wp:menu_order'])) });
 }
 for (const k of Object.keys(menus)) {

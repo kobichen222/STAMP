@@ -7,7 +7,7 @@ import type { ProductSummary } from './types';
 
 const SERIES: Record<string, string> = {
   printer: 'חותמת אוטומטית',
-  pocket: 'חותמת כיס',
+  portable: 'חותמת ניידת',
   pen: 'עט חותמת',
   dater: 'תאריכון',
   numberer: 'נומרטור',

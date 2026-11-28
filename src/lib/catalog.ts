@@ -79,11 +79,11 @@ export function editorialBlocks(blocks: Block[]): Block[] {
 
 // ---------------------------------------------------------------- product facets
 
-export type Series = 'printer' | 'pocket' | 'pen' | 'dater' | 'numberer' | 'special';
+export type Series = 'printer' | 'portable' | 'pen' | 'dater' | 'numberer' | 'special';
 
 export const SERIES_LABEL: Record<Series, string> = {
   printer: 'חותמת אוטומטית',
-  pocket: 'חותמת כיס',
+  portable: 'חותמת ניידת',
   pen: 'עט חותמת',
   dater: 'תאריכון',
   numberer: 'נומרטור',
@@ -95,7 +95,7 @@ export function productSeries(p: Product): Series {
   if (/עט/.test(t)) return 'pen';
   if (/תאריך/.test(t)) return 'dater';
   if (/נומרטור/.test(t)) return 'numberer';
-  if (/כיס|סליידר|עכבר/.test(t)) return 'pocket';
+  if (/סליידר|עכבר/.test(t)) return 'portable';
   if (/פרינט|PRINT|ספרים|חתונה|QR|ערבות|מו"פ/i.test(t)) return 'printer';
   return 'special';
 }

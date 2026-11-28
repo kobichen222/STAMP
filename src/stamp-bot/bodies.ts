@@ -18,18 +18,11 @@ const RECT: Entry[] = [
     lines: 4,
     models: [
       { id: 'print-20', slug: 'חותמת-פרינט-20', short: 'פרינט 20' },
-      { id: 'pocket-20', slug: 'חותמת-כיס-20', short: 'כיס 20' },
       { id: 'mouse', slug: 'חותמת-דגם-עכבר', short: 'עכבר' },
       { id: 'slider', slug: 'חותמת-אישית-דגם-סליידר', short: 'סליידר' },
     ],
   },
-  {
-    lines: 5,
-    models: [
-      { id: 'print-30', slug: 'חותמת-פרינט-30', short: 'פרינט 30' },
-      { id: 'pocket-30', slug: 'חותמת-כיס-30', short: 'כיס 30' },
-    ],
-  },
+  { lines: 5, models: [{ id: 'print-30', slug: 'חותמת-פרינט-30', short: 'פרינט 30' }] },
   { lines: 6, models: [{ id: 'print-40', slug: 'חותמת-פרינט-40', short: 'פרינט 40' }] },
   { lines: 7, models: [{ id: 'print-50', slug: 'חותמת-פרינט-50', short: 'פרינט 50' }] },
   { lines: 10, models: [{ id: 'print-60', slug: 'חותמת-פרינט-60', short: 'פרינט 60' }] },
@@ -41,13 +34,7 @@ const LIST: Record<Kind, Entry[]> = {
   status: RECT.slice(0, 4).map((e, i) => ({ lines: i + 1, models: e.models })),
   round: [
     { lines: 3, models: [{ id: 'r-530', slug: 'print-r-530', short: 'PRINT R 530' }] },
-    {
-      lines: 5,
-      models: [
-        { id: 'r-540', slug: 'print-r-540', short: 'PRINT R 540' },
-        { id: 'pocket-round', slug: 'חותמת-כיס-עגולה-קוטר-עד-40-ממ', short: 'כיס עגולה' },
-      ],
-    },
+    { lines: 5, models: [{ id: 'r-540', slug: 'print-r-540', short: 'PRINT R 540' }] },
     { lines: 7, models: [{ id: 'r-550', slug: 'print-r-550', short: 'PRINT R 550' }] },
   ],
   square: [

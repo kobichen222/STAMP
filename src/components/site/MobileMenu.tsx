@@ -20,7 +20,6 @@ const ICON_FOR: Record<string, string> = {
   logo: 'image',
   signature: 'text',
   large: 'fit',
-  pocket: 'square',
 };
 
 const MAIN = [
