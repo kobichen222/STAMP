@@ -1,18 +1,18 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { CategoryCard } from '@/components/catalog/CategoryCard';
 import { GoogleReviewsSection } from '@/components/home/GoogleReviewsSection';
 import { HomeHero } from '@/components/home/HomeHero';
+import { ModelCard } from '@/components/home/ModelCard';
 import { StartBlock } from '@/components/home/StartBlock';
 import { StartBar } from '@/components/home/StartBar';
 import { HomeFaq } from '@/components/home/HomeFaq';
 import { Icon } from '@/components/ui/Icon';
-import { CATEGORIES, categoryCard } from '@/lib/catalog';
 import { site } from '@/lib/content';
 import { SITE } from '@/lib/config';
 import { allFaqItems, faqJsonLd, type FaqItem } from '@/lib/faq';
 import { GOOGLE_REVIEWS, homeReviews } from '@/lib/google-reviews';
 import { ensureSettings } from '@/server/settings';
+import { catalogRows } from '@/stamp-bot/bodies';
 
 // Same title and description as the WordPress home page (Yoast), so rankings carry over.
 const homeSeo = site.pages.find((p) => p.path === '/')?.seo;
@@ -21,8 +21,6 @@ export const metadata: Metadata = {
   ...(homeSeo?.description ? { description: homeSeo.description } : {}),
   alternates: { canonical: '/' },
 };
-
-const HOME_CATEGORIES = ['business', 'personal', 'doctors', 'lawyers', 'company', 'round', 'date', 'numbering', 'logo', 'signature', 'large', 'pocket'];
 
 // Six existing questions: price, timing, unsure about the text, the preview, logo, a single stamp.
 const HOME_FAQ = ['המהירות מייקרת את החותמת?', 'מתי ההזמנה נשלחת?', 'לא בטוחים מה לכתוב או איך לעצב?', 'האם התצוגה המקדימה מדויקת?', 'איזה פורמט לוגו הכי טוב?', 'אפשר להזמין חותמת אחת בלבד?'];
@@ -40,7 +38,10 @@ export default async function HomePage() {
   // Applies the admin's prices, hidden products and added products to the catalogue.
   await ensureSettings();
   const fromPrice = priceLabel(site.products.filter((p) => !p.hidden).map((p) => p.price));
-  const cats = HOME_CATEGORIES.map((s) => CATEGORIES.find((c) => c.slug === s)!).map(categoryCard);
+  // The stamp models that can be ordered now; the imprints are scaled against the biggest of them.
+  const models = catalogRows();
+  const maxW = Math.max(0, ...models.map((m) => m.w));
+  const maxH = Math.max(0, ...models.map((m) => m.h));
 
   // The Google score, only when the data is really there.
   const ratingOk = typeof GOOGLE_REVIEWS.rating === 'number' && GOOGLE_REVIEWS.rating > 0 && typeof GOOGLE_REVIEWS.count === 'number' && GOOGLE_REVIEWS.count > 0;
@@ -63,11 +64,13 @@ export default async function HomePage() {
               לכל החותמות <Icon name="arrowLeft" size={15} />
             </Link>
           </div>
-          <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {cats.map((c) => (
-              <CategoryCard key={c.slug} c={c} />
-            ))}
-          </div>
+          {models.length > 0 && (
+            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-[repeat(auto-fill,280px)] sm:justify-center">
+              {models.map((m) => (
+                <ModelCard key={m.id} m={m} maxW={maxW} maxH={maxH} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

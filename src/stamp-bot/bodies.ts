@@ -9,29 +9,30 @@ import type { Body } from './card-types'
 import type { Kind, StampSize } from './kinds' // type-only: kinds.ts imports this file
 
 // short = the model's name on the card's chips, without "חותמת", "אישית" or "דגם"
-type Model = { slug: string; short: string }
+// id = an ASCII name for URLs and files (the home catalog's sample imprint and body photo), since slugs are Hebrew
+type Model = { id: string; slug: string; short: string }
 type Entry = { lines: number; models: Model[] }
 
 const RECT: Entry[] = [
   {
     lines: 4,
     models: [
-      { slug: 'חותמת-פרינט-20', short: 'פרינט 20' },
-      { slug: 'חותמת-כיס-20', short: 'כיס 20' },
-      { slug: 'חותמת-דגם-עכבר', short: 'עכבר' },
-      { slug: 'חותמת-אישית-דגם-סליידר', short: 'סליידר' },
+      { id: 'print-20', slug: 'חותמת-פרינט-20', short: 'פרינט 20' },
+      { id: 'pocket-20', slug: 'חותמת-כיס-20', short: 'כיס 20' },
+      { id: 'mouse', slug: 'חותמת-דגם-עכבר', short: 'עכבר' },
+      { id: 'slider', slug: 'חותמת-אישית-דגם-סליידר', short: 'סליידר' },
     ],
   },
   {
     lines: 5,
     models: [
-      { slug: 'חותמת-פרינט-30', short: 'פרינט 30' },
-      { slug: 'חותמת-כיס-30', short: 'כיס 30' },
+      { id: 'print-30', slug: 'חותמת-פרינט-30', short: 'פרינט 30' },
+      { id: 'pocket-30', slug: 'חותמת-כיס-30', short: 'כיס 30' },
     ],
   },
-  { lines: 6, models: [{ slug: 'חותמת-פרינט-40', short: 'פרינט 40' }] },
-  { lines: 7, models: [{ slug: 'חותמת-פרינט-50', short: 'פרינט 50' }] },
-  { lines: 10, models: [{ slug: 'חותמת-פרינט-60', short: 'פרינט 60' }] },
+  { lines: 6, models: [{ id: 'print-40', slug: 'חותמת-פרינט-40', short: 'פרינט 40' }] },
+  { lines: 7, models: [{ id: 'print-50', slug: 'חותמת-פרינט-50', short: 'פרינט 50' }] },
+  { lines: 10, models: [{ id: 'print-60', slug: 'חותמת-פרינט-60', short: 'פרינט 60' }] },
 ]
 
 const LIST: Record<Kind, Entry[]> = {
@@ -39,19 +40,19 @@ const LIST: Record<Kind, Entry[]> = {
   // one big word: the first four rect bodies, a line per size
   status: RECT.slice(0, 4).map((e, i) => ({ lines: i + 1, models: e.models })),
   round: [
-    { lines: 3, models: [{ slug: 'print-r-530', short: 'PRINT R 530' }] },
+    { lines: 3, models: [{ id: 'r-530', slug: 'print-r-530', short: 'PRINT R 530' }] },
     {
       lines: 5,
       models: [
-        { slug: 'print-r-540', short: 'PRINT R 540' },
-        { slug: 'חותמת-כיס-עגולה-קוטר-עד-40-ממ', short: 'כיס עגולה' },
+        { id: 'r-540', slug: 'print-r-540', short: 'PRINT R 540' },
+        { id: 'pocket-round', slug: 'חותמת-כיס-עגולה-קוטר-עד-40-ממ', short: 'כיס עגולה' },
       ],
     },
-    { lines: 7, models: [{ slug: 'print-r-550', short: 'PRINT R 550' }] },
+    { lines: 7, models: [{ id: 'r-550', slug: 'print-r-550', short: 'PRINT R 550' }] },
   ],
   square: [
-    { lines: 4, models: [{ slug: 'print-q-530', short: 'PRINT Q 530' }] },
-    { lines: 6, models: [{ slug: 'print-q-540', short: 'PRINT Q 540' }] },
+    { lines: 4, models: [{ id: 'q-530', slug: 'print-q-530', short: 'PRINT Q 530' }] },
+    { lines: 6, models: [{ id: 'q-540', slug: 'print-q-540', short: 'PRINT Q 540' }] },
   ],
 }
 
@@ -89,4 +90,33 @@ export function bodiesFor(kind: string, size: string): Body[] {
     out.push({ slug: p.slug, title: p.title, short, price: p.price })
   }
   return out.sort((a, b) => a.price - b.price) // stable: equal prices keep the list's order
+}
+
+// the kinds a body is sold as on the home catalog. status is left out: it reuses the rect bodies
+const CATALOG_KINDS = ['rect', 'round', 'square'] as const
+type CatalogKind = (typeof CATALOG_KINDS)[number]
+
+// every body once, in list order, with the kind and mm it is sold in
+const ALL = CATALOG_KINDS.flatMap((kind) => TABLE[kind].flatMap((t) => t.models.map((m) => ({ ...m, kind, w: t.size.w, h: t.size.h }))))
+
+// the ascii ids of every body, visible or not: the sample imprints are drawn for all of them at build time
+export const BODY_IDS = ALL.map((b) => b.id)
+
+// one body by its ascii id, whatever its visibility now. null = no such id
+export function bodyById(id: string): { id: string; slug: string; short: string; kind: CatalogKind; w: number; h: number } | null {
+  return ALL.find((b) => b.id === id) ?? null
+}
+
+export type CatalogRow = { id: string; slug: string; short: string; kind: CatalogKind; w: number; h: number; title: string; price: number }
+
+// the home catalog: every body that can be ordered now (in the catalog, not hidden, with a price), in list order -
+// rect, round, square; small to big; inside a size the list's order. read at call time, like bodiesFor
+export function catalogRows(): CatalogRow[] {
+  const out: CatalogRow[] = []
+  for (const b of ALL) {
+    const p = getProduct(b.slug)
+    if (!p || p.hidden || typeof p.price !== 'number' || !(p.price > 0)) continue
+    out.push({ id: b.id, slug: p.slug, short: b.short, kind: b.kind, w: b.w, h: b.h, title: p.title, price: p.price })
+  }
+  return out
 }
