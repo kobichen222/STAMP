@@ -219,8 +219,7 @@ describe('the studio "new order" e-mail', () => {
       expect(head).toBeLessThan(html.indexOf('>לקוח<'));
       expect(html).toContain(`src="${SITE.url}/api/orders/${o.id}/preview/?t=${o.token}&amp;i=1&amp;format=png"`);
       expect(html).toMatch(/alt="[^"]+ · [^"]+"/);
-      // The customer's e-mail is unchanged: no PNG there.
-      expect(mails.filter((m) => m.to).every((m) => !m.html.includes('format=png'))).toBe(true);
+      // The customer's e-mail shows the stamps as PNG too since the body was reordered: see stage6-cart-email.test.ts.
 
       // The preview route gives a 320px PNG with the same access check as the SVG.
       const req = (q: string) => preview(new Request(`http://localhost/api/orders/${o.id}/preview/?${q}`), { params: Promise.resolve({ id: o.id }) });

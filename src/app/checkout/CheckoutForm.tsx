@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PaymentFrame } from '@/components/PaymentFrame';
 import { StampProof } from '@/components/StampProof';
+import { StampThumb } from '@/components/StampThumb';
 import { Icon } from '@/components/ui/Icon';
+import type { InkColor } from '@/designer/types';
 import { clearCart, useCart } from '@/lib/cart-store';
 import { CHECKOUT_FIELDS, checkoutFieldErrors, type CheckoutField, type CheckoutFieldErrors } from '@/lib/checkout-rules';
 import { ordersStore } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
-import { addressNeed, lineInputFor, quoteCart, quoteLine, type CartQuote, type ShippingMethod } from '@/lib/pricing';
+import { addressNeed, lineInputFor, quoteCart, quoteLine, VAT_RATE, type CartQuote, type PricingRules, type ShippingMethod } from '@/lib/pricing';
 
 const DRAFT_KEY = 's2g-checkout';
 const LEAD_KEY = 's2g-cart-lead';
@@ -34,9 +36,18 @@ function shippingGroups(shipping: ShippingMethod[]) {
 }
 
 type FormKey = Exclude<CheckoutField, 'coupon'>;
+
+/** What the summary showed when the order was created, kept for the payment screen (the cart is cleared then). */
+interface PaidFor {
+  items: { key: string; name: string; size: string; quantity: number; svg: string; ink: InkColor }[];
+  delivery: { label: string; address: string };
+  /** The quote's amounts; null when they do not add up to the order's total, so only the total is shown. */
+  amounts: { subtotal: number; discount: number; coupon?: string; shipping: number } | null;
+}
 const LINK_BTN = 'text-sm text-blue underline underline-offset-4 hover:text-blue-600 disabled:opacity-50';
 
-export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: ShippingMethod[]; paymentLabel: string; manual: boolean }) {
+// `rules` are the live pricing rules (without coupons): the line totals are priced with them, not with the bundle's defaults.
+export function CheckoutForm({ shipping, rules, paymentLabel, manual }: { shipping: ShippingMethod[]; rules: PricingRules; paymentLabel: string; manual: boolean }) {
   const items = useCart();
   const router = useRouter();
   const [form, setForm] = useState<Record<FormKey, string>>({ name: '', phone: '', email: '', company: '', companyId: '', poNumber: '', street: '', city: '', zip: '', notes: '' });
@@ -55,7 +66,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
   const [state, setState] = useState<'idle' | 'sending' | 'error'>('idle');
   const [slow, setSlow] = useState(false);
   const [error, setError] = useState('');
-  const [pay, setPay] = useState<{ url: string; id: string; token: string; total: number } | null>(null);
+  const [pay, setPay] = useState<{ url: string; id: string; token: string; total: number; paidFor: PaidFor } | null>(null);
   const idem = useRef<string>('');
   const formRef = useRef<HTMLFormElement>(null);
   const lock = state === 'sending';
@@ -79,7 +90,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
     }
   }, [form]);
 
-  const lineTotals = useMemo(() => items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons })).total)), [items]);
+  const lineTotals = useMemo(() => items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons }), rules).total)), [items, rules]);
   const localQuote = quoteCart(lineTotals, { shippingId: method });
   const q = serverQuote ?? localQuote;
   // The amount on the button is the server's quote only; none yet -> no amount.
@@ -283,6 +294,13 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
       { id: data.id, token: data.token, createdAt: new Date().toISOString(), total: data.total, items: items.map((i) => ({ name: i.productName, size: i.size, quantity: i.quantity, previewSvg: i.previewSvg })) },
       ...l,
     ]);
+    // a copy of the summary for the payment screen, taken before the cart is cleared
+    const chosen = shipping.find((s) => s.id === method);
+    const paidFor: PaidFor = {
+      items: items.map((i) => ({ key: i.id, name: i.productName, size: i.size, quantity: i.quantity, svg: i.previewSvg, ink: i.ink })),
+      delivery: { label: chosen?.label ?? '', address: needsAddress ? [form.street.trim(), form.city.trim()].filter(Boolean).join(', ') : '' },
+      amounts: Math.abs(q.total - data.total) < 0.005 ? { subtotal: q.subtotal, discount: q.discount, coupon: q.coupon?.code, shipping: q.shipping } : null,
+    };
     clearCart();
     try {
       localStorage.removeItem(LEAD_KEY);
@@ -291,7 +309,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
     }
     if (data.paymentUrl) {
       // Card payment inside the checkout.
-      setPay({ url: data.paymentUrl, id: data.id, token: data.token, total: data.total });
+      setPay({ url: data.paymentUrl, id: data.id, token: data.token, total: data.total, paidFor });
       setState('idle');
       window.scrollTo({ top: 0 });
       return;
@@ -300,6 +318,7 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
   }
 
   if (pay) {
+    const { items: paidItems, delivery, amounts } = pay.paidFor;
     return (
       <div className="container-x grid gap-8 pt-24 pb-20 lg:grid-cols-[1fr_340px]">
         <div>
@@ -312,10 +331,50 @@ export function CheckoutForm({ shipping, paymentLabel, manual }: { shipping: Shi
           <p className="text-xl font-extrabold tracking-wide" dir="ltr">
             {pay.id}
           </p>
+          <ul className="mt-4 space-y-3 border-t border-line pt-4">
+            {paidItems.map((i) => (
+              <li key={i.key} className="flex items-center gap-3">
+                <div className="grid h-12 w-16 shrink-0 place-items-center rounded-lg bg-[#fdfcf8] p-1">
+                  <StampThumb svg={i.svg} ink={i.ink} alt="" className="max-h-full max-w-full" />
+                </div>
+                <div className="min-w-0 flex-1 text-sm">
+                  <p className="truncate font-medium">{i.name}</p>
+                  <p className="text-muted">
+                    {i.size} · ×{i.quantity}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {delivery.label && (
+            <div className="mt-4 border-t border-line pt-4 text-sm">
+              <p className="font-medium">{delivery.label}</p>
+              {delivery.address && <p className="text-muted">{delivery.address}</p>}
+            </div>
+          )}
+          {amounts && (
+            <dl className="mt-4 space-y-2 border-t border-line pt-4 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-muted">מוצרים</dt>
+                <dd>{formatPrice(amounts.subtotal)}</dd>
+              </div>
+              {amounts.discount > 0 && (
+                <div className="flex justify-between text-ok">
+                  <dt>הנחה{amounts.coupon ? ` (${amounts.coupon})` : ''}</dt>
+                  <dd>−{formatPrice(amounts.discount)}</dd>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <dt className="text-muted">משלוח</dt>
+                <dd>{amounts.shipping ? formatPrice(amounts.shipping) : 'חינם'}</dd>
+              </div>
+            </dl>
+          )}
           <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4">
             <span className="font-semibold">לתשלום</span>
             <span className="text-2xl font-extrabold">{formatPrice(pay.total)}</span>
           </div>
+          <p className="text-xs text-muted">כולל מע״מ ({formatPrice(Math.round((pay.total - pay.total / (1 + VAT_RATE)) * 100) / 100)})</p>
           <p className="mt-4 text-xs leading-5 text-muted">
             ההזמנה והעיצוב שמורים. אפשר להשלים את התשלום גם מאוחר יותר מ
             <Link href={`/order/${pay.id}/?t=${pay.token}`} className="text-blue underline">

@@ -11,6 +11,8 @@ import { site } from '@/lib/content';
 import { SITE } from '@/lib/config';
 import { allFaqItems, faqJsonLd, type FaqItem } from '@/lib/faq';
 import { GOOGLE_REVIEWS, homeReviews } from '@/lib/google-reviews';
+import { DEFAULT_RULES } from '@/lib/pricing';
+import { publicRules } from '@/lib/public-rules';
 import { ensureSettings } from '@/server/settings';
 import { catalogRows } from '@/stamp-bot/bodies';
 
@@ -37,6 +39,9 @@ function priceLabel(prices: (number | null | undefined)[]): string | null {
 export default async function HomePage() {
   // Applies the admin's prices, hidden products and added products to the catalogue.
   await ensureSettings();
+  // The live pricing rules (ensureSettings applied the admin's tiers, ink surcharges and shipping onto them), without
+  // the coupons: both stamp boxes price their cards with these, as the server will.
+  const rules = publicRules(DEFAULT_RULES);
   const fromPrice = priceLabel(site.products.filter((p) => !p.hidden).map((p) => p.price));
   // The stamp models that can be ordered now; the imprints are scaled against the biggest of them.
   const models = catalogRows();
@@ -54,7 +59,7 @@ export default async function HomePage() {
   return (
     <>
       {/* The first screen ends with the white promise band; the bands below alternate surface and white. */}
-      <HomeHero fromPrice={fromPrice} announcement={!!SITE.announcement} />
+      <HomeHero fromPrice={fromPrice} announcement={!!SITE.announcement} rules={rules} />
 
       <section id="stamps" className="scroll-mt-28 bg-surface py-12 sm:py-16">
         <div className="container-x">
@@ -101,7 +106,7 @@ export default async function HomePage() {
           the footer's surface directly. */}
       <section className="relative z-[1] -mb-px bg-blue-50 py-20 sm:py-28" aria-labelledby="end-title">
         <div className="container-x flex justify-center">
-          <StartBlock as="h2" idPrefix="end" fromPrice={fromPrice} />
+          <StartBlock as="h2" idPrefix="end" fromPrice={fromPrice} rules={rules} />
         </div>
       </section>
 

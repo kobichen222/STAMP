@@ -15,7 +15,15 @@ export type Stamp = {
   bodies: Body[] // visible products of that size with a price, cheapest first. empty = nothing to order at this size right now
   orderable: boolean // false = this drawing must not be ordered yet (text too crowded, a detail still missing, a number to confirm)
   why: string // when not orderable: one short Hebrew sentence for the customer saying what to fix. '' otherwise
+  remedy?: Remedy // when not orderable: what the card offers under `why` to fix it
 }
+
+// what a card that cannot be ordered offers under its reason (card.ts blockOf):
+//  missing - the details to fill in, as the reason names them ("שם, טלפון"): the correction box asks for them
+//  confirm - the numbers to confirm as they stand: a button confirms them without the model
+//  dense   - the text is crowded in the size it is pinned to; bigger = a larger size with a product exists to redraw in
+//  other   - too much text for the kind, or nothing to print: only the correction box
+export type Remedy = { kind: 'missing'; items: string } | { kind: 'confirm'; numbers: string[] } | { kind: 'dense'; bigger: boolean } | { kind: 'other' }
 
 // one turn of one stamp's conversation. stamp is null when the bot only answered in words
 export type CardResult = { err: true; msg: string } | { err: false; text: string; stamp: Stamp | null }

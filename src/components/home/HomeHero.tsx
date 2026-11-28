@@ -1,4 +1,5 @@
 import { Icon, type IconName } from '@/components/ui/Icon';
+import type { PricingRules } from '@/lib/pricing';
 import { StartBlock } from './StartBlock';
 
 // [icon, the promise itself (bold), an optional addition in regular weight]
@@ -14,7 +15,7 @@ const PROMISES: readonly (readonly [IconName, string, string?])[] = [
  * announcement bar when there is one); when the window is too short the section simply
  * grows, so nothing overlaps. The top padding leaves room for the fixed header.
  */
-export function HomeHero({ fromPrice, announcement = false }: { fromPrice: string | null; announcement?: boolean }) {
+export function HomeHero({ fromPrice, announcement = false, rules }: { fromPrice: string | null; announcement?: boolean; rules: PricingRules }) {
   return (
     <section
       id="start"
@@ -22,7 +23,7 @@ export function HomeHero({ fromPrice, announcement = false }: { fromPrice: strin
       className={`flex flex-col bg-gradient-to-b from-white via-white to-surface ${announcement ? 'min-h-[calc(100svh-2rem)]' : 'min-h-svh'}`}
     >
       <div className="container-x flex flex-1 flex-col items-center justify-center pt-24 pb-8 lg:pt-28 lg:pb-12">
-        <StartBlock as="h1" idPrefix="start" focusOnLoad fromPrice={fromPrice} />
+        <StartBlock as="h1" idPrefix="start" focusOnLoad fromPrice={fromPrice} rules={rules} />
       </div>
 
       <div className="shrink-0 border-y border-line bg-white py-3 sm:py-6">

@@ -178,6 +178,16 @@ function assertBotLine(design: Design, model: StampModel, slug: string) {
   if (design.elements.length !== 0 || design.border.style !== 'none') throw new CheckoutError('חותמת מהבוט לא יכולה לכלול גם רכיבים מהעורך');
   const wrong = checkBotDesign(design, model);
   if (wrong) throw new CheckoutError(wrong);
+  if (botProductionError(design, slug)) throw new CheckoutError('לא הצלחנו להכין את קובץ הייצור של החותמת. תקנו אותה או פנו אלינו');
+}
+
+/**
+ * The production check of a stamp-bot line: its laser file is drawn and preflighted. null = it can be produced,
+ * otherwise the reason, logged (it is for the studio, not the customer). The checkout runs it (assertBotLine), and so
+ * does the home page's "continue to order" (stamp-bot/api.ts orderLines), so a stamp that cannot be produced is caught
+ * on its own card before the checkout form.
+ */
+export function botProductionError(design: Design, slug: string): string | null {
   let reason: string | null = null;
   try {
     const errors = botPreflight(renderBot(design), design).filter((i) => i.severity === 'error');
@@ -185,10 +195,8 @@ function assertBotLine(design: Design, model: StampModel, slug: string) {
   } catch (e) {
     reason = e instanceof Error ? e.message : String(e);
   }
-  if (reason) {
-    console.error('[bot-order]', slug, reason);
-    throw new CheckoutError('לא הצלחנו להכין את קובץ הייצור של החותמת. תקנו אותה או פנו אלינו');
-  }
+  if (reason) console.error('[bot-order]', slug, reason);
+  return reason;
 }
 
 export async function createOrder(input: CheckoutInput): Promise<Order> {

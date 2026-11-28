@@ -1,7 +1,10 @@
 'use server'
 
+// the production check is the checkout's own. no import cycle: the orders service imports order.ts and production.ts,
+// never this file, and nothing under stamp-bot imports the service but this server-action file
+import { botProductionError } from '@/server/orders/service'
 import type { CardMiss, CartLine, LinesResult, OrderAsk, Stamp } from './card-types'
-import { MAX_FORM, reframed, reinked, unpinned } from './card'
+import { MAX_FORM, biggerStamp, confirmedStamp, reframed, reinked, unpinned } from './card'
 import { botLine } from './order'
 import { settings, systems, warmAll } from './serve'
 
@@ -32,7 +35,29 @@ export async function lineStamp(form: string, ink: string): Promise<Stamp | null
   return unpinned(form, ink)
 }
 
+// the card's "המספר נכון": the numbers it asks about confirmed as they stand, no model call. null = unreadable form
+export async function confirmStamp(form: string): Promise<Stamp | null> {
+  await settings()
+  return confirmedStamp(form)
+}
+
+// the card's "מידה גדולה יותר": the same stamp in the next size up that has a product, no model call.
+// null = the form cannot be read or there is no larger size
+export async function enlargeStamp(form: string): Promise<Stamp | null> {
+  await settings()
+  return biggerStamp(form)
+}
+
 const MAX_LINES = 50
+const PRODUCTION_FAILED = 'לא הצלחנו להכין את קובץ הייצור של החותמת הזו. נסו לקצר את הטקסט או לבחור מידה אחרת.'
+
+// one card -> its cart line, or why it cannot be ordered: the line's checks, then the checkout's production check,
+// so a stamp whose laser file cannot be built is told on its card here and not after the checkout form
+function orderLine(a: OrderAsk): CartLine | string {
+  const got = a && typeof a === 'object' && typeof a.form === 'string' && a.form.length <= MAX_FORM ? botLine(a) : 'לא הצלחנו לקרוא את החותמת. נסו ליצור אותה שוב.'
+  if (typeof got === 'string') return got
+  return botProductionError(got.design, got.productSlug) ? PRODUCTION_FAILED : got
+}
 
 // the line under the summary bar when stamps did not go through; the reason itself is shown on each of those cards
 function missText(n: number) {
@@ -51,7 +76,7 @@ export async function orderLines(asks: OrderAsk[]): Promise<LinesResult> {
   let loose = '' // a stamp sent without its card's id: its reason can only be told under the bar
   for (let i = 0; i < asks.length; i++) {
     const a = asks[i]
-    const got = a && typeof a === 'object' && typeof a.form === 'string' && a.form.length <= MAX_FORM ? botLine(a) : 'לא הצלחנו לקרוא את החותמת. נסו ליצור אותה שוב.'
+    const got = orderLine(a)
     if (typeof got !== 'string') {
       lines.push(got)
       continue

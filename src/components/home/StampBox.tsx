@@ -6,13 +6,15 @@ import { Icon } from '@/components/ui/Icon';
 import { addToCart, cartStore, replaceCartLine } from '@/lib/cart-store';
 import { formatPrice } from '@/lib/format';
 import { motionReduced } from '@/lib/motion';
+import type { PricingRules } from '@/lib/pricing';
 import { useUndo } from '@/lib/use-undo';
-import { frameStamp, inkStamp, lineStamp, orderLines, warmStamps } from '@/stamp-bot/api';
+import { confirmStamp, enlargeStamp, frameStamp, inkStamp, lineStamp, orderLines, warmStamps } from '@/stamp-bot/api';
 import type { CardResult, OrderAsk, Stamp } from '@/stamp-bot/card-types';
 import type { Msg } from '@/stamp-bot/form';
 import { enterSends, SLOW_MS, statusLine, takeJobs, withHeld, type Job } from './stamp-box-logic';
 import { cartUrl, EDIT_LINE_KEY, lineCard, readCards, restoreBox, savedCards, writeCards, type SavedCard, type Sent } from './stamp-box-store';
-import { cardTotal, pickBody, StampCard, type Restore, type StampCardData } from './StampCard';
+import { cardTotal } from './stamp-card-logic';
+import { pickBody, StampCard, type Restore, type StampCardData } from './StampCard';
 
 const PLACEHOLDER = 'לדוגמה: ישראל ישראלי, עורך דין, מ.ר. 12345, הרצל 1 תל אביב, 050-1234567';
 const PLACEHOLDER_MORE = 'להוסיף עוד חותמת…';
@@ -20,6 +22,7 @@ const UNAVAILABLE = 'הבוט לא זמין כרגע';
 const TIMED_OUT = 'הבוט לא ענה בזמן';
 const INK_FAILED = 'לא הצלחנו להחליף צבע, נסו שוב';
 const FRAME_FAILED = 'לא הצלחנו לשנות את המסגרת, נסו שוב';
+const REMEDY_FAILED = 'לא הצלחנו לעדכן את החותמת, נסו שוב';
 const ORDER_FAILED = 'לא הצלחנו להעביר לסל, נסו שוב';
 const MAX_RUNNING = 3;
 const TURN_MS = 60_000; // one card's turn, from the moment it starts running (not while it waits its turn)
@@ -94,8 +97,9 @@ function SentText({ text }: { text: string }) {
  * Every message becomes one or more new stamp cards under it; each card is corrected inside itself.
  * Rendered twice (first screen and closing section), so every id is built from `idPrefix`; each box keeps its own
  * cards in browser storage under its own key, so a refresh or a visit to the cart does not lose them.
+ * `rules` are the live pricing rules the page read (publicRules): every price on the cards and the bar uses them.
  */
-export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; focusOnLoad?: boolean }) {
+export function StampBox({ idPrefix, focusOnLoad = false, rules }: { idPrefix: string; focusOnLoad?: boolean; rules: PricingRules }) {
   const [text, setText] = useState('');
   const [cards, setCards] = useState<StampCardData[]>([]);
   const [sent, setSent] = useState<Sent[]>([]);
@@ -119,13 +123,13 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
 
   // The order so far: only orderable cards that have a body and so a price. Exactly these go to the cart.
   const priced = cards.flatMap((c) => {
-    const total = cardTotal(c);
+    const total = cardTotal(c, rules);
     return total == null || !c.stamp ? [] : [{ card: c, stamp: c.stamp, total }];
   });
   const count = priced.reduce((n, p) => n + p.card.qty, 0);
   const sum = Math.round(priced.reduce((s, p) => s + p.total, 0) * 100) / 100;
   // Stamps on screen that will not go with the order (not orderable yet, or no body at this size).
-  const left = cards.filter((c) => c.stamp && cardTotal(c) == null).length;
+  const left = cards.filter((c) => c.stamp && cardTotal(c, rules) == null).length;
   // A card still changing could send an outdated drawing or price.
   const settling = cards.some((c) => c.busy || c.inking);
 
@@ -215,8 +219,9 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
                     // No stamp: keep the previous stamp, body and quantity.
                     stamp: stamp ?? c.stamp,
                     body: stamp ? pickBody(stamp, c.body) : c.body,
-                    // No stamp means the bot asked or declined: open the row so the customer can answer.
-                    panel: stamp ? null : 'fix',
+                    // No stamp means the bot asked or declined, and a stamp that cannot be ordered yet carries its
+                    // remedy in the correction box: open the row (without focus) so the customer can answer.
+                    panel: stamp?.orderable ? null : 'fix',
                   },
             ),
           );
@@ -271,8 +276,9 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
                       ...c,
                       inking: false,
                       restore: undefined,
-                      // a turn that finished meanwhile drew a newer stamp: keep it
-                      ...(c.stamp ? {} : { stamp: st, body: pickBody(st, c.body) }),
+                      // a turn that finished meanwhile drew a newer stamp: keep it. one that cannot be ordered yet
+                      // comes back with its correction box open, as the turn left it
+                      ...(c.stamp ? {} : { stamp: st, body: pickBody(st, c.body), ...(st.orderable ? {} : { panel: 'fix' as const }) }),
                       // an error left when the last message is the bot's was about drawing, and the stamp is back now;
                       // a failed turn (the customer's message last) keeps its error and its retry
                       ...(c.msgs.at(-1)?.role === 'user' ? {} : { err: '', retry: false }),
@@ -470,7 +476,9 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
     enqueue(card.id, card.msgs);
   }
 
-  // Redraw the same stamp in another ink or frame, without the model.
+  // Redraw the same stamp without the model: another ink or frame, or a remedy of a stamp that cannot be ordered yet.
+  // A remedy that makes it orderable turns it into a normal card (the correction box closes); one still blocked keeps
+  // the box open for its next remedy.
   async function redraw(card: StampCardData, draw: (form: string) => Promise<Stamp | null>, failed: string) {
     const cur = card.stamp;
     if (!cur || card.busy || inking.current.has(card.id)) return;
@@ -484,10 +492,20 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
         c.id !== card.id
           ? c
           : next
-            ? { ...c, inking: false, stamp: next, body: pickBody(next, c.body) }
+            ? { ...c, inking: false, stamp: next, body: pickBody(next, c.body), panel: !next.orderable ? 'fix' : cur.orderable ? c.panel : null }
             : { ...c, inking: false, err: failed },
       ),
     );
+  }
+
+  // "המספר נכון" / "המספרים נכונים": the numbers the card asks about are confirmed as they are, no bot call.
+  function confirmNumbers(card: StampCardData) {
+    void redraw(card, confirmStamp, REMEDY_FAILED);
+  }
+
+  // "מידה גדולה יותר": the same stamp in the next size up that has a product, no bot call.
+  function enlarge(card: StampCardData) {
+    void redraw(card, enlargeStamp, REMEDY_FAILED);
   }
 
   function changeInk(card: StampCardData, ink: string) {
@@ -602,11 +620,12 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
             placeholder={placeholder}
             className="max-h-40 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-1.5 text-[17px] leading-7 outline-none placeholder:text-muted/70 focus-visible:outline-none"
           />
+          {/* On a touch screen an invisible 48px ring around the 40px circle takes the tap; the circle stays as drawn. */}
           <button
             type="submit"
             disabled={!!splitting}
             aria-label="הכינו לי חותמת"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue text-white transition hover:bg-blue-600 active:scale-[0.96] disabled:opacity-60"
+            className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue text-white transition after:absolute after:rounded-full hover:bg-blue-600 active:scale-[0.96] disabled:opacity-60 pointer-coarse:after:-inset-1"
           >
             <Icon name="arrowLeft" size={20} strokeWidth={2.25} />
           </button>
@@ -642,11 +661,14 @@ export function StampBox({ idPrefix, focusOnLoad = false }: { idPrefix: string; 
                         card={c}
                         domId={cardDomId(c.id)}
                         inputId={`${idPrefix}-fix-${c.id}`}
+                        rules={rules}
                         onChange={(p) => patch(c.id, 'body' in p || 'qty' in p ? { ...p, orderErr: '' } : p)}
                         onFix={(t) => fix(c, t)}
                         onRetry={() => retry(c)}
                         onInk={(ink) => changeInk(c, ink)}
                         onFrame={(on) => changeFrame(c, on)}
+                        onConfirm={() => confirmNumbers(c)}
+                        onBigger={() => enlarge(c)}
                         onRemove={() => remove(c)}
                       />
                     ),

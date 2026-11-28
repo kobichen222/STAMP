@@ -16,10 +16,21 @@ export const BODY_COLORS = [
   { id: 'red', label: 'אדום', hex: '#c3202f' },
 ];
 
-export function QuantityStepper({ value, onChange, min = 1 }: { value: number; onChange: (n: number) => void; min?: number }) {
+/**
+ * Quantity field with minus / plus. Focusing the number selects it, so typing replaces it.
+ * `onMinusAtMin` (optional): what minus does when the value is already at `min` (the cart removes the line);
+ * without it minus simply stops at `min`.
+ */
+export function QuantityStepper({ value, onChange, min = 1, onMinusAtMin }: { value: number; onChange: (n: number) => void; min?: number; onMinusAtMin?: () => void }) {
+  const removes = !!onMinusAtMin && value <= min;
   return (
     <div className="inline-flex items-center rounded-full border border-line bg-white">
-      <button type="button" className="grid h-10 w-10 place-items-center rounded-full hover:bg-surface" aria-label="הפחתה" onClick={() => onChange(Math.max(min, value - 1))}>
+      <button
+        type="button"
+        className="grid h-10 w-10 place-items-center rounded-full hover:bg-surface"
+        aria-label={removes ? 'הסרה' : 'הפחתה'}
+        onClick={() => (removes ? onMinusAtMin!() : onChange(Math.max(min, value - 1)))}
+      >
         <Icon name="minus" size={16} />
       </button>
       <input
@@ -27,6 +38,7 @@ export function QuantityStepper({ value, onChange, min = 1 }: { value: number; o
         inputMode="numeric"
         className="w-10 bg-transparent text-center font-semibold outline-none"
         value={value}
+        onFocus={(e) => e.currentTarget.select()}
         onChange={(e) => onChange(Math.max(min, parseInt(e.target.value, 10) || min))}
       />
       <button type="button" className="grid h-10 w-10 place-items-center rounded-full hover:bg-surface" aria-label="הוספה" onClick={() => onChange(value + 1)}>

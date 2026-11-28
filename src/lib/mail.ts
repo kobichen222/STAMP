@@ -24,6 +24,8 @@ export interface Mail {
   to?: string[];
   subject: string;
   html: string;
+  /** Plain-text part sent alongside the HTML (optional; without it the message is HTML only, as before). */
+  text?: string;
   replyTo?: string;
   attachments?: Attachment[];
 }
@@ -50,6 +52,7 @@ async function sendSmtp(mail: Mail, to: string[]): Promise<void> {
     to,
     subject: mail.subject,
     html: mail.html,
+    ...(mail.text ? { text: mail.text } : {}),
     replyTo: mail.replyTo,
     attachments: mail.attachments?.map((a) => ({ filename: a.filename, content: a.content, contentType: a.contentType })),
   });
@@ -78,6 +81,7 @@ export async function sendMail(mail: Mail): Promise<void> {
       to,
       subject: mail.subject,
       html: mail.html,
+      ...(mail.text ? { text: mail.text } : {}),
       reply_to: mail.replyTo,
       attachments: mail.attachments?.map((a) => ({
         filename: a.filename,

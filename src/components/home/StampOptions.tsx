@@ -2,16 +2,14 @@
 
 import { useId } from 'react';
 import { QuantityStepper } from '@/components/catalog/ProductConfigurator';
+import { Icon } from '@/components/ui/Icon';
 import { INK_COLORS, type InkColor } from '@/designer/types';
 import { formatPrice } from '@/lib/format';
-import { DEFAULT_RULES, quoteLine } from '@/lib/pricing';
+import type { PricingRules } from '@/lib/pricing';
 import type { Stamp } from '@/stamp-bot/card-types';
+import { discountLine, inkExtra, lineQuote, linePrice } from './stamp-card-logic';
 
 export const MAX_QTY = 500;
-
-/** Line total of a stamp on one body. Bot stamps carry no frame surcharge (decision). */
-export const linePrice = (basePrice: number, quantity: number, ink: string) =>
-  quoteLine({ basePrice, quantity, ink, designedOnline: true }).total;
 
 const INKS = Object.keys(INK_COLORS) as InkColor[];
 const LABEL = 'mb-1.5 block text-xs leading-[18px] text-muted';
@@ -25,7 +23,7 @@ const BONE = 'rounded-full bg-line/40';
  * The options' place while the stamp is being made: the same rows at the same heights as one row of model chips,
  * so the card does not jump when the stamp arrives. Pulses while the card's turn runs, still while it waits its turn.
  */
-export function StampOptionsSkeleton({ pulse }: { pulse: boolean }) {
+export function StampOptionsSkeleton({ pulse, ladder }: { pulse: boolean; ladder: boolean }) {
   return (
     <div aria-hidden="true" className={`mt-3 sm:mt-0 ${pulse ? 'motion-safe:animate-pulse' : ''}`}>
       <div className="mb-1.5 flex h-[18px] items-center">
@@ -40,13 +38,20 @@ export function StampOptionsSkeleton({ pulse }: { pulse: boolean }) {
         <div className={`h-2.5 w-14 ${BONE}`} />
       </div>
       <div className="flex items-center">
-        <div className="flex gap-2.5">
+        <div className="-ms-[7px] flex">
           {INKS.map((k) => (
-            <div key={k} className={`h-[26px] w-[26px] ${BONE}`} />
+            <div key={k} className="grid h-10 w-10 place-items-center">
+              <div className={`h-[26px] w-[26px] ${BONE}`} />
+            </div>
           ))}
         </div>
         <div className={`ms-auto h-[42px] w-[122px] ${BONE}`} />
       </div>
+      {ladder && (
+        <div className="mt-1.5 flex h-[18px] items-center">
+          <div className={`h-2 w-48 ${BONE}`} />
+        </div>
+      )}
     </div>
   );
 }
@@ -65,6 +70,7 @@ export function StampOptions({
   stamp,
   body,
   qty,
+  rules,
   busy,
   inking,
   onBody,
@@ -75,6 +81,7 @@ export function StampOptions({
   stamp: Stamp;
   body: string;
   qty: number;
+  rules: PricingRules; // the live rules from the page: every price here is computed with them
   busy: boolean; // a bot turn is waiting or running
   inking: boolean; // an ink or frame redraw is in flight
   onBody: (slug: string) => void;
@@ -84,10 +91,12 @@ export function StampOptions({
 }) {
   const id = useId(); // names the body radios and labels the ink group
   const { bodies, ink, frame } = stamp;
-  const unit = (price: number) => linePrice(price, 1, ink);
+  const unit = (price: number) => linePrice(price, 1, ink, rules);
   const sel = bodies.find((b) => b.slug === body);
   const inkName = INK_COLORS[ink as InkColor]?.label ?? '';
-  const inkExtra = DEFAULT_RULES.ink[ink] ?? 0;
+  const extra = inkExtra(ink, rules);
+  // the unit price the card's price line uses, at this quantity
+  const discount = sel ? discountLine(qty, lineQuote(sel.price, qty, ink, rules).unitPrice, rules) : '';
 
   return (
     <div className="mt-3 sm:mt-0">
@@ -139,16 +148,18 @@ export function StampOptions({
           <>
             {' · '}
             <span className="font-medium text-ink">{inkName}</span>
-            {inkExtra > 0 && <span className="tabular-nums"> +{formatPrice(inkExtra)}</span>}
+            {extra > 0 && <span className="tabular-nums"> +{formatPrice(extra)}</span>}
           </>
         )}
       </p>
       <div className="flex flex-wrap items-center gap-y-3">
-        <div role="group" aria-labelledby={`${id}-ink`} className="flex gap-2.5">
+        {/* Each swatch is a 40px touch area around its 26px circle; the group reaches 7px back so the first circle
+            stays in line with the label above. */}
+        <div role="group" aria-labelledby={`${id}-ink`} className="-ms-[7px] flex">
           {INKS.map((k) => {
             const on = k === ink;
-            const extra = DEFAULT_RULES.ink[k] ?? 0;
-            const name = extra > 0 ? `${INK_COLORS[k].label} (+${formatPrice(extra)})` : INK_COLORS[k].label;
+            const more = inkExtra(k, rules);
+            const name = more > 0 ? `${INK_COLORS[k].label} (+${formatPrice(more)})` : INK_COLORS[k].label;
             return (
               <button
                 key={k}
@@ -160,21 +171,29 @@ export function StampOptions({
                 onClick={() => {
                   if (!on) onInk(k);
                 }}
-                className={`h-[26px] w-[26px] rounded-full disabled:opacity-50 ${on ? 'ring-2 ring-ink ring-offset-2' : ''}`}
-                style={{ backgroundColor: INK_COLORS[k].hex }}
-              />
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full disabled:opacity-50"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`grid h-[26px] w-[26px] place-items-center rounded-full text-white ${on ? 'ring-2 ring-ink ring-offset-2' : ''}`}
+                  style={{ backgroundColor: INK_COLORS[k].hex }}
+                >
+                  {on && <Icon name="check" size={14} strokeWidth={3} />}
+                </span>
+              </button>
             );
           })}
         </div>
 
-        {/* Rect stamps only: round, square and status stamps are always framed. */}
+        {/* Rect stamps only: round, square and status stamps are always framed. The last swatch's touch area
+            already leaves 7px, so the chip's own margin is small. */}
         {frame != null && (
           <button
             type="button"
             aria-pressed={frame}
             disabled={busy || inking}
             onClick={() => onFrame(!frame)}
-            className={`${CHIP} ms-3.5 transition disabled:opacity-60 ${frame ? CHIP_ON : CHIP_OFF}`}
+            className={`${CHIP} ms-2 transition disabled:opacity-60 ${frame ? CHIP_ON : CHIP_OFF}`}
           >
             <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true" className="shrink-0">
               <rect x="0.75" y="0.75" width="12.5" height="8.5" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
@@ -189,6 +208,7 @@ export function StampOptions({
           </div>
         )}
       </div>
+      {discount && <p className="mt-1.5 text-xs leading-[18px] text-muted">{discount}</p>}
     </div>
   );
 }

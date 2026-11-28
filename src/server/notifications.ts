@@ -14,6 +14,9 @@ export type NotifyEvent = 'order.created' | 'order.awaiting_approval' | 'product
 interface Built {
   subject: string;
   customer?: EmailParts;
+  /** Plain-text part of the customer's e-mail (sent with the HTML). */
+  customerText?: string;
+  customerReplyTo?: string;
   staff?: EmailParts;
 }
 
@@ -60,14 +63,107 @@ export function staffShippingHead(o: Pick<Order, 'shipping'>): string {
  * Only items that already have their production files, and only with an absolute site address.
  */
 function stampPictures(o: Order): string {
-  if (!/^https?:\/\//.test(SITE.url)) return '';
-  return o.items
-    .map((it, i) =>
-      it.files.some((f) => f.kind === 'master-svg')
-        ? `<p style="margin:12px 0;text-align:center"><img src="${SITE.url}/api/orders/${o.id}/preview/?t=${o.token}&amp;i=${i + 1}&amp;format=png" width="320" alt="${escapeHtml(`${it.productName} · ${it.size}`)}" style="max-width:100%;height:auto;border:1px solid #e3e8ef;border-radius:10px;background:#ffffff"></p>`
-        : '',
-    )
-    .join('');
+  return o.items.map((_, i) => stampPicture(o, i)).join('');
+}
+
+/** The picture of item `i` (see stampPictures), or '' when it has no production files yet or the site address is not absolute. */
+function stampPicture(o: Order, i: number): string {
+  const it = o.items[i];
+  if (!/^https?:\/\//.test(SITE.url) || !it.files.some((f) => f.kind === 'master-svg')) return '';
+  return `<p style="margin:12px 0;text-align:center"><img src="${SITE.url}/api/orders/${o.id}/preview/?t=${o.token}&amp;i=${i + 1}&amp;format=png" width="320" alt="${escapeHtml(`${it.productName} · ${it.size}`)}" style="max-width:100%;height:auto;border:1px solid #e3e8ef;border-radius:10px;background:#ffffff"></p>`;
+}
+
+const FONT = "Heebo,'Segoe UI',Arial,Helvetica,sans-serif"; // the layout's font stack
+
+/** The layout's call-to-action button, placed inside the body (the layout itself puts its button after the body). */
+const emailButton = (label: string, url: string) =>
+  `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px auto 8px"><tr><td style="border-radius:14px;background:#2457ff;box-shadow:0 10px 24px -10px rgba(36,87,255,.8)">
+        <a href="${url}" style="display:inline-block;padding:15px 30px;font:700 16px/1 ${FONT};color:#ffffff;text-decoration:none;border-radius:14px">${escapeHtml(label)} ←</a>
+      </td></tr></table>`;
+
+const emailHeading = (text: string) => `<p style="margin:24px 0 0;font:700 16px/1.4 ${FONT};color:#0b1426">${escapeHtml(text)}</p>`;
+
+/** "חותמת אחת" / "3 חותמות", by the number of stamps (quantities summed). */
+const stampsCount = (o: Pick<Order, 'items'>) => {
+  const n = o.items.reduce((s, i) => s + i.quantity, 0);
+  return n === 1 ? 'חותמת אחת' : `${n} חותמות`;
+};
+
+/**
+ * The customer's "order received" e-mail. The body runs: opening and payment sentence, the tracking button, how the
+ * order is received, the stamps (with a PNG of each when the studio e-mail would have one), the totals, and a contact
+ * line. Each section starts with an HTML comment marker (`<!--section:id-->`). `text` is the plain-text part with the
+ * same sections in the same order.
+ */
+export function orderCreatedCustomer(o: Order): { parts: EmailParts; text: string } {
+  const link = trackingLink(o);
+  const rawName = o.customer.name.trim().split(/\s+/)[0] || o.customer.name;
+  const title = `תודה ${rawName}, ההזמנה התקבלה!`;
+  const opening = 'איזה כיף שבחרת בנו. הקובץ שלך עבר בדיקה אוטומטית ונכנס לתור הייצור – נעדכן אותך בכל שלב.';
+  const steps = [
+    { title: 'ההזמנה התקבלה', text: orderPaymentText(o), done: true },
+    { title: 'ייצור', text: 'החותמת מיוצרת תוך דקות מרגע האישור' },
+    { title: o.shipping.method === 'pickup' ? 'מוכן לאיסוף' : 'משלוח', text: shippingText(o) },
+  ];
+
+  const a = o.shipping.address;
+  const how: [string, string][] =
+    o.shipping.method === 'pickup'
+      ? [
+          ['איסוף עצמי', SITE.address],
+          ['שעות פתיחה', SITE.hours],
+        ]
+      : ([
+          ['אופן המשלוח', o.shipping.label],
+          ['כתובת', a ? [a.street, a.city, a.zip].filter(Boolean).join(', ') : ''],
+        ].filter(([, v]) => v) as [string, string][]);
+
+  const itemLine = (it: Order['items'][number]) => `${it.productName} · ${it.size} · כמות ${it.quantity} · ${money(it.total)}`;
+  const pictures = o.items.map((_, i) => stampPicture(o, i));
+  const stampsHtml = pictures.some(Boolean)
+    ? o.items
+        .map(
+          (it, i) =>
+            pictures[i] +
+            `<p style="margin:0 0 16px;text-align:center;font:14px/1.6 ${FONT};color:#1c2a44"><strong style="color:#0b1426">${escapeHtml(it.productName)}</strong><br>${escapeHtml(`${it.size} · כמות ${it.quantity} · ${money(it.total)}`)}</p>`,
+        )
+        .join('')
+    : emailDetails(o.items.map((it) => [`${it.productName} · ${it.size}`, `כמות ${it.quantity} · ${money(it.total)}`]));
+
+  const totals: [string, string | null][] = [
+    ['סכום ביניים', money(o.subtotal)],
+    ['הנחה', o.discount ? `−${money(o.discount)}${o.couponCode ? ` (${o.couponCode})` : ''}` : null],
+    ['משלוח', o.shippingPrice ? money(o.shippingPrice) : 'חינם'],
+    ['סה״כ לתשלום', money(o.total)],
+    ['מספר הזמנה', o.id],
+  ];
+  const contactText = `שאלה? אפשר להשיב למייל הזה, להתקשר ל-${SITE.phone} או לכתוב ל-${SITE.email}.`;
+  const contactHtml = `שאלה? אפשר להשיב למייל הזה, להתקשר ל-<a href="${SITE.phoneHref}" style="color:#2457ff;text-decoration:none">${escapeHtml(SITE.phone)}</a> או לכתוב ל-<a href="mailto:${escapeHtml(SITE.email)}" style="color:#2457ff;text-decoration:none">${escapeHtml(SITE.email)}</a>.`;
+  const rows = (r: [string, string | null][]) => r.filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join('\n');
+
+  const sections: { id: string; html: string; text: string }[] = [
+    {
+      id: 'opening',
+      html: emailP(escapeHtml(opening)) + emailSteps(steps),
+      text: [opening, ...steps.map((s, i) => `${s.done ? '✓' : `${i + 1}.`} ${s.title}: ${s.text}`)].join('\n'),
+    },
+    { id: 'button', html: emailButton('מעקב אחר ההזמנה', link), text: `מעקב אחר ההזמנה:\n${link}` },
+    { id: 'how', html: emailHeading('קבלת ההזמנה') + emailDetails(how), text: `קבלת ההזמנה\n${rows(how)}` },
+    { id: 'stamps', html: emailHeading('החותמות בהזמנה') + stampsHtml, text: `החותמות בהזמנה\n${o.items.map((it) => `• ${itemLine(it)}`).join('\n')}` },
+    { id: 'totals', html: emailDetails(totals), text: rows(totals) },
+    { id: 'contact', html: emailP(contactHtml), text: contactText },
+  ];
+
+  return {
+    parts: {
+      preheader: `מספר הזמנה ${o.id} · ${stampsCount(o)} · ${money(o.total)}`,
+      badge: '✓ ההזמנה התקבלה',
+      tone: 'green',
+      title,
+      body: sections.map((s) => `<!--section:${s.id}-->${s.html}`).join(''),
+    },
+    text: [title, ...sections.map((s) => s.text), `${SITE.hebrewName}\n${SITE.url}`].join('\n\n'),
+  };
 }
 
 /** Items + totals, for the order e-mails. */
@@ -104,27 +200,17 @@ function build(event: NotifyEvent, o: Order): Built {
     cta: { label: 'פתיחת ההזמנה בניהול', url: admin },
   });
   switch (event) {
-    case 'order.created':
+    case 'order.created': {
+      const mail = orderCreatedCustomer(o);
       return {
         subject: `תודה! ההזמנה ${o.id} התקבלה`,
-        customer: {
-          preheader: `קיבלנו את ההזמנה שלך – ${money(o.total)}`,
-          badge: '✓ ההזמנה התקבלה',
-          tone: 'green',
-          title: `תודה ${name}, ההזמנה התקבלה!`,
-          body:
-            emailP('איזה כיף שבחרת בנו. הקובץ שלך עבר בדיקה אוטומטית ונכנס לתור הייצור – נעדכן אותך בכל שלב.') +
-            emailSteps([
-              { title: 'ההזמנה התקבלה', text: orderPaymentText(o), done: true },
-              { title: 'ייצור', text: 'החותמת מיוצרת תוך דקות מרגע האישור' },
-              { title: o.shipping.method === 'pickup' ? 'מוכן לאיסוף' : 'משלוח', text: shippingText(o) },
-            ]) +
-            orderSummary(o),
-          cta: { label: 'מעקב אחר ההזמנה', url: link },
-          note: 'שאלה? פשוט השיבו למייל הזה או כתבו לנו בוואטסאפ.',
-        },
+        customer: mail.parts,
+        customerText: mail.text,
+        // a reply reaches the studio's monitored mailbox
+        customerReplyTo: SITE.email,
         staff: staffSummary(`הזמנה חדשה – ${o.customer.name}`, `🛒 הזמנה חדשה · ${money(o.total)}`, 'green', staffShippingHead(o), stampPictures(o)),
       };
+    }
     case 'order.awaiting_approval':
       return {
         subject: `ההגהה להזמנה ${o.id} מחכה לאישורך`,
@@ -253,7 +339,15 @@ export async function notify(
   if (b.customer && order.customer.email && opts.customer !== false) {
     const id = `${event}:customer`;
     if (!order.notificationsSent.includes(id)) {
-      jobs.push(sendMail({ to: [order.customer.email!], subject: b.subject, html: emailLayout(b.customer) }).then(() => void sent.push(id)));
+      jobs.push(
+        sendMail({
+          to: [order.customer.email!],
+          subject: b.subject,
+          html: emailLayout(b.customer),
+          ...(b.customerText ? { text: b.customerText } : {}),
+          ...(b.customerReplyTo ? { replyTo: b.customerReplyTo } : {}),
+        }).then(() => void sent.push(id)),
+      );
     }
   }
   if (b.staff && opts.staff !== false) {

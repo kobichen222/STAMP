@@ -1,4 +1,22 @@
-// The cart page's pure rules: the green status line after the home page sends stamps, and putting a removed line back.
+// The cart page's pure rules: the green status line after the home page sends stamps, putting a removed line back,
+// and what the summary says about delivery.
+import { formatPrice } from '@/lib/format';
+import { addressNeed, type ShippingMethod } from '@/lib/pricing';
+
+/**
+ * The cart's delivery texts, from the live shipping methods: the "משלוח" row (cheapest paid method, and a free
+ * self pickup when there is one) and one line per method that turns free above a threshold. The cart does not
+ * know the coupon (the threshold is checked after it), so it never says how far the cart is from the threshold.
+ */
+export function cartDeliveryText(shipping: ShippingMethod[]): { row: string; freeAbove: string[] } {
+  const paid = shipping.filter((m) => m.price > 0);
+  const free = shipping.find((m) => m.price <= 0);
+  const cheapest = paid.length ? Math.min(...paid.map((m) => m.price)) : null;
+  const freeText = free ? (addressNeed(free) === 'none' ? 'איסוף עצמי חינם' : `${free.label} חינם`) : null;
+  const row = [cheapest != null ? `מ-${formatPrice(cheapest)}` : null, freeText].filter(Boolean).join(' · ') || 'יחושב בקופה';
+  const freeAbove = paid.filter((m) => m.freeFrom != null && m.freeFrom > 0).map((m) => `${m.label} חינם בהזמנה מעל ${formatPrice(m.freeFrom)}`);
+  return { row, freeAbove };
+}
 
 /** The green line at the top of the cart, from the `added` / `updated` query parameters, or null for none. */
 export function cartStatusText(added: string | null, updated: string | null): string | null {

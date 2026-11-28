@@ -10,22 +10,24 @@ import { INK_COLORS } from '@/designer/types';
 import { cartStore, removeCartItem, updateCartItem, duplicateCartItem, useCart, type CartItem } from '@/lib/cart-store';
 import { saveDesign } from '@/lib/designs-store';
 import { formatPrice } from '@/lib/format';
-import { ADDONS, lineInputFor, quoteCart, quoteLine } from '@/lib/pricing';
+import { ADDONS, lineInputFor, quoteCart, quoteLine, type PricingRules } from '@/lib/pricing';
 import { useUndo, type Removed } from '@/lib/use-undo';
-import { cartStatusText, insertAt } from './cart-logic';
+import { cartDeliveryText, cartStatusText, insertAt } from './cart-logic';
 
 /** The home page opens the cart line stored under this key as a card to edit (see the stage 5 hand-off). */
 const EDIT_LINE_KEY = 's2g-edit-line';
 
-export function CartView() {
+/** `rules`: the live pricing rules without coupons (see `publicRules`), from the server page. */
+export function CartView({ rules }: { rules: PricingRules }) {
   const items = useCart();
   const router = useRouter();
   const params = useSearchParams();
   const status = cartStatusText(params.get('added'), params.get('updated'));
   const removed = useUndo<CartItem>();
   // unitPrice stored in the cart is the base unit price at design time; tiers apply on quantity.
-  const totals = items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons })).total));
-  const cart = quoteCart(totals);
+  const totals = items.map((i) => (i.unitPrice == null ? 0 : quoteLine(lineInputFor({ basePrice: i.unitPrice, quantity: i.quantity, design: i.design, ink: i.ink, body: i.bodyColor, addons: i.addons }), rules).total));
+  const cart = quoteCart(totals, {}, rules);
+  const delivery = cartDeliveryText(rules.shipping);
 
   const edit = (i: CartItem) => {
     const id = i.designId ?? `d-${i.id}`;
@@ -119,7 +121,7 @@ export function CartView() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-6 sm:flex-col sm:items-end">
-                    <QuantityStepper value={i.quantity} onChange={(q) => updateCartItem(i.id, { quantity: q })} />
+                    <QuantityStepper value={i.quantity} onChange={(q) => updateCartItem(i.id, { quantity: q })} onMinusAtMin={() => remove(i, n)} />
                     <p className="text-lg font-bold">{i.unitPrice == null ? 'לפי הצעה' : formatPrice(totals[n])}</p>
                   </div>
                 </li>
@@ -134,13 +136,20 @@ export function CartView() {
                 <dt className="text-muted">מוצרים ({items.reduce((s, i) => s + i.quantity, 0)})</dt>
                 <dd>{formatPrice(cart.subtotal)}</dd>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-muted">משלוח</dt>
-                <dd className="text-muted">יחושב בקופה</dd>
+              <div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted">משלוח</dt>
+                  <dd className="text-end">{delivery.row}</dd>
+                </div>
+                {delivery.freeAbove.map((t) => (
+                  <p key={t} className="mt-0.5 text-xs text-muted">
+                    {t}
+                  </p>
+                ))}
               </div>
             </dl>
             <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4">
-              <span className="font-semibold">סה״כ</span>
+              <span className="font-semibold">סה״כ לפני משלוח</span>
               <span className="text-2xl font-extrabold">{formatPrice(cart.subtotal)}</span>
             </div>
             <p className="mt-1 text-xs text-muted">כולל מע״מ</p>

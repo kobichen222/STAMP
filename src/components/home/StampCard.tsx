@@ -3,10 +3,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { formatPrice } from '@/lib/format';
+import type { PricingRules } from '@/lib/pricing';
 import type { Stamp } from '@/stamp-bot/card-types';
 import type { Msg } from '@/stamp-bot/form';
 import { enterSends } from './stamp-box-logic';
-import { linePrice, StampOptions, StampOptionsSkeleton } from './StampOptions';
+import { cardTotal, confirmLabel, fixPlaceholder } from './stamp-card-logic';
+import { StampOptions, StampOptionsSkeleton } from './StampOptions';
+
+// a remedy button under the reason of a stamp that cannot be ordered: a quiet outlined pill, phone-size when tapped
+const REMEDY =
+  'inline-flex min-h-10 items-center rounded-full border border-blue px-3 text-[13px] leading-5 font-medium text-blue transition hover:bg-blue/5 disabled:opacity-60 sm:min-h-0 sm:py-1.5';
 
 /** One stamp under the home page box: its own conversation with the bot, its own image, its own order line. */
 export type StampCardData = {
@@ -35,12 +41,6 @@ export type Restore = { form: string; ink: string; unpin?: boolean };
 export const pickBody = (stamp: Stamp, prev: string) =>
   stamp.bodies.some((b) => b.slug === prev) ? prev : (stamp.bodies[0]?.slug ?? '');
 
-/** The card's line total, or null when it has nothing to order (no stamp, no body, or not orderable yet). */
-export function cardTotal(c: StampCardData): number | null {
-  const b = c.stamp?.bodies.find((x) => x.slug === c.body);
-  return c.stamp?.orderable && b ? linePrice(b.price, c.qty, c.stamp.ink) : null;
-}
-
 function sizeLabel(s: Stamp) {
   const [w, h] = s.size.split('x');
   return s.kind === 'round' ? `עגול ${w} מ״מ` : `${w}×${h} מ״מ`;
@@ -50,21 +50,27 @@ export function StampCard({
   card,
   domId,
   inputId,
+  rules,
   onChange,
   onFix,
   onRetry,
   onInk,
   onFrame,
+  onConfirm,
+  onBigger,
   onRemove,
 }: {
   card: StampCardData;
   domId: string;
   inputId: string;
+  rules: PricingRules; // the page's live rules: the card's prices are computed with them
   onChange: (p: Partial<StampCardData>) => void;
   onFix: (text: string) => void;
   onRetry: () => void;
   onInk: (ink: string) => void;
   onFrame: (on: boolean) => void;
+  onConfirm: () => void; // the number(s) the reason asks about are right as they are
+  onBigger: () => void; // the same stamp in the next size up that has a product
   onRemove: () => void;
 }) {
   const [text, setText] = useState('');
@@ -74,21 +80,29 @@ export function StampCard({
   const fixOpen = card.panel === 'fix';
   const { stamp } = card;
   const body = stamp?.bodies.find((b) => b.slug === card.body);
-  const total = cardTotal(card);
+  const total = cardTotal(card, rules);
   const blocked = stamp != null && !stamp.orderable;
   // The bot often says the same thing as `why`; print it once.
   const reply = blocked && card.reply.trim() === stamp?.why.trim() ? '' : card.reply;
+  const remedy = blocked ? stamp?.remedy : undefined;
+  const placeholder = fixPlaceholder(!!reply && !card.err, remedy);
+  const still = card.busy || card.inking;
 
   useEffect(() => {
     const el = area.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
+    // While empty, size to the placeholder (the missing details can take two lines on a phone), as the main box does.
+    if (!el.value && el.placeholder) {
+      el.value = el.placeholder;
+      el.style.height = `${el.scrollHeight}px`;
+      el.value = '';
+    } else el.style.height = `${el.scrollHeight}px`;
     if (wantFocus.current) {
       wantFocus.current = false;
       el.focus();
     }
-  }, [text, fixOpen]);
+  }, [text, fixOpen, placeholder]);
 
   function send() {
     const t = text.trim();
@@ -150,6 +164,20 @@ export function StampCard({
         )}
 
         {stamp && blocked && <p className="mt-1.5 text-sm text-ink">{stamp.why}</p>}
+        {/* The remedy that needs no writing (not status text): confirm the number(s), or the next size up. */}
+        {(remedy?.kind === 'confirm' || (remedy?.kind === 'dense' && remedy.bigger)) && (
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {remedy.kind === 'confirm' ? (
+              <button type="button" disabled={still} onClick={onConfirm} className={REMEDY}>
+                {confirmLabel(remedy.numbers)}
+              </button>
+            ) : (
+              <button type="button" disabled={still} onClick={onBigger} className={REMEDY}>
+                מידה גדולה יותר
+              </button>
+            )}
+          </div>
+        )}
         {card.orderErr && <p className="mt-1.5 text-sm font-medium text-bad">{card.orderErr}</p>}
 
         {/* While a turn runs the faded image or the grey skeleton says the stamp is being made. */}
@@ -164,7 +192,8 @@ export function StampCard({
               )}
             </div>
           ) : (
-            reply && <p className="mt-1.5 text-sm text-muted">{reply}</p>
+            // the bot's question (or refusal) is what the customer answers next: content, not a muted note
+            reply && <p className="mt-1.5 text-[16px] leading-6 text-ink">{reply}</p>
           ))}
 
         {fixOpen && (
@@ -191,13 +220,15 @@ export function StampCard({
                     e.currentTarget.form?.requestSubmit();
                   }
                 }}
-                className="max-h-28 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-1 text-[15px] leading-6 outline-none focus-visible:outline-none"
+                placeholder={placeholder}
+                className="max-h-28 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-1 text-[15px] leading-6 outline-none placeholder:text-muted/70 focus-visible:outline-none"
               />
+              {/* On a touch screen an invisible 44px ring around the 32px circle takes the tap; the circle stays as drawn. */}
               <button
                 type="submit"
                 disabled={card.busy || card.inking}
                 aria-label="שליחת התיקון"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue text-white transition hover:bg-blue-600 active:scale-[0.96] disabled:opacity-60"
+                className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue text-white transition after:absolute after:rounded-full hover:bg-blue-600 active:scale-[0.96] disabled:opacity-60 pointer-coarse:after:-inset-1.5"
               >
                 <Icon name="arrowLeft" size={16} strokeWidth={2.25} />
               </button>
@@ -232,13 +263,14 @@ export function StampCard({
           qty={card.qty}
           busy={card.busy}
           inking={card.inking}
+          rules={rules}
           onBody={(slug) => onChange({ body: slug })}
           onQty={(qty) => onChange({ qty })}
           onInk={onInk}
           onFrame={onFrame}
         />
       )}
-      {skeleton && <StampOptionsSkeleton pulse={card.running} />}
+      {skeleton && <StampOptionsSkeleton pulse={card.running} ladder={rules.quantityTiers.length > 0} />}
     </li>
   );
 }
