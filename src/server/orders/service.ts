@@ -18,54 +18,9 @@ import { canTransition, type Order, type OrderItem, type OrderStatus, type Produ
 
 // ------------------------------------------------------------------ validation
 
-const designSchema = z
-  .object({
-    version: z.literal(1),
-    modelId: z.string(),
-    shape: z.enum(['rect', 'round']),
-    width: z.number().positive().max(300),
-    height: z.number().positive().max(300),
-    border: z.object({ style: z.string(), thickness: z.number(), inset: z.number(), gap: z.number() }),
-    elements: z.array(z.record(z.string(), z.unknown())).max(60),
-    inkColor: z.enum(Object.keys(INK_COLORS) as [string, ...string[]]),
-    dateBand: z.boolean().optional(),
-    // A line from the stamp bot: its clean form as JSON (see Design.bot). The server redraws it for the files.
-    bot: z.object({ form: z.string().min(2).max(8000) }).optional(),
-  })
-  .passthrough();
-
-export const checkoutSchema = z.object({
-  idempotencyKey: z.string().min(8).max(80),
-  customer: z.object({
-    name: z.string().trim().min(2).max(120),
-    phone: z.string().trim().regex(/^[\d\s+()-]{9,20}$/),
-    email: z.string().trim().email().max(200).optional().or(z.literal('')),
-    company: z.string().trim().max(160).optional(),
-    companyId: z.string().trim().max(20).optional(),
-    poNumber: z.string().trim().max(60).optional(),
-  }),
-  shipping: z.object({
-    method: z.string(),
-    address: z.object({ street: z.string().max(200), city: z.string().max(100), zip: z.string().max(12).optional(), notes: z.string().max(300).optional() }).optional(),
-  }),
-  couponCode: z.string().max(40).optional(),
-  notes: z.string().max(2000).optional(),
-  items: z
-    .array(
-      z.object({
-        productSlug: z.string(),
-        design: designSchema,
-        ink: z.string(),
-        bodyColor: z.string().max(20).optional(),
-        quantity: z.number().int().min(1).max(500),
-        designVersionId: z.string().max(80).optional(),
-        addons: z.record(z.string(), z.number().int().min(0).max(50)).optional(),
-      }),
-    )
-    .min(1)
-    .max(50),
-});
-export type CheckoutInput = z.infer<typeof checkoutSchema>;
+// The checkout schema lives in a shared file so the checkout form checks the same rules.
+import { CHECKOUT_MESSAGES, type CheckoutField, type CheckoutInput } from '@/lib/checkout-rules';
+export { checkoutSchema, type CheckoutInput } from '@/lib/checkout-rules';
 
 export function pricingRules(): PricingRules {
   // Coupons: the admin's (applied by ensureSettings) plus any from the environment.
@@ -208,6 +163,8 @@ export class CheckoutError extends Error {
   constructor(
     message: string,
     public status = 400,
+    /** The checkout form field the message belongs to, when there is one. */
+    public field?: CheckoutField,
   ) {
     super(message);
   }
@@ -278,8 +235,11 @@ export async function createOrder(input: CheckoutInput): Promise<Order> {
   const method = rules.shipping.find((s) => s.id === input.shipping.method);
   if (!method) throw new CheckoutError('שיטת משלוח לא תקינה');
   const need = addressNeed(method);
-  if (need === 'full' && (!input.shipping.address?.street || !input.shipping.address?.city)) throw new CheckoutError('נא למלא כתובת למשלוח');
-  if (need === 'city' && !input.shipping.address?.city) throw new CheckoutError('נא למלא עיר לנקודת המסירה');
+  if (need === 'full' && (!input.shipping.address?.street || !input.shipping.address?.city)) {
+    const field = !input.shipping.address?.street ? 'street' : 'city';
+    throw new CheckoutError(CHECKOUT_MESSAGES[field], 400, field);
+  }
+  if (need === 'city' && !input.shipping.address?.city) throw new CheckoutError(CHECKOUT_MESSAGES.city, 400, 'city');
   const cart = quoteCart(
     items.map((i) => i.total),
     { shippingId: method.id, couponCode: input.couponCode || undefined },

@@ -12,6 +12,7 @@ import { botLine, checkBotDesign } from '@/stamp-bot/order';
 import type { CartLine } from '@/stamp-bot/card-types';
 import { CheckoutError, checkoutSchema, createOrder } from '@/server/orders/service';
 import { runProductionEngine } from '@/server/production-engine';
+import { CHECKOUT_MESSAGES } from '@/lib/checkout-rules';
 
 // A stamp from the bot, from the cart line the home page builds to the files the studio prints from.
 
@@ -169,6 +170,38 @@ describe('creating an order with a bot line', () => {
     await expect(createOrder(input([{ productSlug: OTHER_SIZE, design: moved, ink: l.ink, quantity: 1 }]))).rejects.toBeInstanceOf(CheckoutError);
     // The untouched envelope on the other product fails the size check too.
     await expect(createOrder(input([{ productSlug: OTHER_SIZE, design: l.design, ink: l.ink, quantity: 1 }]))).rejects.toBeInstanceOf(CheckoutError);
+  });
+
+  it('a missing address is refused with the field it belongs to', async () => {
+    const l = line(RECT, FORMS.rect());
+    const withShipping = (shipping: object) =>
+      checkoutSchema.parse({
+        idempotencyKey: `test-${crypto.randomBytes(6).toString('hex')}`,
+        customer: { name: 'בדיקה בדיקה', phone: '0501234567' },
+        shipping,
+        items: [{ productSlug: l.productSlug, design: l.design, ink: l.ink, quantity: 1 }],
+      });
+    const refusal = (shipping: object) => createOrder(withShipping(shipping)).then(() => null, (e: unknown) => e);
+    const street = await refusal({ method: 'courier', address: { street: '', city: 'תל אביב' } });
+    expect(street).toBeInstanceOf(CheckoutError);
+    expect(street).toMatchObject({ field: 'street', message: CHECKOUT_MESSAGES.street });
+    expect(await refusal({ method: 'courier', address: { street: 'הרצל 1', city: '' } })).toMatchObject({ field: 'city', message: CHECKOUT_MESSAGES.city });
+    expect(await refusal({ method: 'locker', address: { street: '', city: '' } })).toMatchObject({ field: 'city', message: CHECKOUT_MESSAGES.city });
+  });
+
+  it('the order route returns every failing field with its message', async () => {
+    const { POST } = await import('@/app/api/orders/route');
+    const body = {
+      idempotencyKey: `test-${crypto.randomBytes(6).toString('hex')}`,
+      customer: { name: 'א', phone: '050-123', email: 'name@example' },
+      shipping: { method: 'courier', address: { street: '', city: '' } },
+      items: [],
+    };
+    const res = await POST(new Request('http://x/api/orders/', { method: 'POST', headers: { 'x-forwarded-for': String(Math.random()) }, body: JSON.stringify(body) }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.fields).toEqual({ name: CHECKOUT_MESSAGES.name, phone: CHECKOUT_MESSAGES.phoneShort, email: CHECKOUT_MESSAGES.emailSuffix, street: CHECKOUT_MESSAGES.street, city: CHECKOUT_MESSAGES.city });
+    expect(data.error).toBe(CHECKOUT_MESSAGES.name);
   });
 
   it('refuses a design that carries both a bot form and an editor element', async () => {
